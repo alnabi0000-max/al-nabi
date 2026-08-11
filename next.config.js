@@ -109,7 +109,15 @@ const nextConfig = {
     if (!dev) {
       config.devtool = false;
     }
-    if (!dev && !isServer) {
+    /**
+     * Webpack obfuscation breaks Next.js App Router client bundles
+     * (layout/hydration → global-error). Opt-in only via ENABLE_OBFUSCATION=1.
+     */
+    if (
+      !dev &&
+      !isServer &&
+      process.env.ENABLE_OBFUSCATION === "1"
+    ) {
       config.optimization = { ...config.optimization, minimize: true };
       try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
