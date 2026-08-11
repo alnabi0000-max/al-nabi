@@ -12,9 +12,8 @@ import {
 import type { VisualDna } from "@/lib/producer/vision-dna";
 import type { ProducerMemory } from "@/lib/producer/memory";
 import {
-  detectPromptLanguage,
   languageLabel,
-  resolveEnhanceLanguage,
+  resolveChatLanguage,
   type PromptLang,
 } from "@/lib/ai/prompt-language";
 import { getDictionary, resolveAppLocale } from "@/i18n/dictionary";
@@ -130,9 +129,10 @@ export function clampProducerReply(text: string, fallback = "…"): string {
 }
 
 const LANGUAGE_LAW = `LANGUAGE LAW (CRITICAL — NEVER BREAK):
-- Detect the user's message language/script and reply ONLY in that exact language.
-- If user writes Uzbek Latin (e.g. "salom"), reply 100% in grammatically perfect Uzbek Latin — NEVER English.
-- If user writes Uzbek Cyrillic, reply in Uzbek Cyrillic. If Russian → Russian. If English → English.
+- The system locks reply language to: {{LANG}}. Reply ONLY in that language/script — 100%.
+- Typos, missing diacritics, slang, or mixed cinema words (video, reels, prompt) MUST NOT change the reply language.
+- If locked language is Uzbek Latin, reply in grammatically perfect Uzbek Latin — NEVER switch to English or Russian.
+- If Uzbek Cyrillic → Uzbek Cyrillic. If Russian → Russian. If English → English.
 - Do not mix languages. Do not translate the user into English. Preserve diacritics (oʻ, gʻ, ў, қ, ғ, ҳ, ё).
 - Never refuse or degrade Uzbek.`;
 
@@ -142,6 +142,7 @@ function systemPrompt(opts: {
   dna?: VisualDna | null;
   memory?: ProducerMemory | null;
   mode: ChatMode;
+  clientContext?: string | null;
 }): string {
   const langName = languageLabel(opts.lang);
   const dnaBlock = opts.dna
@@ -150,31 +151,39 @@ function systemPrompt(opts: {
   const mem = opts.memory
     ? `Memory: styles=${opts.memory.preferredStyles.join(", ") || "—"}; aspect=${opts.memory.preferredAspect || "—"}; tone=${opts.memory.visualTone || "—"}; recent=${opts.memory.recentBriefs.slice(0, 3).join(" | ") || "—"}.`
     : "Memory: empty.";
+  const clientBlock = (opts.clientContext || "").trim()
+    ? `Mijoz haqida ma'lumot:\n${opts.clientContext!.trim()}
+Use this real account data when the user asks about balance, credits, projects, history, or templates. Do not invent numbers.`
+    : `Mijoz haqida ma'lumot:\nHisob ma'lumoti hozircha mavjud emas.`;
+
+  const law = LANGUAGE_LAW.replaceAll("{{LANG}}", langName);
 
   if (opts.mode === "guide") {
     return `You are Al-Nabi site guide inside Al-Nabi Native Engine.
-${LANGUAGE_LAW}
-User language: ${langName}. Reply ONLY in ${langName}.
+${law}
+Locked reply language: ${langName}. Reply ONLY in ${langName}.
 Currency is always "NC" (Nabi Credits).
 Cloud Vault: archived re-downloads cost 5 NC after the first free unlock.
 Never name third-party AI vendors.
 STRICT: Max 2–3 short grounded sentences. Zero fluff.
+${clientBlock}
 Return JSON: {"reply":"...","mode":"guide","showProduce":false}`;
   }
 
   if (opts.mode === "converse") {
     return `You are Al-Nabi Producer Chat — a grounded human creative partner for brand Al-Nabi.
-${LANGUAGE_LAW}
-User language: ${langName}. Reply ONLY in ${langName}.
-Example: user "salom" → reply in Uzbek Latin like "Salom! Nima qilamiz — video g‘oya yoki savol?" — NEVER English.
+${law}
+Locked reply language: ${langName}. Reply ONLY in ${langName}.
+Example: user "salom" (or typo "salomq") → reply in Uzbek Latin like "Salom! Nima qilamiz — video g‘oya yoki savol?" — NEVER English.
 This is a greeting or casual chat — do NOT push video aspect ratios, voice picks, or Produce yet.
 Be warm, brief, natural. Max 2–3 short sentences. Zero robotic openers. Never say Alnabiy — always Al-Nabi.
+${clientBlock}
 Return JSON: {"reply":"...","mode":"converse","showProduce":false}`;
   }
 
   return `You are Al-Nabi Producer Chat (AI rejissyor) — Al-Nabi Native Engine.
-${LANGUAGE_LAW}
-User language: ${langName}. Reply ONLY in ${langName}.
+${law}
+Locked reply language: ${langName}. Reply ONLY in ${langName}.
 Rules:
 - STRICT: Max 2–3 short natural sentences. Zero fluff, zero compliments.
 - NEVER mention third-party vendors. Say Al-Nabi Native Engine / Al-Nabi Audio Engine.
@@ -184,6 +193,7 @@ Rules:
 - Preserve art styles (Stickman, Voxel, GTA, Anime) — never force photoreal.
 ${dnaBlock}
 ${mem}
+${clientBlock}
 Level: ${opts.level}
 
 Return JSON:
@@ -204,14 +214,23 @@ export async function runProducerChat(opts: {
   locale?: string;
   localeCode?: string;
   userLevel?: "beginner" | "advanced";
+  /** Pre-fetched account snapshot for the system prompt */
+  clientContext?: string | null;
 }): Promise<ProducerChatResult> {
   const level = opts.userLevel || "beginner";
   const lastUser =
     [...opts.messages].reverse().find((m) => m.role === "user")?.content || "";
-  const lang = resolveEnhanceLanguage(lastUser, opts.locale);
-  // Prefer raw detection for greetings like "salom"
-  const detected = detectPromptLanguage(lastUser);
-  const replyLang = lastUser.trim().length > 0 ? detected : lang;
+  const priorUserTexts = opts.messages
+    .filter((m) => m.role === "user")
+    .map((m) => m.content)
+    .slice(0, -1);
+  // Sticky UI locale + history — typos must not flip reply language
+  const replyLang = resolveChatLanguage({
+    lastUserText: lastUser,
+    priorUserTexts,
+    localeCode: opts.localeCode,
+    localeName: opts.locale,
+  });
   const dict = dictForUserLang(replyLang, opts.localeCode || opts.locale);
   const mode = resolveMode(lastUser);
 
@@ -245,6 +264,7 @@ export async function runProducerChat(opts: {
         dna: opts.visualDna,
         memory: opts.memory,
         mode,
+        clientContext: opts.clientContext,
       }),
     },
   ];
@@ -256,7 +276,7 @@ export async function runProducerChat(opts: {
     const raw = await openRouterChat({
       model: getEnhanceModel(),
       json: true,
-      temperature: mode === "converse" ? 0.55 : 0.4,
+      temperature: mode === "converse" ? 0.4 : 0.3,
       timeoutMs: 30_000,
       messages: history,
     });

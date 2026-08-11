@@ -13,6 +13,59 @@ import {
   ensureRequestLedgerUser,
   isSoftAuthEnabled,
 } from "@/lib/auth/ensure-request-user";
+import { prisma } from "@/lib/prisma";
+
+/** Build a compact account snapshot for the Producer Chat system prompt. */
+async function buildClientContext(userId: string, coins: number): Promise<string> {
+  try {
+    const [totalProjects, recent] = await Promise.all([
+      prisma.generation.count({
+        where: { userId, deletedAt: null },
+      }),
+      prisma.generation.findMany({
+        where: { userId, deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 40,
+        select: {
+          type: true,
+          status: true,
+          style: true,
+          prompt: true,
+          script: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    const lastFive = recent.slice(0, 5).map((g, i) => {
+      const title = (g.prompt || g.script || "—").replace(/\s+/g, " ").trim().slice(0, 72);
+      const when = g.createdAt.toISOString().slice(0, 10);
+      return `${i + 1}) [${g.type}/${g.status}] style=${g.style || "—"} · ${when} · "${title}"`;
+    });
+
+    const templates = [
+      ...new Set(
+        recent
+          .map((g) => (g.style || "").trim())
+          .filter(Boolean)
+      ),
+    ];
+
+    return [
+      `- Kredit qolgan (NC): ${coins}`,
+      `- Jami video/loyihalar: ${totalProjects}`,
+      `- Oxirgi 5 ta loyiha: ${lastFive.length ? lastFive.join(" | ") : "hali yo‘q"}`,
+      `- Foydalanilgan shablonlar/uslublar: ${templates.length ? templates.join(", ") : "hali yo‘q"}`,
+    ].join("\n");
+  } catch {
+    return [
+      `- Kredit qolgan (NC): ${coins}`,
+      `- Jami video/loyihalar: noma'lum (DB vaqtincha mavjud emas)`,
+      `- Oxirgi 5 ta loyiha: noma'lum`,
+      `- Foydalanilgan shablonlar/uslublar: noma'lum`,
+    ].join("\n");
+  }
+}
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -84,6 +137,10 @@ export async function POST(req: NextRequest) {
       req.headers.get("x-alnabiy-key") ||
       "guest";
     const memory = await loadProducerMemory(memKey);
+    const clientContext = await buildClientContext(
+      ensured.user.id,
+      ensured.user.coins
+    );
 
     const result = await runProducerChat({
       messages: body.messages,
@@ -92,6 +149,7 @@ export async function POST(req: NextRequest) {
       locale: localeName,
       localeCode,
       userLevel: body.userLevel,
+      clientContext,
     });
 
     const lastUser = [...body.messages]
