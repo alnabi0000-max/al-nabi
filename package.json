@@ -1,0 +1,53 @@
+{
+  "name": "alnabiy",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "predev": "npx --yes kill-port 3000 3001",
+    "dev": "next dev --turbopack -H 0.0.0.0 -p 3000",
+    "build": "next build",
+    "prestart": "npx --yes kill-port 3000",
+    "start": "node scripts/start-production.mjs",
+    "start:next": "next start -H 0.0.0.0 -p 3000",
+    "lint": "next lint",
+    "locales:build": "node scripts/build-locales.mjs",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "inngest:dev": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1107.0",
+    "@aws-sdk/s3-request-presigner": "^3.1107.0",
+    "@prisma/client": "^6.5.0",
+    "@sentry/nextjs": "^10.70.0",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.2",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.2",
+    "clsx": "^2.1.1",
+    "fluent-ffmpeg": "^2.1.3",
+    "inngest": "^4.18.0",
+    "lucide-react": "^0.475.0",
+    "next": "^15.5.23",
+    "openai": "^4.104.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "replicate": "^1.0.1",
+    "stripe": "^22.4.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/fluent-ffmpeg": "^2.1.27",
+    "@types/node": "^22.13.5",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "autoprefixer": "^10.4.20",
+    "javascript-obfuscator": "^5.5.0",
+    "postcss": "^8.5.3",
+    "prisma": "^6.5.0",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "webpack-obfuscator": "^3.6.1"
+  }
+}

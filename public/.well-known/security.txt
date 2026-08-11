@@ -1,0 +1,5 @@
+Contact: mailto:security@alnabiy.app
+Expires: 2027-08-06T00:00:00.000Z
+Preferred-Languages: en, uz
+Canonical: https://alnabiy.app/.well-known/security.txt
+Policy: https://alnabiy.app/privacy

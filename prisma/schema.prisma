@@ -1,0 +1,254 @@
+// =============================================================================
+// Alnabiy AI — PHASE 1 (Foundation)
+// Prisma ORM + PostgreSQL (Supabase) · CoinLedger as source of truth
+// Models: User · CoinLedger · Generation · Purchase · Referral
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  /// Direct connection for migrations (Supabase: port 5432)
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum PlanType {
+  FREE
+  STARTER
+  PRO
+  HOLLYWOOD
+  DIRECTOR
+  INFINITE
+}
+
+enum AccountStatus {
+  ACTIVE
+  WARNING
+  BANNED
+}
+
+enum LedgerKind {
+  SIGNUP_GRANT
+  PURCHASE
+  CHARGE
+  BONUS
+  REFERRAL
+  ROLLBACK
+  ADJUSTMENT
+}
+
+enum GenerationType {
+  IMAGE
+  IMAGE_TO_VIDEO
+  TEXT_TO_VIDEO
+  SCRIPT_TO_MOVIE
+  INPAINT
+  OUTPAINT
+}
+
+enum GenerationStatus {
+  QUEUED
+  ANALYZING
+  GENERATING_AUDIO
+  GENERATING_VIDEO
+  MERGING
+  COMPLETED
+  FAILED
+}
+
+enum PurchaseStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+/// App profile — `id` = Supabase `auth.users.id` (UUID)
+
+model User {
+  id               String        @id @db.Uuid
+  email            String        @unique
+  name             String?
+  avatarUrl        String?       @map("avatar_url")
+  /// Legacy license key (local auth / migratsiya) — brauzer: `alnabiy_key`
+  alnabiyKey       String        @unique @map("alnabiy_key")
+  /// Cached balance — authoritative history is CoinLedger
+  coins            Int           @default(200) @map("coins")
+  plan             PlanType      @default(FREE)
+  status           AccountStatus @default(ACTIVE)
+  securityAttempts Int           @default(0) @map("security_attempts")
+  referralCode     String        @unique @map("referral_code")
+  referredBy       String?       @map("referred_by")
+  locale           String        @default("uz")
+  stripeCustomerId String?       @unique @map("stripe_customer_id")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  coinLedger  CoinLedger[]
+  generations Generation[]
+  purchases   Purchase[]
+  referrals   Referral[]   @relation("Referrer")
+  referredAs  Referral[]   @relation("Invitee")
+  sessions    Session[]
+
+  @@index([email])
+  @@index([alnabiyKey])
+  @@index([referralCode])
+  @@map("users")
+}
+
+// ─── CoinLedger ───────────────────────────────────────────────────────────────
+/// Server-side ledger — replaces client localStorage coin simulations
+
+model CoinLedger {
+  id            String     @id @default(cuid())
+  userId        String     @map("user_id") @db.Uuid
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Positive = credit in, negative = debit out
+  delta         Int
+  type          LedgerKind
+  reason        String
+  balanceAfter  Int        @map("balance_after")
+  generationId  String?    @map("generation_id")
+  generation    Generation? @relation(fields: [generationId], references: [id], onDelete: SetNull)
+  purchaseId    String?    @map("purchase_id")
+  purchase      Purchase?  @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  /// Legacy alias for generation / stripe session ids during migration
+  jobId         String?    @map("job_id")
+  metadata      Json?
+  createdAt     DateTime   @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([type])
+  @@index([generationId])
+  @@index([purchaseId])
+  @@index([jobId])
+  @@map("coin_ledger")
+}
+
+// ─── Generation ───────────────────────────────────────────────────────────────
+/// AI job record (image / video / script-to-movie)
+
+model Generation {
+  id             String           @id @default(cuid())
+  userId         String           @map("user_id") @db.Uuid
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           GenerationType
+  status         GenerationStatus @default(QUEUED)
+  prompt         String?          @db.Text
+  enhancedPrompt String?          @map("enhanced_prompt") @db.Text
+  script         String?          @db.Text
+  style          String?
+  emotionMode    String?          @default("neutral") @map("emotion_mode")
+  quality        String?          @default("1080p")
+  provider       String?
+  durationSec    Int              @default(30) @map("duration_sec")
+  cameraMove     String?          @map("camera_move")
+  sourceImageUrl String?          @map("source_image_url")
+  identityLocked Boolean          @default(false) @map("identity_locked")
+  scenesJson     Json?            @map("scenes_json")
+  resultUrl      String?          @map("result_url")
+  /// Cloudflare R2 object key (Phase 3+)
+  r2Key          String?          @map("r2_key")
+  creditsCost    Int              @default(0) @map("credits_cost")
+  errorMessage   String?          @map("error_message")
+  /// Inngest event id (Phase 2+)
+  inngestEventId String?          @map("inngest_event_id")
+  deletedAt      DateTime?        @map("deleted_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  ledgerEntries CoinLedger[]
+  sceneAssets   SceneAsset[]
+
+  @@index([userId, status])
+  @@index([userId, deletedAt])
+  @@index([status, createdAt])
+  @@map("generations")
+}
+
+// ─── Purchase ─────────────────────────────────────────────────────────────────
+/// Stripe (or demo) coin pack purchases
+
+model Purchase {
+  id                    String         @id @default(cuid())
+  userId                String         @map("user_id") @db.Uuid
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  packId                String         @map("pack_id")
+  coins                 Int
+  bonus                 Int            @default(0)
+  amountCents           Int            @map("amount_cents")
+  currency              String         @default("usd")
+  status                PurchaseStatus @default(PENDING)
+  stripeSessionId       String?        @unique @map("stripe_session_id")
+  stripePaymentIntentId String?        @map("stripe_payment_intent_id")
+  regionToken           String?        @map("region_token")
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+
+  ledgerEntries CoinLedger[]
+
+  @@index([userId, status])
+  @@index([packId])
+  @@map("purchases")
+}
+
+// ─── Referral ─────────────────────────────────────────────────────────────────
+
+model Referral {
+  id           String    @id @default(cuid())
+  referrerId   String    @map("referrer_id") @db.Uuid
+  referrer     User      @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  inviteeEmail String    @map("invitee_email")
+  inviteeId    String?   @map("invitee_id") @db.Uuid
+  invitee      User?     @relation("Invitee", fields: [inviteeId], references: [id], onDelete: SetNull)
+  rewardCoins  Int       @default(200) @map("reward_coins")
+  rewarded     Boolean   @default(false)
+  rewardedAt   DateTime? @map("rewarded_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@unique([referrerId, inviteeEmail])
+  @@index([referrerId])
+  @@index([inviteeEmail])
+  @@map("referrals")
+}
+
+// ─── Supporting (Phase 1) ─────────────────────────────────────────────────────
+
+model Session {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id") @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  deviceInfo String?  @map("device_info")
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+model SceneAsset {
+  id             String     @id @default(cuid())
+  generationId   String     @map("generation_id")
+  generation     Generation @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  index          Int
+  visualPrompt   String     @map("visual_prompt") @db.Text
+  voiceText      String?    @map("voice_text") @db.Text
+  cameraMovement String?    @map("camera_movement")
+  durationSec    Int        @default(6) @map("duration_sec")
+  videoPath      String?    @map("video_path")
+  audioPath      String?    @map("audio_path")
+  r2Key          String?    @map("r2_key")
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  @@index([generationId])
+  @@map("scene_assets")
+}

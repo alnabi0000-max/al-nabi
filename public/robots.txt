@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Allow: /terms
+Allow: /privacy
+Allow: /refund-policy
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /auth/
+
+Sitemap: https://alnabiy.app/sitemap.xml

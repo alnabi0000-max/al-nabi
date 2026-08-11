@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-label="Preview unavailable">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#18181b"/>
+      <stop offset="45%" stop-color="#27272a"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#g)"/>
+  <circle cx="320" cy="160" r="36" fill="none" stroke="#52525b" stroke-width="3"/>
+  <polygon points="310,142 310,178 342,160" fill="#71717a"/>
+  <text x="320" y="230" text-anchor="middle" fill="#71717a" font-family="system-ui,sans-serif" font-size="14">Preview unavailable</text>
+</svg>
