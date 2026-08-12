@@ -29,6 +29,10 @@ export function labelForQuickAction(
       return t.chat.navBalance;
     case "nav_history":
       return t.chat.navHistory;
+    case "select_template":
+      return action.label || action.templateTitle;
+    case "tool_navigate":
+      return action.label || action.href;
     default: {
       const fallback = action as QuickAction & { label?: string };
       return fallback.label || fallback.id;

@@ -35,6 +35,11 @@ import {
   readWallpaperIndex,
   writeWallpaperIndex,
 } from "@/lib/producer/wallpapers";
+import { getStudioTemplate } from "@/lib/templates/catalog";
+import {
+  buildTransferPayload,
+  saveTemplateTransfer,
+} from "@/lib/templates/resolve";
 
 type Msg = {
   id: string;
@@ -141,7 +146,13 @@ const QuickActionBar = memo(function QuickActionBar({
         const label = labelForQuickAction(a, t);
         return (
           <button
-            key={a.id}
+            key={
+              a.id === "select_template"
+                ? `select_template:${a.templateId}`
+                : "href" in a && a.href
+                  ? `${a.id}:${a.href}`
+                  : a.id
+            }
             type="button"
             disabled={busy}
             onClick={() => onQuick(a)}
@@ -149,14 +160,20 @@ const QuickActionBar = memo(function QuickActionBar({
               "shrink-0 rounded-full border px-3 py-1.5 text-xs transition",
               a.id === "produce"
                 ? "border-white/30 bg-white text-zinc-950"
-                : a.id === "voice_preview"
-                  ? "border-fuchsia-400/40 text-fuchsia-100"
-                  : "border-white/10 text-zinc-300 hover:border-white/25"
+                : a.id === "select_template"
+                  ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-50 hover:border-emerald-300/70"
+                  : a.id === "voice_preview"
+                    ? "border-fuchsia-400/40 text-fuchsia-100"
+                    : "border-white/10 text-zinc-300 hover:border-white/25"
             )}
           >
             {a.id === "produce" ? (
               <span className="inline-flex items-center gap-1">
                 <Sparkles size={12} /> {label}
+              </span>
+            ) : a.id === "select_template" ? (
+              <span className="inline-flex items-center gap-1">
+                <Clapperboard size={12} /> {label}
               </span>
             ) : a.id === "voice_preview" ? (
               <span className="inline-flex items-center gap-1">
@@ -653,6 +670,17 @@ export function ProducerChat({
   const onQuick = useCallback(
     (action: QuickAction) => {
       const label = labelForQuickAction(action, stateRef.current.t);
+      if (action.id === "select_template" && "templateId" in action) {
+        const tpl = getStudioTemplate(action.templateId);
+        if (!tpl) return;
+        const payload = buildTransferPayload(tpl, tpl.subject_placeholder);
+        saveTemplateTransfer(payload);
+        onClose?.();
+        router.push(
+          `/generate?template=${tpl.id}&from=producer&subject=${encodeURIComponent(payload.subject)}`
+        );
+        return;
+      }
       if ("href" in action && action.href) {
         onClose?.();
         router.push(action.href);

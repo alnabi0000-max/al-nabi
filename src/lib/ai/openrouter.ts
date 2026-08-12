@@ -27,12 +27,16 @@ export function getOpenRouterModel(): string {
   );
 }
 
-/** Prompt auto-enhancer — Claude 3.5 Sonnet via same OpenRouter key */
+/** Prompt auto-enhancer / Producer Chat — same OpenRouter key */
 export function getEnhanceModel(): string {
-  return (
-    process.env.OPENROUTER_ENHANCE_MODEL?.trim() ||
-    "anthropic/claude-3.5-sonnet"
-  );
+  const explicit = process.env.OPENROUTER_ENHANCE_MODEL?.trim();
+  if (explicit) return explicit;
+  const routed = process.env.OPENROUTER_MODEL?.trim();
+  if (routed) return routed;
+  const openai = process.env.OPENAI_MODEL?.trim();
+  if (openai) return openai.includes("/") ? openai : `openai/${openai}`;
+  // Prefer a widely available tool-calling model (legacy Claude id may 404)
+  return "openai/gpt-4o-mini";
 }
 
 /** Admin model-watcher — cheap classifier via same OpenRouter key */
@@ -78,17 +82,55 @@ export function getVisionModel(): string {
   );
 }
 
+export type ChatToolDefinition = {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+};
+
+export type OpenRouterToolCall = {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+};
+
+export type OpenRouterChatResult = {
+  content: string | null;
+  toolCalls: OpenRouterToolCall[];
+  /** Assistant message to append before tool results (when toolCalls present). */
+  assistantMessage: OpenAI.Chat.ChatCompletionAssistantMessageParam | null;
+};
+
 /**
  * Chat completion — text + optional vision (same OpenRouter key only).
  */
 export async function openRouterChat(opts: {
-  messages: ChatMessage[];
+  messages: ChatMessage[] | OpenAI.Chat.ChatCompletionMessageParam[];
   temperature?: number;
   json?: boolean;
   model?: string;
   /** Default 25s — enhance hang oldini olish */
   timeoutMs?: number;
+  tools?: ChatToolDefinition[];
+  toolChoice?: "auto" | "none" | "required";
 }): Promise<string | null> {
+  const result = await openRouterChatRaw(opts);
+  return result?.content ?? null;
+}
+
+/** Full completion including optional tool_calls (OpenAI-compatible). */
+export async function openRouterChatRaw(opts: {
+  messages: ChatMessage[] | OpenAI.Chat.ChatCompletionMessageParam[];
+  temperature?: number;
+  json?: boolean;
+  model?: string;
+  timeoutMs?: number;
+  tools?: ChatToolDefinition[];
+  toolChoice?: "auto" | "none" | "required";
+}): Promise<OpenRouterChatResult | null> {
   const client = createOpenRouterClient();
   if (!client) return null;
 
@@ -101,14 +143,49 @@ export async function openRouterChat(opts: {
       {
         model: opts.model || getOpenRouterModel(),
         temperature: opts.temperature ?? 0.6,
-        ...(opts.json
+        ...(opts.json && !opts.tools?.length
           ? { response_format: { type: "json_object" as const } }
+          : {}),
+        ...(opts.tools?.length
+          ? {
+              tools: opts.tools as OpenAI.Chat.ChatCompletionTool[],
+              tool_choice: opts.toolChoice ?? "auto",
+            }
           : {}),
         messages: opts.messages as OpenAI.Chat.ChatCompletionMessageParam[],
       },
       { signal: controller.signal }
     );
-    return res.choices[0]?.message?.content?.trim() || null;
+    const msg = res.choices[0]?.message;
+    if (!msg) {
+      return { content: null, toolCalls: [], assistantMessage: null };
+    }
+    const toolCalls: OpenRouterToolCall[] = (msg.tool_calls || [])
+      .filter((t) => t.type === "function" && t.function?.name)
+      .map((t) => ({
+        id: t.id,
+        type: "function" as const,
+        function: {
+          name: t.function.name,
+          arguments: t.function.arguments || "{}",
+        },
+      }));
+    return {
+      content: msg.content?.trim() || null,
+      toolCalls,
+      assistantMessage:
+        toolCalls.length > 0
+          ? {
+              role: "assistant",
+              content: msg.content ?? null,
+              tool_calls: toolCalls.map((t) => ({
+                id: t.id,
+                type: "function" as const,
+                function: t.function,
+              })),
+            }
+          : null,
+    };
   } catch (e) {
     if (e instanceof Error && e.name === "AbortError") {
       console.warn("[Alnabiy] OpenRouter chat timed out", timeoutMs);
