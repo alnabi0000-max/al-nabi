@@ -5,7 +5,9 @@ import { SecurityProvider } from "@/components/SecurityProvider";
 import { AuthProviders } from "@/components/auth/AuthProviders";
 import { ProducerChatProvider } from "@/context/ProducerChatContext";
 import { LanguageProvider } from "@/context/LanguageContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { AppShellChrome } from "@/components/AppShellChrome";
+import { THEME_STORAGE_KEY, DEFAULT_THEME } from "@/lib/theme/themes";
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://alnabiy.app";
 const SITE_TITLE = "Al-Nabi — AI Video & Image Generation Platform";
@@ -54,19 +56,26 @@ export default function RootLayout({
   /* Static default — kept static (not per-request dynamic) so the whole site
    * stays prerenderable/cacheable. MasterControllerProvider already corrects
    * <html lang/dir> client-side once the stored locale preference loads. */
+  const themeBoot = `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var d=${JSON.stringify(DEFAULT_THEME)};var t=localStorage.getItem(k)||d;document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme",${JSON.stringify(DEFAULT_THEME)});}})();`;
+
   return (
-    <html lang="uz">
+    <html lang="uz" data-theme={DEFAULT_THEME} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
+      </head>
       <body>
         <MasterControllerProvider>
-          <LanguageProvider>
-            <AuthProviders>
-              <SecurityProvider>
-                <ProducerChatProvider>
-                  <AppShellChrome>{children}</AppShellChrome>
-                </ProducerChatProvider>
-              </SecurityProvider>
-            </AuthProviders>
-          </LanguageProvider>
+          <ThemeProvider>
+            <LanguageProvider>
+              <AuthProviders>
+                <SecurityProvider>
+                  <ProducerChatProvider>
+                    <AppShellChrome>{children}</AppShellChrome>
+                  </ProducerChatProvider>
+                </SecurityProvider>
+              </AuthProviders>
+            </LanguageProvider>
+          </ThemeProvider>
         </MasterControllerProvider>
       </body>
     </html>

@@ -25,7 +25,7 @@ export function MobileNav() {
   ];
 
   return (
-    <nav className="fixed bottom-3 left-3 right-3 z-50 flex w-auto overflow-hidden rounded-2xl border border-white/10 bg-[#090A0F]/95 pb-[env(safe-area-inset-bottom)] shadow-glass md:hidden">
+    <nav className="fixed bottom-3 left-3 right-3 z-50 flex w-auto overflow-hidden rounded-2xl border border-nabi-border bg-nabi-bg/95 pb-[env(safe-area-inset-bottom)] shadow-glass md:hidden">
       {links.map(({ href, label, icon: Icon }) => {
         const active = pathname === href;
         return (
@@ -38,8 +38,8 @@ export function MobileNav() {
             className={clsx(
               "flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-[9px] transition-all duration-300 ease-apple active:scale-[0.92]",
               active
-                ? "bg-gradient-to-t from-purple-500/20 to-transparent text-white"
-                : "text-zinc-500"
+                ? "bg-gradient-to-t from-[var(--accent)]/20 to-transparent text-nabi-ink"
+                : "text-nabi-muted"
             )}
           >
             <Icon size={18} />

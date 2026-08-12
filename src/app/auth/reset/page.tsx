@@ -102,7 +102,7 @@ export default function AuthResetPage() {
       ) : (
         <form onSubmit={onSubmit} className="nabi-card space-y-3">
           {!ready && !err && (
-            <p className="text-xs text-zinc-500">{tr("checking")}</p>
+            <p className="text-xs text-nabi-muted">{tr("checking")}</p>
           )}
           <input
             className="nabi-input"

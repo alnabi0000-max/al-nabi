@@ -87,7 +87,7 @@ export function SecurePlayer({
           className="h-full w-full object-contain bg-black"
         />
       ) : (
-        <div className="flex h-full items-center justify-center text-xs text-zinc-400">
+        <div className="flex h-full items-center justify-center text-xs text-nabi-muted">
           {WATERMARK}
         </div>
       )}

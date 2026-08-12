@@ -1,6 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import {
+  Check,
+  Clapperboard,
+  Crown,
+  Film,
+  Gem,
+  Image as ImageIcon,
+  Package,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 import { useMaster } from "@/context/MasterControllerContext";
 import { packYield, type CoinPack } from "@/lib/credits";
 import { useIsMounted } from "@/hooks/useIsMounted";
@@ -29,6 +40,17 @@ type PricingState = {
   country: string;
   currencySymbol: string;
 };
+
+const PACK_ICONS: Record<string, LucideIcon> = {
+  starter: Package,
+  pro: Sparkles,
+  hollywood: Clapperboard,
+  director: Crown,
+  infinite: Gem,
+};
+
+/** Single highlighted plan — SnapGen-style “Premium” slot */
+const RECOMMENDED_PACK_ID = "director";
 
 /**
  * Coin Store — narxlar faqat server geo-lock dan (boshqa tierlar yo'q)
@@ -135,11 +157,11 @@ export function CoinStore() {
 
   if (!isMounted || loading) {
     return (
-      <div className="mx-auto max-w-5xl animate-pulse space-y-4">
+      <div className="mx-auto max-w-6xl animate-pulse space-y-4">
         <div className="mx-auto h-7 w-56 rounded-lg bg-nabi-elevated" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-64 rounded-2xl bg-nabi-card" />
+            <div key={i} className="h-[28rem] rounded-2xl bg-nabi-card" />
           ))}
         </div>
       </div>
@@ -149,17 +171,17 @@ export function CoinStore() {
   const packs = pricing?.packs || [];
 
   return (
-    <div className="relative">
-      <h1 className="mb-1 text-center text-xl font-bold text-nabi-gold">
+    <div className="relative mx-auto max-w-6xl">
+      <h1 className="mb-1 text-center text-xl font-bold text-nabi-gold md:text-2xl">
         {t("coin_store_title")}
       </h1>
-      <p className="mb-2 text-center text-xs text-nabi-muted">
+      <p className="mb-2 text-center text-sm text-nabi-muted">
         {t("coin_store_subtitle")}
       </p>
-      <p className="mb-1 text-center text-[11px] text-zinc-500">
+      <p className="mb-1 text-center text-xs text-nabi-muted">
         {t("rate_image")} · {t("rate_video")} · {t("rate_movie")}
       </p>
-      <p className="mb-6 text-center text-[11px] text-nabi-neon/80">
+      <p className="mb-8 text-center text-xs text-nabi-neon/80">
         {t("geo_pricing_terms")}
         {pricing?.country && pricing.country !== "XX"
           ? ` · ${t("geo_region_applied", { code: pricing.country })}`
@@ -172,7 +194,7 @@ export function CoinStore() {
         </p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {packs.map((pack) => {
           const yieldInfo = packYield({
             id: pack.id,
@@ -182,62 +204,108 @@ export function CoinStore() {
             bonus: pack.bonus,
             tag: pack.tag,
           });
+          const PackIcon = PACK_ICONS[pack.id] ?? Package;
+          const isRecommended = pack.id === RECOMMENDED_PACK_ID;
+          const busy = checkoutBusy === pack.id;
+
           return (
-            <button
+            <article
               key={pack.id}
-              type="button"
-              onClick={() => void buy(pack)}
-              disabled={isOffline || checkoutBusy === pack.id}
               className={clsx(
-                "group relative overflow-hidden rounded-2xl border-2 p-4 text-left transition-all duration-500 ease-apple will-change-transform hover:scale-[1.02] active:scale-[0.98]",
-                pack.elite
-                  ? "border-purple-500/50 bg-gradient-to-b from-purple-500/10 to-nabi-card shadow-[0_0_24px_rgba(168,85,247,0.25)]"
-                  : pack.featured
-                    ? "border-nabi-gold/50 bg-gradient-to-b from-amber-500/10 to-nabi-card shadow-gold"
-                    : "border-nabi-border bg-nabi-card hover:border-nabi-gold/40"
+                "relative flex flex-col rounded-2xl border-2 p-5 transition-all duration-300",
+                isRecommended
+                  ? "border-nabi-gold bg-gradient-to-b from-amber-500/15 via-nabi-card to-nabi-card shadow-gold scale-[1.02] z-[1]"
+                  : pack.elite
+                    ? "border-nabi-neon/45 bg-gradient-to-b from-nabi-neon/10 to-nabi-card"
+                    : "border-nabi-border bg-nabi-card hover:border-nabi-gold/35"
               )}
             >
-              <div className="mb-2 text-3xl drop-shadow-[0_0_8px_rgba(245,200,66,0.5)]">
-                {pack.elite ? "💎" : pack.featured ? "👑" : "📦"}
+              {isRecommended && (
+                <span className="absolute -top-3 left-1/2 z-[2] -translate-x-1/2 whitespace-nowrap rounded-full border border-nabi-gold/60 bg-gradient-to-r from-amber-600 to-nabi-gold px-3 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black shadow-md">
+                  {t("pack_recommended")}
+                </span>
+              )}
+
+              {/* Header: icon + name */}
+              <div className="mb-4 flex items-center gap-2.5 pt-1">
+                <span
+                  className={clsx(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
+                    isRecommended
+                      ? "border-nabi-gold/50 bg-amber-500/15 text-nabi-gold"
+                      : pack.elite
+                        ? "border-nabi-neon/40 bg-nabi-neon/15 text-nabi-neon"
+                        : "border-nabi-border bg-nabi-card text-nabi-neon"
+                  )}
+                >
+                  <PackIcon className="h-5 w-5" aria-hidden />
+                </span>
+                <h3 className="text-base font-bold leading-tight text-nabi-ink">
+                  {pack.name}
+                </h3>
               </div>
-              <h3 className="text-sm font-bold text-nabi-gold">{pack.name}</h3>
-              <p className="mt-2 text-lg font-extrabold text-white">
+
+              {/* Price block */}
+              <p className="text-3xl font-extrabold tracking-tight text-nabi-ink">
+                {pack.priceFormatted}
+              </p>
+              <p className="mt-1.5 text-lg font-bold tabular-nums text-nabi-gold">
                 {yieldInfo.total.toLocaleString()} {t("coins")}
               </p>
-              {pack.bonus > 0 && (
-                <p className="mt-1 text-xs font-semibold text-emerald-400">
-                  {t("pack_bonus_tag", { n: pack.bonus })}
-                </p>
-              )}
-              <p className="mt-3 text-xs text-nabi-muted">
-                {t("real_price")}:{" "}
-                <span className="font-semibold text-zinc-300">
-                  {pack.priceFormatted}
-                </span>
-              </p>
 
-              <div className="mt-3 space-y-1 rounded-xl border border-nabi-border/80 bg-[#0d0f12]/80 px-2.5 py-2 text-[10px] leading-relaxed text-zinc-400">
-                <p>
-                  {t("pack_yield_images", {
+              {pack.bonus > 0 ? (
+                <p className="mt-2 inline-flex w-fit items-center rounded-md bg-emerald-500/15 px-2 py-1 text-sm font-semibold text-emerald-400">
+                  {t("pack_bonus_tag", { n: pack.bonus.toLocaleString() })}
+                </p>
+              ) : (
+                <div className="mt-2 h-7" aria-hidden />
+              )}
+
+              {/* Feature rows */}
+              <ul className="mt-5 flex flex-1 flex-col gap-3 border-t border-nabi-border/70 pt-4">
+                <FeatureRow
+                  icon={ImageIcon}
+                  label={t("pack_yield_images", {
                     n: yieldInfo.images.toLocaleString(),
                   })}
-                </p>
-                <p>
-                  {t("pack_yield_video", {
+                />
+                <FeatureRow
+                  icon={Film}
+                  label={t("pack_yield_video", {
                     n: yieldInfo.videoMinutes.toLocaleString(),
                   })}
-                </p>
-                <p>
-                  {t("pack_yield_movie", {
+                />
+                <FeatureRow
+                  icon={Clapperboard}
+                  label={t("pack_yield_movie", {
                     n: yieldInfo.movieMinutes.toLocaleString(),
                   })}
-                </p>
-              </div>
+                />
+                {isRecommended && (
+                  <FeatureRow
+                    icon={Check}
+                    label={t("pack_recommended_perk")}
+                    accent
+                  />
+                )}
+              </ul>
 
-              <span className="mt-3 inline-flex rounded-lg border border-nabi-neon/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-nabi-neon transition-transform duration-300 group-hover:scale-[1.02]">
-                {checkoutBusy === pack.id ? t("loading") : t("buy")}
-              </span>
-            </button>
+              {/* Full-width Buy */}
+              <button
+                type="button"
+                onClick={() => void buy(pack)}
+                disabled={isOffline || busy}
+                className={clsx(
+                  "mt-6 w-full rounded-xl px-4 py-3 text-sm font-bold transition-all duration-200",
+                  "hover:scale-[1.01] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40",
+                  isRecommended
+                    ? "bg-gradient-to-r from-amber-500 to-nabi-gold text-black shadow-[0_0_20px_rgba(245,200,66,0.35)]"
+                    : "nabi-btn-primary"
+                )}
+              >
+                {busy ? t("loading") : t("buy")}
+              </button>
+            </article>
           );
         })}
       </div>
@@ -260,5 +328,38 @@ export function CoinStore() {
         </div>
       )}
     </div>
+  );
+}
+
+function FeatureRow({
+  icon: Icon,
+  label,
+  accent,
+}: {
+  icon: LucideIcon;
+  label: string;
+  accent?: boolean;
+}) {
+  return (
+    <li className="flex items-start gap-2.5">
+      <span
+        className={clsx(
+          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md",
+          accent
+            ? "bg-nabi-gold/20 text-nabi-gold"
+            : "bg-nabi-neon/10 text-nabi-neon"
+        )}
+      >
+        <Icon className="h-3 w-3" aria-hidden />
+      </span>
+      <span
+        className={clsx(
+          "text-sm leading-snug",
+          accent ? "font-medium text-nabi-gold" : "text-nabi-ink"
+        )}
+      >
+        {label}
+      </span>
+    </li>
   );
 }

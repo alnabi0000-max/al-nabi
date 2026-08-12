@@ -15,27 +15,27 @@ const accentStyles: Record<
 > = {
   gold: {
     iconWrap:
-      "bg-gradient-to-br from-nabi-gold/25 to-fuchsia-500/10 ring-1 ring-nabi-gold/35 shadow-[0_0_16px_rgba(240,171,252,0.25)]",
+      "bg-gradient-to-br from-nabi-gold/25 to-nabi-gold/10 ring-1 ring-nabi-gold/35 shadow-gold",
     icon: "text-nabi-gold",
-    value: "text-nabi-gold drop-shadow-[0_0_18px_rgba(240,171,252,0.35)]",
-    glow: "bg-fuchsia-400/20",
-    sheen: "from-nabi-gold/25 via-fuchsia-400/10 to-transparent",
+    value: "text-nabi-gold drop-shadow-gold",
+    glow: "bg-nabi-gold/20",
+    sheen: "from-nabi-gold/25 via-nabi-gold/10 to-transparent",
   },
   rose: {
     iconWrap:
-      "bg-gradient-to-br from-rose-400/25 to-pink-500/10 ring-1 ring-rose-400/35 shadow-[0_0_16px_rgba(251,113,133,0.22)]",
-    icon: "text-rose-300",
-    value: "text-white drop-shadow-[0_0_14px_rgba(255,255,255,0.18)]",
+      "bg-gradient-to-br from-rose-400/25 to-rose-500/10 ring-1 ring-rose-400/35",
+    icon: "text-rose-400",
+    value: "text-nabi-ink",
     glow: "bg-rose-500/18",
-    sheen: "from-rose-400/20 via-pink-500/10 to-transparent",
+    sheen: "from-rose-400/20 via-rose-500/10 to-transparent",
   },
   neon: {
     iconWrap:
-      "bg-gradient-to-br from-nabi-neon/25 to-indigo-500/10 ring-1 ring-nabi-neon/35 shadow-[0_0_16px_rgba(167,139,250,0.28)]",
+      "bg-gradient-to-br from-nabi-neon/25 to-nabi-neon/10 ring-1 ring-nabi-neon/35 shadow-neon",
     icon: "text-nabi-neon",
-    value: "text-nabi-neon drop-shadow-[0_0_18px_rgba(167,139,250,0.35)]",
-    glow: "bg-violet-400/20",
-    sheen: "from-nabi-neon/25 via-indigo-400/10 to-transparent",
+    value: "text-nabi-neon drop-shadow-neon",
+    glow: "bg-nabi-neon/20",
+    sheen: "from-nabi-neon/25 via-nabi-neon/10 to-transparent",
   },
 };
 
@@ -64,7 +64,7 @@ export function StatCard({
 
   return (
     <div
-      className="nabi-stat-card group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#1a1f2e] via-[#12151d] to-[#0a0c12] p-4 shadow-[0_8px_28px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-300 ease-apple hover:-translate-y-1.5 hover:border-white/20 hover:shadow-[0_16px_40px_rgba(0,0,0,0.55),0_0_28px_rgba(168,85,247,0.22),inset_0_1px_0_rgba(255,255,255,0.1)]"
+      className="nabi-stat-card group relative overflow-hidden rounded-2xl border border-nabi-border bg-gradient-to-br from-nabi-surface via-nabi-card to-nabi-bg p-4 shadow-glass transition-all duration-300 ease-apple hover:-translate-y-1.5 hover:border-nabi-neon/35 hover:shadow-neon"
       style={{ animationDelay: `${index * 70}ms` }}
     >
       <div
@@ -73,7 +73,7 @@ export function StatCard({
       <div
         className={`pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full ${a.glow} blur-3xl transition-opacity duration-300 group-hover:opacity-100`}
       />
-      <div className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-nabi-ink/35 to-transparent" />
 
       <div className="relative mb-3 flex items-center gap-2.5 text-xs text-nabi-muted">
         <span
@@ -91,7 +91,7 @@ export function StatCard({
       </div>
 
       {hint ? (
-        <p className="relative mt-1.5 text-[11px] leading-snug text-zinc-400">
+        <p className="relative mt-1.5 text-[11px] leading-snug text-nabi-muted">
           {hint}
         </p>
       ) : null}

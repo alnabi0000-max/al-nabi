@@ -73,8 +73,8 @@ export function Sidebar() {
     <aside
       data-collapsed={collapsed ? "1" : "0"}
       className={clsx(
-        "fixed left-3 top-3 z-40 hidden h-[calc(100dvh-1.5rem)] flex-col rounded-3xl border border-white/10",
-        "bg-[#0c0d14]/95 shadow-glass transition-[width] duration-300 md:flex",
+        "fixed left-3 top-3 z-40 hidden h-[calc(100dvh-1.5rem)] flex-col rounded-3xl border border-nabi-border",
+        "bg-nabi-bg/95 shadow-glass transition-[width] duration-300 md:flex",
         collapsed ? "w-[4.25rem]" : "w-56 lg:w-60"
       )}
     >
@@ -86,10 +86,10 @@ export function Sidebar() {
       >
         {!collapsed && (
           <div className="min-w-0">
-            <h1 className="truncate bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-lg font-bold tracking-wide text-transparent">
+            <h1 className="truncate bg-cinema-accent bg-clip-text text-lg font-bold tracking-wide text-transparent">
               Al-Nabi
             </h1>
-            <p className="mt-0.5 truncate text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+            <p className="mt-0.5 truncate text-[10px] uppercase tracking-[0.2em] text-nabi-muted">
               Cinema
             </p>
           </div>
@@ -97,7 +97,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={toggle}
-          className="shrink-0 rounded-xl p-1.5 text-zinc-500 transition hover:bg-white/10 hover:text-white"
+          className="shrink-0 rounded-xl p-1.5 text-nabi-muted transition hover:bg-nabi-elevated hover:text-nabi-ink"
           aria-label={collapsed ? t.nav.expand : t.nav.collapse}
           title={collapsed ? t.nav.expand : t.nav.collapse}
         >
@@ -119,8 +119,8 @@ export function Sidebar() {
                 "relative flex items-center rounded-2xl py-2.5 text-sm transition-all duration-300 ease-apple",
                 collapsed ? "justify-center px-2" : "gap-2.5 px-3",
                 active
-                  ? "bg-gradient-to-r from-indigo-500/25 via-purple-500/20 to-pink-500/25 text-white shadow-neon"
-                  : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                  ? "bg-gradient-to-r from-[var(--accent-from)]/25 via-[var(--accent-via)]/20 to-[var(--accent-to)]/25 text-nabi-ink shadow-neon"
+                  : "text-nabi-muted hover:bg-nabi-elevated hover:text-nabi-ink"
               )}
             >
               <Icon size={18} className="shrink-0" />
@@ -131,7 +131,7 @@ export function Sidebar() {
           );
         })}
         {collapsed && tip && (
-          <div className="pointer-events-none absolute left-full top-1/3 z-50 ml-3 whitespace-nowrap rounded-lg border border-white/10 bg-[#12121a]/95 px-2.5 py-1.5 text-xs text-white shadow-glass backdrop-blur-xl">
+          <div className="pointer-events-none absolute left-full top-1/3 z-50 ml-3 whitespace-nowrap rounded-lg border border-nabi-border bg-[var(--bg-elevated-solid)]/95 px-2.5 py-1.5 text-xs text-nabi-ink shadow-glass backdrop-blur-xl">
             {tip}
           </div>
         )}

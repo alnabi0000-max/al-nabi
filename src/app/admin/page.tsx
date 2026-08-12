@@ -152,30 +152,30 @@ export default function AdminDashboardPage() {
   if (!unlocked) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-md flex-col justify-center px-4">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-          <p className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-500">
+        <div className="rounded-2xl border border-nabi-border bg-nabi-card p-6">
+          <p className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wider text-nabi-muted">
             <Shield size={12} />
             Al-Nabi Admin
           </p>
-          <h1 className="text-xl font-semibold text-white">
+          <h1 className="text-xl font-semibold text-nabi-ink">
             {t.admin.title}
           </h1>
-          <p className="mt-2 text-sm text-zinc-500">
-            Enter <code className="text-zinc-400">ADMIN_API_SECRET</code> to
+          <p className="mt-2 text-sm text-nabi-muted">
+            Enter <code className="text-nabi-muted">ADMIN_API_SECRET</code> to
             continue.
           </p>
           <input
             type="password"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
-            className="mt-4 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white outline-none focus:border-white/25"
+            className="mt-4 w-full rounded-xl border border-nabi-border bg-nabi-input px-3 py-2.5 text-sm text-nabi-ink outline-none focus:border-nabi-neon/40"
             placeholder={t.admin.secretPlaceholder}
           />
           <button
             type="button"
             onClick={() => void load()}
             disabled={!secret || busy === "load"}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-semibold text-zinc-950"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-semibold text-nabi-bg"
           >
             {busy === "load" ? (
               <Loader2 size={16} className="animate-spin" />
@@ -192,13 +192,13 @@ export default function AdminDashboardPage() {
     <div className="mx-auto max-w-4xl space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-500">
+          <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.2em] text-nabi-muted">
             Admin · Model Updater
           </p>
-          <h1 className="text-2xl font-semibold text-white">
+          <h1 className="text-2xl font-semibold text-nabi-ink">
             Al-Nabi Notifications
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-nabi-muted">
             Last watch: {lastWatchAt ? new Date(lastWatchAt).toLocaleString() : "—"}
           </p>
         </div>
@@ -206,7 +206,7 @@ export default function AdminDashboardPage() {
           type="button"
           onClick={() => void runWatch()}
           disabled={busy === "watch"}
-          className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-zinc-200 hover:bg-white/5"
+          className="inline-flex items-center gap-2 rounded-full border border-nabi-border px-4 py-2 text-sm text-nabi-ink hover:bg-nabi-elevated"
         >
           {busy === "watch" ? (
             <Loader2 size={14} className="animate-spin" />
@@ -220,23 +220,23 @@ export default function AdminDashboardPage() {
       {error && <p className="text-sm text-rose-400">{error}</p>}
 
       {health && (
-        <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-          <h2 className="text-sm font-medium text-zinc-400">{t.admin.coreSystem}</h2>
+        <section className="rounded-2xl border border-nabi-border bg-nabi-card p-4">
+          <h2 className="text-sm font-medium text-nabi-muted">{t.admin.coreSystem}</h2>
           <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
             <div className="flex justify-between gap-2">
-              <dt className="text-zinc-500">{t.admin.currency}</dt>
-              <dd className="text-white">{health.currency}</dd>
+              <dt className="text-nabi-muted">{t.admin.currency}</dt>
+              <dd className="text-nabi-ink">{health.currency}</dd>
             </div>
             <div className="flex justify-between gap-2">
-              <dt className="text-zinc-500">{t.admin.engine}</dt>
-              <dd className="text-white">{health.engine}</dd>
+              <dt className="text-nabi-muted">{t.admin.engine}</dt>
+              <dd className="text-nabi-ink">{health.engine}</dd>
             </div>
             <div className="flex justify-between gap-2">
-              <dt className="text-zinc-500">{t.admin.vaultFee}</dt>
-              <dd className="text-white">{health.archiveFeeNc} NC</dd>
+              <dt className="text-nabi-muted">{t.admin.vaultFee}</dt>
+              <dd className="text-nabi-ink">{health.archiveFeeNc} NC</dd>
             </div>
             <div className="flex justify-between gap-2">
-              <dt className="text-zinc-500">{t.admin.status}</dt>
+              <dt className="text-nabi-muted">{t.admin.status}</dt>
               <dd className={health.ready ? "text-emerald-400" : "text-amber-400"}>
                 {health.ready ? t.admin.ready : t.admin.needsKeys}
               </dd>
@@ -257,7 +257,7 @@ export default function AdminDashboardPage() {
                 className={
                   ok
                     ? "rounded-full border border-emerald-500/30 px-2 py-0.5 text-emerald-300"
-                    : "rounded-full border border-white/10 px-2 py-0.5 text-zinc-500"
+                    : "rounded-full border border-nabi-border px-2 py-0.5 text-nabi-muted"
                 }
               >
                 {label}
@@ -268,11 +268,11 @@ export default function AdminDashboardPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-zinc-400">
+        <h2 className="text-sm font-medium text-nabi-muted">
           {t.admin.pending} ({pending.length})
         </h2>
         {pending.length === 0 && (
-          <p className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-8 text-center text-sm text-zinc-400">
+          <p className="rounded-xl border border-nabi-border bg-nabi-card px-4 py-8 text-center text-sm text-nabi-muted">
             Yangi model yangilanishi yo‘q / No pending model updates
           </p>
         )}
@@ -281,10 +281,10 @@ export default function AdminDashboardPage() {
             key={p.id}
             className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-4"
           >
-            <p className="text-sm font-semibold text-white">{p.displayName}</p>
-            <p className="mt-2 text-sm text-zinc-300">{p.messageUz}</p>
-            <p className="mt-1 text-xs text-zinc-500">{p.messageEn}</p>
-            <p className="mt-3 font-mono text-[11px] text-zinc-500">
+            <p className="text-sm font-semibold text-nabi-ink">{p.displayName}</p>
+            <p className="mt-2 text-sm text-nabi-ink">{p.messageUz}</p>
+            <p className="mt-1 text-xs text-nabi-muted">{p.messageEn}</p>
+            <p className="mt-3 font-mono text-[11px] text-nabi-muted">
               {p.currentModelId} → {p.proposedModelId} ({p.proposedVersionLabel})
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -292,7 +292,7 @@ export default function AdminDashboardPage() {
                 type="button"
                 onClick={() => void act(p.id, "approve")}
                 disabled={busy === p.id}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-zinc-950"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-nabi-bg"
               >
                 {busy === p.id ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -305,7 +305,7 @@ export default function AdminDashboardPage() {
                 type="button"
                 onClick={() => void act(p.id, "dismiss")}
                 disabled={busy === p.id}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-2 text-sm text-zinc-300"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-nabi-border px-3 py-2 text-sm text-nabi-ink"
               >
                 <X size={14} />
                 {t.admin.dismiss}
@@ -316,15 +316,15 @@ export default function AdminDashboardPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-zinc-400">{t.admin.activeEndpoints}</h2>
+        <h2 className="text-sm font-medium text-nabi-muted">{t.admin.activeEndpoints}</h2>
         <div className="grid gap-2 sm:grid-cols-2">
           {active.map((a) => (
             <div
               key={a.slot}
-              className="rounded-xl border border-white/10 bg-white/[0.02] px-3 py-3"
+              className="rounded-xl border border-nabi-border bg-nabi-card px-3 py-3"
             >
-              <p className="text-sm font-medium text-white">{a.displayName}</p>
-              <p className="mt-1 truncate font-mono text-[11px] text-zinc-500">
+              <p className="text-sm font-medium text-nabi-ink">{a.displayName}</p>
+              <p className="mt-1 truncate font-mono text-[11px] text-nabi-muted">
                 {a.modelId}
               </p>
             </div>

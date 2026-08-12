@@ -33,7 +33,66 @@ function receipt(): string {
 }
 
 /**
+ * Read-only preflight: does the user have enough NC?
+ * Does NOT debit — use before enqueue so validation failures never charge.
+ */
+export async function assertSufficientCoins(opts: {
+  userId: string;
+  kind: GenerationKind;
+  durationSec: number;
+  costOpts?: CostOpts;
+}): Promise<AtomicChargeResult> {
+  const cost = calculateGenerationCost(
+    opts.kind,
+    opts.durationSec,
+    opts.costOpts
+  );
+  try {
+    const user = await prisma.user.findUnique({ where: { id: opts.userId } });
+    if (!user) {
+      return { ok: false, code: "NOT_FOUND", cost, message: "User not found" };
+    }
+    if (user.status === "BANNED") {
+      return {
+        ok: false,
+        code: "BANNED",
+        cost,
+        balanceAfter: user.coins,
+        message: "Account banned",
+      };
+    }
+    if (user.coins < cost) {
+      return {
+        ok: false,
+        code: "INSUFFICIENT",
+        cost,
+        required: cost,
+        balanceAfter: user.coins,
+        message: formatInsufficientFundsMessage(cost, user.coins),
+      };
+    }
+    return {
+      ok: true,
+      cost,
+      balanceAfter: user.coins,
+      userId: user.id,
+      ledgerId: "",
+      receiptId: "",
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      code: "ERROR",
+      cost,
+      message: e instanceof Error ? e.message : "Balance check failed",
+    };
+  }
+}
+
+/**
  * Atomic debit: UPDATE … WHERE coins >= cost, then CoinLedger CHARGE.
+ * Call this only when the paid AI provider request is about to start
+ * (not during validation / enqueue setup).
  */
 export async function atomicChargeCoins(opts: {
   userId: string;

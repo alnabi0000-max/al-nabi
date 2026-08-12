@@ -17,16 +17,16 @@ export function CreditsBadge() {
 
   if (!isMounted) {
     return (
-      <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-bold text-zinc-200">
-        <span className="inline-block h-2 w-2 rounded-full bg-purple-400/40" />
-        <span className="text-zinc-400">… NC</span>
+      <div className="flex items-center gap-2 rounded-full border border-nabi-border bg-nabi-card px-3 py-1.5 text-sm font-bold text-nabi-ink">
+        <span className="inline-block h-2 w-2 rounded-full bg-nabi-neon/40" />
+        <span className="text-nabi-muted">… NC</span>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-full border border-white/10 bg-gradient-to-r from-indigo-500/15 via-purple-500/15 to-pink-500/15 px-3 py-1.5 text-sm font-bold tabular-nums text-white">
-      <span className="inline-block h-2 w-2 rounded-full bg-gradient-to-r from-indigo-400 to-pink-400" />
+    <div className="flex items-center gap-2 rounded-full border border-nabi-border bg-gradient-to-r from-[var(--accent-from)]/15 via-[var(--accent-via)]/15 to-[var(--accent-to)]/15 px-3 py-1.5 text-sm font-bold tabular-nums text-nabi-ink">
+      <span className="inline-block h-2 w-2 rounded-full bg-gradient-to-r from-[var(--accent-from)] to-[var(--accent-to)]" />
       {formatCredits(coins)}
     </div>
   );

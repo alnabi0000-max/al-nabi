@@ -42,7 +42,7 @@ export function CyberShield() {
               Warning {tier} / 3
             </p>
             {tier === 1 && (
-              <p className="mb-3 text-xs text-zinc-400">
+              <p className="mb-3 text-xs text-nabi-muted">
                 First warning — please follow community guidelines.
               </p>
             )}
@@ -68,7 +68,7 @@ export function CyberShield() {
               English
             </p>
             <p className="mb-4 text-sm">{tr("forbiddenEn")}</p>
-            <p className="text-center text-xs text-zinc-500">
+            <p className="text-center text-xs text-nabi-muted">
               {tr("halol_auto_close")}
             </p>
           </div>
@@ -80,10 +80,10 @@ export function CyberShield() {
           className="fixed inset-0 z-[99999] flex flex-col items-center justify-center bg-black p-6 text-center"
           role="alert"
         >
-          <h1 className="text-2xl font-extrabold tracking-widest text-zinc-200 md:text-4xl">
+          <h1 className="text-2xl font-extrabold tracking-widest text-nabi-ink md:text-4xl">
             {tr("bannedTitle")}
           </h1>
-          <p className="mt-4 text-xs uppercase tracking-widest text-zinc-400">
+          <p className="mt-4 text-xs uppercase tracking-widest text-nabi-muted">
             {tr("coins_frozen")}
           </p>
         </div>

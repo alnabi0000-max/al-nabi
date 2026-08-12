@@ -14,54 +14,60 @@ import {
   isSoftAuthEnabled,
 } from "@/lib/auth/ensure-request-user";
 import { prisma } from "@/lib/prisma";
+import { loadInterestProfilePromptBlock } from "@/lib/producer/interest-profile";
+import { loadRecentWorkPromptBlock } from "@/lib/producer/recent-work";
 
 /** Build a compact account snapshot for the Producer Chat system prompt. */
 async function buildClientContext(userId: string, coins: number): Promise<string> {
   try {
-    const [totalProjects, recent] = await Promise.all([
-      prisma.generation.count({
-        where: { userId, deletedAt: null },
-      }),
-      prisma.generation.findMany({
-        where: { userId, deletedAt: null },
-        orderBy: { createdAt: "desc" },
-        take: 40,
-        select: {
-          type: true,
-          status: true,
-          style: true,
-          prompt: true,
-          script: true,
-          createdAt: true,
-        },
-      }),
-    ]);
+    const [user, totalProjects, styleRows, interestBlock, recentWorkBlock] =
+      await Promise.all([
+        prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true },
+        }),
+        prisma.generation.count({
+          where: { userId, deletedAt: null },
+        }),
+        prisma.generation.findMany({
+          where: { userId, deletedAt: null },
+          orderBy: { createdAt: "desc" },
+          take: 40,
+          select: { style: true },
+        }),
+        loadInterestProfilePromptBlock(userId),
+        loadRecentWorkPromptBlock(userId, 3),
+      ]);
 
-    const lastFive = recent.slice(0, 5).map((g, i) => {
-      const title = (g.prompt || g.script || "—").replace(/\s+/g, " ").trim().slice(0, 72);
-      const when = g.createdAt.toISOString().slice(0, 10);
-      return `${i + 1}) [${g.type}/${g.status}] style=${g.style || "—"} · ${when} · "${title}"`;
-    });
-
+    const displayName = (user?.name || "").trim();
     const templates = [
       ...new Set(
-        recent
+        styleRows
           .map((g) => (g.style || "").trim())
           .filter(Boolean)
       ),
     ];
 
     return [
+      `- Ism: ${displayName || "noma'lum"}`,
       `- Kredit qolgan (NC): ${coins}`,
       `- Jami video/loyihalar: ${totalProjects}`,
-      `- Oxirgi 5 ta loyiha: ${lastFive.length ? lastFive.join(" | ") : "hali yo‘q"}`,
       `- Foydalanilgan shablonlar/uslublar: ${templates.length ? templates.join(", ") : "hali yo‘q"}`,
-    ].join("\n");
+      recentWorkBlock
+        ? `Oxirgi ishlar (ICHKI — har safar aytib berma; faqat "davom ettiraylik" / shunga oid savolda tabiiy ishlat):\n${recentWorkBlock}`
+        : `- Oxirgi ishlar: hali yo‘q`,
+      interestBlock
+        ? `Ijodiy qiziqish profili (ICHKI — ovoz chiqarib o‘qima; faqat tabiiy tavsiya uchun):\n${interestBlock}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
   } catch {
     return [
+      `- Ism: noma'lum`,
       `- Kredit qolgan (NC): ${coins}`,
       `- Jami video/loyihalar: noma'lum (DB vaqtincha mavjud emas)`,
-      `- Oxirgi 5 ta loyiha: noma'lum`,
+      `- Oxirgi ishlar: noma'lum`,
       `- Foydalanilgan shablonlar/uslublar: noma'lum`,
     ].join("\n");
   }

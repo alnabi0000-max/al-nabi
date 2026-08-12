@@ -134,7 +134,7 @@ export function ProfileUmumiyPanel() {
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-3">
         <h2 className="text-xl font-bold md:text-2xl">{tr("profile")}</h2>
-        <span className="rounded-full border border-nabi-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-zinc-500">
+        <span className="rounded-full border border-nabi-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-nabi-muted">
           {authMode === "supabase" ? "Supabase" : "Local auth"}
         </span>
       </div>
@@ -146,12 +146,12 @@ export function ProfileUmumiyPanel() {
           </h3>
           <div className="space-y-1 text-sm">
             <p>
-              <span className="text-zinc-500">Email:</span> {email}
+              <span className="text-nabi-muted">Email:</span> {email}
             </p>
             <p className="break-all font-mono text-xs text-nabi-neon">
               {alnabiyKey}
             </p>
-            <p className="text-[10px] text-zinc-400">
+            <p className="text-[10px] text-nabi-muted">
               {tr("balance_line", { n: coins.toLocaleString() })}
             </p>
           </div>
@@ -172,13 +172,13 @@ export function ProfileUmumiyPanel() {
             <SocialAuthButtons next={afterAuth} />
           </div>
 
-          <div className="relative text-center text-[10px] uppercase tracking-widest text-zinc-400">
-            <span className="relative z-10 bg-[#0d0f12] px-2">{tr("auth_or")}</span>
+          <div className="relative text-center text-[10px] uppercase tracking-widest text-nabi-muted">
+            <span className="relative z-10 bg-nabi-surface px-2">{tr("auth_or")}</span>
             <div className="absolute inset-x-0 top-1/2 h-px bg-nabi-border" />
           </div>
 
           <div className="nabi-card space-y-4">
-            <div className="flex gap-1 rounded-xl bg-black/30 p-1">
+            <div className="flex gap-1 rounded-xl bg-nabi-input p-1">
               {(
                 [
                   ["password", tr("auth_tab_password")],
@@ -194,7 +194,7 @@ export function ProfileUmumiyPanel() {
                     "flex-1 rounded-lg px-2 py-2 text-[11px] transition",
                     tab === id
                       ? "bg-cyan-500/20 text-nabi-neon"
-                      : "text-zinc-500 hover:text-white"
+                      : "text-nabi-muted hover:text-nabi-ink"
                   )}
                 >
                   {label}
@@ -246,11 +246,11 @@ export function ProfileUmumiyPanel() {
                 >
                   {tr("forgot_password")}?
                 </button>
-                <p className="text-[10px] text-zinc-400">{tr("auth_local_hint")}</p>
+                <p className="text-[10px] text-nabi-muted">{tr("auth_local_hint")}</p>
               </>
             ) : tab === "magic" ? (
               <>
-                <p className="flex items-start gap-2 text-[11px] text-zinc-500">
+                <p className="flex items-start gap-2 text-[11px] text-nabi-muted">
                   <Sparkles size={14} className="mt-0.5 shrink-0 text-nabi-neon" />
                   {tr("magic_link_hint")}
                 </p>

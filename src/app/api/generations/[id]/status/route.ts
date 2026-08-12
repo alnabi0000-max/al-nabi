@@ -48,7 +48,10 @@ const generationSelect = {
   updatedAt: true,
 } as const;
 
-function toPayload(generation: GenerationRow) {
+function toPayload(
+  generation: GenerationRow,
+  balanceAfter?: number
+) {
   const done = generation.status === "COMPLETED";
   const failed = generation.status === "FAILED";
   return sanitizePublicPayload({
@@ -63,6 +66,7 @@ function toPayload(generation: GenerationRow) {
     r2Key: generation.r2Key,
     provider: whiteLabelEngine(generation.provider),
     creditsCost: generation.creditsCost,
+    balanceAfter,
     errorMessage: generation.errorMessage
       ? sanitizeGenerationError(generation.errorMessage)
       : null,
@@ -82,7 +86,7 @@ async function authorize(
   id: string,
   req: NextRequest
 ): Promise<
-  | { ok: true; generation: GenerationRow }
+  | { ok: true; generation: GenerationRow; balanceAfter?: number }
   | { ok: false; status: number; error: string }
 > {
   const key =
@@ -91,16 +95,25 @@ async function authorize(
     null;
 
   let userId: string | null = null;
+  let balanceAfter: number | undefined;
   try {
     if (key) {
       const { resolveUserByKey } = await import("@/lib/assets");
       const byKey = await resolveUserByKey(key);
       userId = byKey?.id ?? null;
+      if (typeof byKey?.coins === "number") balanceAfter = byKey.coins;
     }
     if (!userId) {
       const { getLocalSessionUser } = await import("@/lib/auth/session");
       const session = await getLocalSessionUser().catch(() => null);
       userId = session?.id ?? null;
+    }
+    if (userId && balanceAfter === undefined) {
+      const u = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { coins: true },
+      });
+      if (u) balanceAfter = u.coins;
     }
   } catch {
     /* soft — status poll hali ham ochiq bo‘lishi mumkin */
@@ -121,7 +134,7 @@ async function authorize(
     return { ok: false, status: 403, error: "Forbidden" };
   }
 
-  return { ok: true, generation };
+  return { ok: true, generation, balanceAfter };
 }
 
 /**
@@ -153,9 +166,17 @@ export async function GET(req: NextRequest, ctx: Ctx) {
       select: generationSelect,
     });
     const row = fresh || loaded.generation;
+    let balanceAfter = loaded.balanceAfter;
+    if (balanceAfter === undefined) {
+      const u = await prisma.user.findUnique({
+        where: { id: row.userId },
+        select: { coins: true },
+      });
+      balanceAfter = u?.coins;
+    }
 
     if (!stream) {
-      return apiJson({ success: true, ...toPayload(row) });
+      return apiJson({ success: true, ...toPayload(row, balanceAfter) });
     }
 
     const encoder = new TextEncoder();
@@ -170,7 +191,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
           );
         };
 
-        send(toPayload(row));
+        send(toPayload(row, balanceAfter));
 
         const started = Date.now();
         while (!closed && Date.now() - started < 120_000) {
@@ -186,7 +207,11 @@ export async function GET(req: NextRequest, ctx: Ctx) {
               send({ ok: false, error: "NOT_FOUND" });
               break;
             }
-            const payload = toPayload(again);
+            const u = await prisma.user.findUnique({
+              where: { id: again.userId },
+              select: { coins: true },
+            });
+            const payload = toPayload(again, u?.coins);
             send(payload);
             if (payload.done || payload.failed) break;
           } catch (e) {

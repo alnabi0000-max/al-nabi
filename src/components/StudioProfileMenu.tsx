@@ -48,28 +48,28 @@ export function StudioProfileMenu() {
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={`${t.nav.profile}: ${label}`}
-        className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1 pl-1 pr-2.5 transition hover:border-white/20 hover:bg-white/[0.07]"
+        className="flex items-center gap-2 rounded-full border border-nabi-border bg-nabi-card py-1 pl-1 pr-2.5 transition hover:border-nabi-neon/35 hover:bg-nabi-elevated"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-zinc-200 to-zinc-500 text-[11px] font-semibold text-zinc-900">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-nabi-elevated to-nabi-muted text-[11px] font-semibold text-nabi-bg">
           {mounted ? initials : "··"}
         </span>
-        <span className="hidden text-sm font-medium text-zinc-300 sm:inline">
+        <span className="hidden text-sm font-medium text-nabi-ink sm:inline">
           {label}
         </span>
         <ChevronDown
           size={14}
-          className={`text-zinc-500 transition ${open ? "rotate-180" : ""}`}
+          className={`text-nabi-muted transition ${open ? "rotate-180" : ""}`}
         />
       </button>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#0E1018] shadow-2xl shadow-black/50"
+          className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-nabi-border bg-nabi-surface shadow-2xl shadow-black/50"
         >
-          <div className="border-b border-white/5 px-3 py-3">
-            <p className="truncate text-sm font-medium text-white">{label}</p>
-            <p className="mt-0.5 truncate text-[11px] text-zinc-500">
+          <div className="border-b border-nabi-border px-3 py-3">
+            <p className="truncate text-sm font-medium text-nabi-ink">{label}</p>
+            <p className="mt-0.5 truncate text-[11px] text-nabi-muted">
               {email || "dev@alnabiy.local"}
             </p>
             <p className="mt-2 text-xs font-semibold tabular-nums text-amber-200/90">
@@ -81,7 +81,7 @@ export function StudioProfileMenu() {
               href="/profile"
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-zinc-300 transition hover:bg-white/5 hover:text-white"
+              className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-nabi-ink transition hover:bg-nabi-elevated hover:text-nabi-ink"
             >
               <User size={15} />
               {t.nav.profile}
@@ -93,7 +93,7 @@ export function StudioProfileMenu() {
                 setOpen(false);
                 await signOut();
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-zinc-300 transition hover:bg-white/5 hover:text-white"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-nabi-ink transition hover:bg-nabi-elevated hover:text-nabi-ink"
             >
               <LogOut size={15} />
               {t.common.signOut}

@@ -19,10 +19,10 @@ export function LegalDocument({
         <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
         <p className="text-sm text-nabi-muted">Last updated: {updated}</p>
       </header>
-      <div className="prose-invert space-y-6 text-sm leading-relaxed text-zinc-300 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-white [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5">
+      <div className="prose-invert space-y-6 text-sm leading-relaxed text-nabi-ink [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-nabi-ink [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5">
         {children}
       </div>
-      <footer className="flex flex-wrap gap-4 border-t border-nabi-border pt-6 text-xs text-zinc-500">
+      <footer className="flex flex-wrap gap-4 border-t border-nabi-border pt-6 text-xs text-nabi-muted">
         <Link href="/terms" className="hover:text-nabi-neon">
           Terms
         </Link>

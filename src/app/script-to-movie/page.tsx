@@ -11,6 +11,7 @@ import {
   type EmotionMode,
   type StyleKey,
 } from "@/lib/credits";
+import { InsufficientBalanceHint } from "@/components/InsufficientBalanceHint";
 import { pushHistory } from "@/lib/generation-history";
 import { ViralHooksPanel } from "@/components/ViralHooksPanel";
 import { MediaViewer } from "@/components/MediaViewer";
@@ -34,6 +35,9 @@ import type {
   RenderQuality,
   VideoEngineId,
 } from "@/lib/ai/catalog";
+import { BgmPicker } from "@/components/BgmPicker";
+import type { BgmMode } from "@/lib/bgm/types";
+import { BGM_MODES, DEFAULT_BGM_SELECTION } from "@/lib/bgm/types";
 
 const DURATIONS = [
   { sec: 30, label: "30s" },
@@ -66,6 +70,10 @@ function ScriptToMoviePageInner() {
   const [script, setScript] = useState("");
   const [style, setStyle] = useState<StyleKey>("cinematic");
   const [emotionMode, setEmotionMode] = useState<EmotionMode>("drama");
+  const [bgmMode, setBgmMode] = useState<BgmMode>(DEFAULT_BGM_SELECTION.mode);
+  const [bgmTrackId, setBgmTrackId] = useState<string | null>(
+    DEFAULT_BGM_SELECTION.trackId
+  );
   const [durationSec, setDurationSec] = useState(60);
   const [videoEngine, setVideoEngine] = useState<VideoEngineId>("kling-v2.5");
   const [imageEngine, setImageEngine] = useState<ImageEngineId>("flux-pro");
@@ -99,6 +107,12 @@ function ScriptToMoviePageInner() {
     if (emotion && EMOTION_MODES.some((m) => m.id === emotion)) {
       setEmotionMode(emotion as EmotionMode);
     }
+    const bm = searchParams.get("bgmMode");
+    if (bm && (BGM_MODES as string[]).includes(bm)) {
+      setBgmMode(bm as BgmMode);
+    }
+    const bt = searchParams.get("bgmTrackId");
+    if (bt) setBgmTrackId(bt);
   }, [searchParams]);
 
   useEffect(() => {
@@ -290,6 +304,8 @@ function ScriptToMoviePageInner() {
             quality,
             frameRate,
             cameraMove: camera,
+            bgmMode,
+            bgmTrackId,
           }),
         },
         600_000
@@ -400,12 +416,12 @@ function ScriptToMoviePageInner() {
           value={script}
           onChange={(e) => setScript(e.target.value)}
         />
-        <p className="text-xs text-zinc-400">{script.length}</p>
+        <p className="text-xs text-nabi-muted">{script.length}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="nabi-card space-y-3">
-          <p className="text-xs uppercase tracking-wider text-zinc-500">
+          <p className="text-xs uppercase tracking-wider text-nabi-muted">
             {tr("style")}
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -425,7 +441,7 @@ function ScriptToMoviePageInner() {
             ))}
           </div>
 
-          <p className="text-xs uppercase tracking-wider text-zinc-500">
+          <p className="text-xs uppercase tracking-wider text-nabi-muted">
             {tr("emotion_mode")}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -436,7 +452,7 @@ function ScriptToMoviePageInner() {
                 onClick={() => setEmotionMode(m.id)}
                 className={`nabi-btn-ghost !px-3 !text-xs ${
                   emotionMode === m.id
-                    ? "!border-fuchsia-400 !text-fuchsia-300"
+                    ? "!border-nabi-gold !text-nabi-gold"
                     : ""
                 }`}
               >
@@ -444,10 +460,27 @@ function ScriptToMoviePageInner() {
               </button>
             ))}
           </div>
+
+          <BgmPicker
+            mode={bgmMode}
+            trackId={bgmTrackId}
+            onModeChange={setBgmMode}
+            onTrackChange={setBgmTrackId}
+            disabled={loading}
+            labels={{
+              title: tr("bgm_title"),
+              ai: tr("bgm_ai"),
+              manual: tr("bgm_manual"),
+              off: tr("bgm_off"),
+              aiHint: tr("bgm_ai_hint"),
+              empty: tr("bgm_empty"),
+              loading: tr("bgm_loading"),
+            }}
+          />
         </div>
 
         <div className="nabi-card space-y-3">
-          <p className="text-xs uppercase tracking-wider text-zinc-500">
+          <p className="text-xs uppercase tracking-wider text-nabi-muted">
             {tr("duration_label")}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -486,6 +519,33 @@ function ScriptToMoviePageInner() {
               </div>
             </div>
           </div>
+
+          <InsufficientBalanceHint
+            kind="text_to_movie"
+            cost={credits}
+            coins={coins}
+            durationSec={durationSec}
+            costOpts={{
+              engine: videoEngine,
+              quality,
+              frameRate,
+            }}
+            durationCandidates={DURATIONS.map((d) => d.sec)}
+            onSelectDuration={setDurationSec}
+            onSelectQuality={(q) => setQuality(q as RenderQuality)}
+            currentQuality={quality}
+            storeLabel={tr("store")}
+            tryDurationLabel={(sec, nc) =>
+              tr("try_shorter_duration")
+                .replace(
+                  "{duration}",
+                  sec < 60 ? `${sec}s` : `${Math.round(sec / 60)} min`
+                )
+                .replace("{cost}", String(nc))
+            }
+            tryQualityLabel={tr("try_quality_720p")}
+            tr={tr}
+          />
         </div>
       </div>
 
@@ -506,7 +566,7 @@ function ScriptToMoviePageInner() {
         <button
           type="button"
           onClick={runFullPipeline}
-          disabled={loading || isOffline}
+          disabled={loading || isOffline || coins < credits}
           className="nabi-btn-primary"
         >
           {phase === "pipeline" ? (
@@ -515,6 +575,10 @@ function ScriptToMoviePageInner() {
             <Clapperboard size={16} />
           )}
           {tr("create_with_alnabiy")}
+          <span className="mx-1.5 opacity-40">•</span>
+          <span className="tabular-nums text-amber-200">
+            {credits.toLocaleString()} NC
+          </span>
         </button>
       </div>
 
@@ -566,7 +630,7 @@ function ScriptToMoviePageInner() {
 
 export default function ScriptToMoviePage() {
   return (
-    <Suspense fallback={<div className="text-sm text-zinc-500">Loading…</div>}>
+    <Suspense fallback={<div className="text-sm text-nabi-muted">Loading…</div>}>
       <ScriptToMoviePageInner />
     </Suspense>
   );

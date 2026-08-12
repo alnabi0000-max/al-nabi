@@ -10,8 +10,13 @@ import {
   ensureRequestLedgerUser,
   isSoftAuthEnabled,
 } from "@/lib/auth/ensure-request-user";
-import { atomicChargeCoins, atomicRollbackCoins } from "@/lib/ledger/atomic";
+import {
+  assertSufficientCoins,
+  atomicChargeCoins,
+  atomicRollbackCoins,
+} from "@/lib/ledger/atomic";
 import { prisma } from "@/lib/prisma";
+import { recordInterestFromGeneration } from "@/lib/producer/interest-profile";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,16 +31,19 @@ const schema = z.object({
     .optional(),
   visualDna: z.any().optional().nullable(),
   durationSec: z.number().min(5).max(20).optional(),
+  bgmMode: z.enum(["ai", "manual", "off"]).optional().default("ai"),
+  bgmTrackId: z.string().max(200).optional().nullable(),
   alnabiyKey: z.string().optional().nullable(),
 });
 
 /**
- * Full package: video + Al-Nabi Audio Engine VO + Foley → final MP4.
- * Requires auth + ledger charge (video + VO + Foley is a full paid render).
+ * Full package: video + Al-Nabi Audio Engine VO + Foley + ambient BGM → final MP4.
+ * NC debit occurs only immediately before the paid video provider call.
  */
 export async function POST(req: NextRequest) {
   let chargedUserId: string | null = null;
   let chargedAmount = 0;
+  let chargedBalanceAfter: number | undefined;
   let generationId: string | null = null;
   try {
     const blocked = await guardSensitiveRequest(req);
@@ -56,6 +64,33 @@ export async function POST(req: NextRequest) {
     const user = ensured.user;
     const durationSec = body.durationSec || 8;
 
+    const preflight = await assertSufficientCoins({
+      userId: user.id,
+      kind: "text_to_movie",
+      durationSec,
+    });
+    if (!preflight.ok) {
+      return apiJson(
+        {
+          ok: false,
+          success: false,
+          error: preflight.message,
+          code: preflight.code,
+          cost: preflight.cost,
+          required: preflight.required ?? preflight.cost,
+          balanceAfter: preflight.balanceAfter,
+        },
+        {
+          status:
+            preflight.code === "INSUFFICIENT"
+              ? 402
+              : preflight.code === "BANNED"
+                ? 403
+                : 400,
+        }
+      );
+    }
+
     const generation = await prisma.generation.create({
       data: {
         userId: user.id,
@@ -67,35 +102,6 @@ export async function POST(req: NextRequest) {
     });
     generationId = generation.id;
 
-    const charge = await atomicChargeCoins({
-      userId: user.id,
-      kind: "text_to_movie",
-      durationSec,
-      generationId: generation.id,
-      reason: "producer:render",
-    });
-
-    if (!charge.ok) {
-      await prisma.generation.update({
-        where: { id: generation.id },
-        data: { status: "FAILED", errorMessage: charge.message },
-      });
-      return apiJson(
-        {
-          ok: false,
-          success: false,
-          error: charge.message,
-          code: charge.code,
-          cost: charge.cost,
-          required: charge.required ?? charge.cost,
-          balanceAfter: charge.balanceAfter,
-        },
-        { status: charge.code === "INSUFFICIENT" ? 402 : charge.code === "BANNED" ? 403 : 400 }
-      );
-    }
-    chargedUserId = user.id;
-    chargedAmount = charge.cost;
-
     const result = await renderProducerPackage({
       brief: body.brief,
       voiceScript: body.voiceScript,
@@ -103,16 +109,35 @@ export async function POST(req: NextRequest) {
       narration: body.narration,
       visualDna: (body.visualDna as VisualDna | null) || null,
       durationSec: body.durationSec,
+      bgmMode: body.bgmMode,
+      bgmTrackId: body.bgmTrackId,
       jobId: generation.id,
+      beforePaidProvider: async () => {
+        const charge = await atomicChargeCoins({
+          userId: user.id,
+          kind: "text_to_movie",
+          durationSec,
+          generationId: generation.id,
+          reason: "producer:render:provider",
+        });
+        if (!charge.ok) {
+          throw new Error(charge.message || "Insufficient balance");
+        }
+        chargedUserId = user.id;
+        chargedAmount = charge.cost;
+        chargedBalanceAfter = charge.balanceAfter;
+      },
     });
 
     if (!result.ok) {
-      await atomicRollbackCoins({
-        userId: user.id,
-        amount: charge.cost,
-        generationId: generation.id,
-        reason: "rollback:producer_render_failed",
-      });
+      if (chargedUserId && chargedAmount > 0) {
+        await atomicRollbackCoins({
+          userId: user.id,
+          amount: chargedAmount,
+          generationId: generation.id,
+          reason: "rollback:producer_render_failed",
+        });
+      }
       await prisma.generation.update({
         where: { id: generation.id },
         data: { status: "FAILED", errorMessage: result.error || "Produce failed" },
@@ -123,9 +148,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const dna = (body.visualDna as VisualDna | null) || null;
     await prisma.generation.update({
       where: { id: generation.id },
-      data: { status: "COMPLETED", resultUrl: result.videoUrl },
+      data: {
+        status: "COMPLETED",
+        resultUrl: result.videoUrl,
+        style: dna?.artStyle || undefined,
+        enhancedPrompt: result.promptUsed || undefined,
+      },
+    });
+
+    await recordInterestFromGeneration({
+      userId: user.id,
+      prompt: body.brief,
+      style: dna?.artStyle || null,
+      artStyle: dna?.artStyle || null,
+      durationSec,
+      aspect:
+        body.aspect ||
+        (dna?.aspectHint && dna.aspectHint !== "unknown"
+          ? dna.aspectHint
+          : null),
     });
 
     return apiJson({
@@ -134,13 +178,15 @@ export async function POST(req: NextRequest) {
       jobId: result.jobId,
       videoUrl: result.videoUrl,
       foleyCount: result.foleyCount,
+      bgmMood: result.bgmMood,
+      bgmTrackId: result.bgmTrackId,
       engine: ALNABIY_ENGINES.gateway,
       audioEngine: ALNABIY_ENGINES.voice,
       promptUsed: result.promptUsed,
-      creditsCost: charge.cost,
-      balanceAfter: charge.balanceAfter,
+      creditsCost: chargedAmount,
+      balanceAfter: chargedBalanceAfter,
       message:
-        "Final cut ready — picture, voice, and micro sound design in one file.",
+        "Final cut ready — picture, voice, sound design, and ambient score in one file.",
     });
   } catch (e) {
     if (chargedUserId && generationId) {

@@ -25,6 +25,14 @@ const LanguageDropdown = dynamic(
   { ssr: false }
 );
 
+const ThemePicker = dynamic(
+  () =>
+    import("@/components/ThemePicker").then((m) => ({
+      default: m.ThemePicker,
+    })),
+  { ssr: false }
+);
+
 const StudioProfileMenu = dynamic(
   () =>
     import("@/components/StudioProfileMenu").then((m) => ({
@@ -72,12 +80,13 @@ export function AppShellChrome({ children }: { children: React.ReactNode }) {
       {chromeReady ? <AppToast /> : null}
       {chromeReady ? <Sidebar /> : null}
       <MainShell>
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-white/5 bg-[#090A0F]/90 px-4 py-3 md:px-8">
-          <p className="text-sm font-semibold tracking-wide text-zinc-100 md:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-nabi-border bg-nabi-bg/90 px-4 py-3 backdrop-blur-md md:px-8">
+          <p className="text-sm font-semibold tracking-wide text-nabi-ink md:hidden">
             Al-Nabi
           </p>
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <ProducerChatTrigger />
+            {chromeReady ? <ThemePicker /> : null}
             {chromeReady ? <LanguageDropdown /> : null}
             <CreditsBadge />
             {chromeReady ? <StudioProfileMenu /> : null}

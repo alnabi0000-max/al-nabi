@@ -69,19 +69,19 @@ export function ViralHooksPanel({
   }
 
   return (
-    <div className="nabi-card space-y-4 border-fuchsia-500/20 bg-gradient-to-b from-fuchsia-500/5 to-transparent">
+    <div className="nabi-card space-y-4 border-nabi-gold/20 bg-gradient-to-b from-nabi-gold/5 to-transparent">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-fuchsia-300">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-nabi-gold">
             <Zap size={16} /> {tr("viral_title")}
           </h3>
-          <p className="mt-1 text-xs text-zinc-500">{tr("viral_subtitle")}</p>
+          <p className="mt-1 text-xs text-nabi-muted">{tr("viral_subtitle")}</p>
         </div>
         <button
           type="button"
           onClick={run}
           disabled={loading || !scriptOrPrompt.trim()}
-          className="nabi-btn-ghost !border-fuchsia-500/40 !text-fuchsia-200 !text-xs"
+          className="nabi-btn-ghost !border-nabi-gold/40 !text-nabi-gold !text-xs"
         >
           {loading ? (
             <Loader2 size={14} className="animate-spin" />
@@ -109,11 +109,11 @@ export function ViralHooksPanel({
                   className="aspect-video w-full object-cover"
                 />
                 {f.isReal === false && (
-                  <span className="absolute right-1.5 top-1.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-zinc-300">
+                  <span className="absolute right-1.5 top-1.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-nabi-ink">
                     {tr("preview")}
                   </span>
                 )}
-                <p className="px-2 py-1.5 text-[10px] text-zinc-500">
+                <p className="px-2 py-1.5 text-[10px] text-nabi-muted">
                   {tr("peak_frame")} #{f.index} · {f.timeSec}s
                 </p>
               </div>
@@ -121,7 +121,7 @@ export function ViralHooksPanel({
           </div>
 
           <div className="space-y-2">
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500">
+            <p className="text-[10px] uppercase tracking-wider text-nabi-muted">
               {tr("viral_thumbnails")}
             </p>
             {pack.thumbnails.map((thumb) => (
@@ -129,7 +129,7 @@ export function ViralHooksPanel({
                 key={thumb.title}
                 className={`rounded-xl bg-gradient-to-r ${thumb.neonClass} p-[1px]`}
               >
-                <div className="rounded-[11px] bg-[#0d0f12] px-3 py-2 text-sm font-bold tracking-wide text-white">
+                <div className="rounded-[11px] bg-nabi-surface px-3 py-2 text-sm font-bold tracking-wide text-nabi-ink">
                   {thumb.title}
                 </div>
               </div>
@@ -137,7 +137,7 @@ export function ViralHooksPanel({
           </div>
 
           <div className="space-y-2">
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500">
+            <p className="text-[10px] uppercase tracking-wider text-nabi-muted">
               {tr("viral_hooks_label")}
             </p>
             {pack.hooks.map((h) => (
@@ -151,7 +151,7 @@ export function ViralHooksPanel({
           </div>
 
           {pack.note && (
-            <p className="text-[10px] text-zinc-400">{pack.note}</p>
+            <p className="text-[10px] text-nabi-muted">{pack.note}</p>
           )}
         </div>
       )}

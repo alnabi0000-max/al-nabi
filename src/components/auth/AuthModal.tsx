@@ -128,7 +128,7 @@ export function AuthModal() {
         aria-modal="true"
         aria-label={tr("auth_modal_title")}
         tabIndex={-1}
-        className="w-full max-w-md rounded-2xl border border-nabi-border bg-[#121418] p-5 shadow-2xl outline-none"
+        className="w-full max-w-md rounded-2xl border border-nabi-border bg-nabi-surface p-5 shadow-2xl outline-none"
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
@@ -141,7 +141,7 @@ export function AuthModal() {
           <button
             type="button"
             onClick={closeAuth}
-            className="rounded-lg p-1.5 text-zinc-500 hover:bg-white/5 hover:text-white"
+            className="rounded-lg p-1.5 text-nabi-muted hover:bg-nabi-elevated hover:text-nabi-ink"
             aria-label={tr("close")}
           >
             <X size={18} />
@@ -150,12 +150,12 @@ export function AuthModal() {
 
         <SocialAuthButtons className="mb-4" />
 
-        <div className="relative mb-4 text-center text-[10px] uppercase tracking-widest text-zinc-400">
-          <span className="relative z-10 bg-[#121418] px-2">{tr("auth_or")}</span>
+        <div className="relative mb-4 text-center text-[10px] uppercase tracking-widest text-nabi-muted">
+          <span className="relative z-10 bg-nabi-surface px-2">{tr("auth_or")}</span>
           <div className="absolute inset-x-0 top-1/2 h-px bg-nabi-border" />
         </div>
 
-        <div className="mb-3 flex gap-1 rounded-xl bg-black/30 p-1">
+        <div className="mb-3 flex gap-1 rounded-xl bg-nabi-input p-1">
           {(
             [
               ["login", tr("login"), KeyRound],
@@ -171,7 +171,7 @@ export function AuthModal() {
                 "flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] transition",
                 tab === id
                   ? "bg-cyan-500/20 text-nabi-neon"
-                  : "text-zinc-500 hover:text-white"
+                  : "text-nabi-muted hover:text-nabi-ink"
               )}
             >
               <Icon size={12} />
@@ -238,7 +238,7 @@ export function AuthModal() {
 
           {tab === "magic" && (
             <>
-              <p className="text-[11px] text-zinc-500">{tr("magic_link_hint")}</p>
+              <p className="text-[11px] text-nabi-muted">{tr("magic_link_hint")}</p>
               <button
                 type="button"
                 disabled={loading || !email}
@@ -252,7 +252,7 @@ export function AuthModal() {
 
           {tab === "reset" && (
             <>
-              <p className="text-[11px] text-zinc-500">{tr("reset_hint")}</p>
+              <p className="text-[11px] text-nabi-muted">{tr("reset_hint")}</p>
               <button
                 type="button"
                 disabled={loading || !email}

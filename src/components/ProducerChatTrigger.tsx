@@ -18,10 +18,10 @@ export function ProducerChatTrigger() {
       aria-expanded={open}
       aria-controls="producer-chat-float"
       aria-label="Producer Chat"
-      className="producer-chat-trigger group relative inline-flex items-center gap-1.5 overflow-hidden rounded-full px-3 py-1.5 text-xs font-semibold text-white sm:text-sm"
+      className="producer-chat-trigger group relative inline-flex items-center gap-1.5 overflow-hidden rounded-full px-3 py-1.5 text-xs font-semibold text-nabi-on sm:text-sm"
     >
       <span className="producer-chat-trigger__glow" aria-hidden />
-      <Sparkles size={14} className="relative z-10 text-white" />
+      <Sparkles size={14} className="relative z-10 text-nabi-on" />
       <span className="relative z-10 hidden whitespace-nowrap sm:inline">
         <span aria-hidden>✨ </span>
         Producer Chat

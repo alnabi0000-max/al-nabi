@@ -41,14 +41,14 @@ export function TemplateExplorer() {
   return (
     <div className="mx-auto max-w-7xl">
       <header className="mb-8 max-w-2xl">
-        <p className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-500">
+        <p className="mb-2 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-nabi-muted">
           <LayoutTemplate size={12} />
           Template Explorer
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight text-white md:text-4xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-nabi-ink md:text-4xl">
           Al-Nabi nima yarata oladi
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+        <p className="mt-2 text-sm leading-relaxed text-nabi-muted">
           {counts.All}+ tayyor uslub. Shablonni tanlang, obyektingizni yozing va
           bir bosishda Studio generatoriga o‘ting.
         </p>
@@ -70,15 +70,15 @@ export function TemplateExplorer() {
                 className={clsx(
                   "rounded-full border px-3.5 py-1.5 text-sm transition",
                   activeFilter
-                    ? "border-white/30 bg-white text-zinc-950"
-                    : "border-white/10 text-zinc-400 hover:border-white/20 hover:text-white"
+                    ? "border-nabi-neon/50 bg-nabi-ink text-nabi-bg"
+                    : "border-nabi-border text-nabi-muted hover:border-nabi-neon/35 hover:text-nabi-ink"
                 )}
               >
                 {cat}
                 <span
                   className={clsx(
                     "ml-1.5 tabular-nums",
-                    activeFilter ? "text-zinc-500" : "text-zinc-400"
+                    activeFilter ? "text-nabi-muted" : "text-nabi-muted"
                   )}
                 >
                   {n}
@@ -91,7 +91,7 @@ export function TemplateExplorer() {
         <label className="relative block w-full sm:max-w-xs">
           <Search
             size={14}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-nabi-muted"
           />
           <input
             value={q}
@@ -100,12 +100,12 @@ export function TemplateExplorer() {
               setVisible(PAGE_SIZE);
             }}
             placeholder={t.common.search}
-            className="w-full rounded-full border border-white/10 bg-white/[0.03] py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-white/25"
+            className="w-full rounded-full border border-nabi-border bg-nabi-card py-2 pl-9 pr-3 text-sm text-nabi-ink outline-none placeholder:text-nabi-muted focus:border-nabi-neon/40"
           />
         </label>
       </div>
 
-      <p className="mb-4 text-xs text-zinc-400">
+      <p className="mb-4 text-xs text-nabi-muted">
         {filtered.length.toLocaleString()} shablon
       </p>
 
@@ -120,7 +120,7 @@ export function TemplateExplorer() {
       </div>
 
       {shown.length === 0 && (
-        <p className="py-16 text-center text-sm text-zinc-500">
+        <p className="py-16 text-center text-sm text-nabi-muted">
           Hech narsa topilmadi. Filterni o‘zgartiring.
         </p>
       )}
@@ -130,7 +130,7 @@ export function TemplateExplorer() {
           <button
             type="button"
             onClick={() => setVisible((v) => v + PAGE_SIZE)}
-            className="rounded-full border border-white/15 px-5 py-2.5 text-sm text-zinc-200 transition hover:border-white/30 hover:bg-white/5"
+            className="rounded-full border border-nabi-border px-5 py-2.5 text-sm text-nabi-ink transition hover:border-nabi-neon/50 hover:bg-nabi-elevated"
           >
             Yana ko‘rsatish ({filtered.length - visible})
           </button>

@@ -89,7 +89,7 @@ export function DualPreview({
           />
         </div>
       </div>
-      <p className="text-[10px] text-zinc-400">{tr("dual_preview_hint")}</p>
+      <p className="text-[10px] text-nabi-muted">{tr("dual_preview_hint")}</p>
     </div>
   );
 }

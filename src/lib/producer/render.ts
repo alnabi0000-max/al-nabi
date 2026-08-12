@@ -1,5 +1,5 @@
 /**
- * Producer one-shot render: video + expressive VO + Foley → final MP4.
+ * Producer one-shot render: video + expressive VO + Foley + ambient BGM → final MP4.
  * All engines exposed as Al-Nabi Native / Audio Engine.
  */
 
@@ -10,6 +10,8 @@ import { synthesizeSpeech } from "@/lib/audio";
 import { muxVideoWithAudio } from "@/lib/ffmpeg-worker";
 import { buildFoleyBed } from "@/lib/producer/foley";
 import { ensureWorkDir, mixVoiceAndFoley } from "@/lib/producer/compose";
+import { resolveBgmSelection } from "@/lib/bgm";
+import type { BgmMode } from "@/lib/bgm/types";
 import type { VisualDna } from "@/lib/producer/vision-dna";
 import type { EmotionMode } from "@/lib/credits";
 import { ALNABIY_ENGINES } from "@/lib/models";
@@ -22,6 +24,12 @@ export type ProducerRenderInput = {
   visualDna?: VisualDna | null;
   durationSec?: number;
   jobId?: string;
+  /** ai (default) | manual track | off */
+  bgmMode?: BgmMode;
+  /** Relative id e.g. epic/track.mp3 when bgmMode=manual */
+  bgmTrackId?: string | null;
+  /** Called immediately before the paid video provider request (NC debit). */
+  beforePaidProvider?: () => Promise<void>;
 };
 
 export type ProducerRenderResult = {
@@ -31,6 +39,8 @@ export type ProducerRenderResult = {
   finalPath: string | null;
   voicePath: string | null;
   foleyCount: number;
+  bgmMood: string | null;
+  bgmTrackId: string | null;
   engine: string;
   audioEngine: string;
   promptUsed: string;
@@ -83,6 +93,10 @@ export async function renderProducerPackage(
       localeName: "English",
     });
 
+    if (input.beforePaidProvider) {
+      await input.beforePaidProvider();
+    }
+
     const clip = await generateVideoClip({
       prompt: enhanced.enhancedPrompt,
       aspect,
@@ -106,12 +120,22 @@ export async function renderProducerPackage(
       outDir: path.join(workDir, "foley"),
     });
 
+    const bgm = await resolveBgmSelection({
+      mode: input.bgmMode || "ai",
+      trackId: input.bgmTrackId,
+      prompt: `${input.brief}\n${voiceText}`,
+      emotion: narration,
+      visualMood: input.visualDna?.mood,
+      seed: jobId,
+    });
+
     const mixedPath = path.join(workDir, "mix.m4a");
     await mixVoiceAndFoley({
       voicePath: speech.audioPath,
       foley,
       outputPath: mixedPath,
       durationSec,
+      bgmPath: bgm?.path ?? null,
     });
 
     const finalPath = path.join(workDir, "final.mp4");
@@ -129,6 +153,8 @@ export async function renderProducerPackage(
       finalPath,
       voicePath: speech.audioPath,
       foleyCount: foley.length,
+      bgmMood: bgm?.mood ?? null,
+      bgmTrackId: bgm?.trackId ?? null,
       engine: "Al-Nabi Native Engine",
       audioEngine: ALNABIY_ENGINES.voice || "Al-Nabi Audio Engine",
       promptUsed: enhanced.enhancedPrompt,
@@ -141,6 +167,8 @@ export async function renderProducerPackage(
       finalPath: null,
       voicePath: null,
       foleyCount: 0,
+      bgmMood: null,
+      bgmTrackId: null,
       engine: "Al-Nabi Native Engine",
       audioEngine: "Al-Nabi Audio Engine",
       promptUsed: input.brief,

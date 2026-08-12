@@ -13,9 +13,13 @@ import {
   calculateMovieCredits,
   type EmotionMode,
 } from "@/lib/credits";
+import { InsufficientBalanceHint } from "@/components/InsufficientBalanceHint";
 import type { RenderStage } from "@/lib/generation/progress";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import clsx from "clsx";
+import { BgmPicker } from "@/components/BgmPicker";
+import type { BgmMode } from "@/lib/bgm/types";
+import { DEFAULT_BGM_SELECTION } from "@/lib/bgm/types";
 
 const MediaViewer = dynamic(
   () =>
@@ -53,6 +57,10 @@ export function StudioHub() {
   const [prompt, setPrompt] = useState("");
   const [script, setScript] = useState("");
   const [emotionMode] = useState<EmotionMode>("epic");
+  const [bgmMode, setBgmMode] = useState<BgmMode>(DEFAULT_BGM_SELECTION.mode);
+  const [bgmTrackId, setBgmTrackId] = useState<string | null>(
+    DEFAULT_BGM_SELECTION.trackId
+  );
   const [loading, setLoading] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [previewA, setPreviewA] = useState<string | null>(null);
@@ -161,6 +169,8 @@ export function StudioHub() {
               alnabiyKey: key,
               clientBalance: coins,
               engine: "auto",
+              bgmMode,
+              bgmTrackId,
             }),
           },
           30_000
@@ -241,7 +251,12 @@ export function StudioHub() {
         setPreviewB(null);
         setActivePreview("A");
       } else {
-        window.location.href = `/script-to-movie?prompt=${encodeURIComponent(text)}`;
+        const q = new URLSearchParams({
+          prompt: text,
+          bgmMode,
+        });
+        if (bgmTrackId) q.set("bgmTrackId", bgmTrackId);
+        window.location.href = `/script-to-movie?${q.toString()}`;
         return;
       }
     } catch (e) {
@@ -293,7 +308,7 @@ export function StudioHub() {
       </div>
 
       <div className="nabi-card space-y-3 relative overflow-hidden">
-        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-nabi-neon to-purple-500 opacity-60" />
+        <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-nabi-neon to-[var(--accent-to)] opacity-60" />
         <div className="flex items-center justify-between gap-2">
           <label className="text-sm font-medium text-nabi-muted">
             {mode === "prompt" ? tr("prompt_label") : tr("script_label")}
@@ -313,7 +328,7 @@ export function StudioHub() {
             {tr("enhance_prompt")}
           </button>
         </div>
-        <p className="text-[10px] text-zinc-400">{tr("enhance_prompt_hint")}</p>
+        <p className="text-[10px] text-nabi-muted">{tr("enhance_prompt_hint")}</p>
         <textarea
           className="nabi-input min-h-[140px] resize-y"
           placeholder={
@@ -328,26 +343,63 @@ export function StudioHub() {
               : setScript(e.target.value)
           }
         />
-        <div className="flex items-center justify-end border-t border-nabi-border pt-3">
-          <button
-            type="button"
-            onClick={create}
-            disabled={loading || isOffline}
-            className="nabi-btn-primary min-w-[14rem]"
-          >
-            {loading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Sparkles size={16} />
-            )}
-            <span>
-              {tr("create_with_alnabiy")}
-              <span className="mx-1.5 opacity-50">•</span>
-              <span className="tabular-nums text-nabi-gold">
-                {cost.toLocaleString()} {tr("coins")}
+        <div className="space-y-3 border-t border-nabi-border pt-3">
+          <BgmPicker
+            mode={bgmMode}
+            trackId={bgmTrackId}
+            onModeChange={setBgmMode}
+            onTrackChange={setBgmTrackId}
+            disabled={loading}
+            labels={{
+              title: tr("bgm_title"),
+              ai: tr("bgm_ai"),
+              manual: tr("bgm_manual"),
+              off: tr("bgm_off"),
+              aiHint: tr("bgm_ai_hint"),
+              empty: tr("bgm_empty"),
+              loading: tr("bgm_loading"),
+            }}
+          />
+          <InsufficientBalanceHint
+            kind={mode === "prompt" ? "prompt_to_video" : "text_to_movie"}
+            cost={cost}
+            coins={coins}
+            durationSec={durationSec}
+            durationCandidates={
+              mode === "prompt" ? [5, 10, 15] : [30, 60, 180, 300, 600]
+            }
+            storeLabel={tr("store")}
+            tryDurationLabel={(sec, nc) =>
+              tr("try_shorter_duration")
+                .replace(
+                  "{duration}",
+                  sec < 60 ? `${sec}s` : `${Math.round(sec / 60)} min`
+                )
+                .replace("{cost}", String(nc))
+            }
+            tr={tr}
+          />
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={create}
+              disabled={loading || isOffline || coins < cost}
+              className="nabi-btn-primary min-w-[14rem]"
+            >
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Sparkles size={16} />
+              )}
+              <span>
+                {tr("create_with_alnabiy")}
+                <span className="mx-1.5 opacity-50">•</span>
+                <span className="tabular-nums text-nabi-gold">
+                  {cost.toLocaleString()} {tr("coins")}
+                </span>
               </span>
-            </span>
-          </button>
+            </button>
+          </div>
         </div>
         {error && <p className="text-sm text-rose-400">{error}</p>}
       </div>

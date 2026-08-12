@@ -11,12 +11,16 @@ import {
   ensureRequestLedgerUser,
   isSoftAuthEnabled,
 } from "@/lib/auth/ensure-request-user";
-import { atomicChargeCoins, atomicRollbackCoins } from "@/lib/ledger/atomic";
+import {
+  assertSufficientCoins,
+  atomicChargeCoins,
+  atomicRollbackCoins,
+} from "@/lib/ledger/atomic";
 import { prisma } from "@/lib/prisma";
 
 /**
  * Legacy sync video route — prefer POST /api/generate (ledger + queue + refund).
- * Kept for compatibility; requires auth + ledger charge like /api/generate.
+ * Charge happens only immediately before the provider clip request.
  */
 const schema = z.object({
   prompt: z.string().min(3).max(2000),
@@ -69,6 +73,33 @@ export async function POST(req: NextRequest) {
       body.durationSec
     );
 
+    const preflight = await assertSufficientCoins({
+      userId: user.id,
+      kind: "prompt_to_video",
+      durationSec: billableDuration,
+    });
+    if (!preflight.ok) {
+      return apiJson(
+        {
+          ok: false,
+          success: false,
+          error: preflight.message,
+          code: preflight.code,
+          cost: preflight.cost,
+          required: preflight.required ?? preflight.cost,
+          balanceAfter: preflight.balanceAfter,
+        },
+        {
+          status:
+            preflight.code === "INSUFFICIENT"
+              ? 402
+              : preflight.code === "BANNED"
+                ? 403
+                : 400,
+        }
+      );
+    }
+
     const generation = await prisma.generation.create({
       data: {
         userId: user.id,
@@ -83,12 +114,17 @@ export async function POST(req: NextRequest) {
     });
     generationId = generation.id;
 
+    const prompt = body.autoEnhance
+      ? await enhancePrompt(body.prompt, body.style)
+      : body.prompt;
+
+    /* Debit only when we are about to call the paid video provider. */
     const charge = await atomicChargeCoins({
       userId: user.id,
       kind: "prompt_to_video",
       durationSec: billableDuration,
       generationId: generation.id,
-      reason: "generate-video:legacy",
+      reason: "generate-video:legacy:provider",
     });
 
     if (!charge.ok) {
@@ -106,15 +142,18 @@ export async function POST(req: NextRequest) {
           required: charge.required ?? charge.cost,
           balanceAfter: charge.balanceAfter,
         },
-        { status: charge.code === "INSUFFICIENT" ? 402 : charge.code === "BANNED" ? 403 : 400 }
+        {
+          status:
+            charge.code === "INSUFFICIENT"
+              ? 402
+              : charge.code === "BANNED"
+                ? 403
+                : 400,
+        }
       );
     }
     chargedUserId = user.id;
     chargedAmount = charge.cost;
-
-    const prompt = body.autoEnhance
-      ? await enhancePrompt(body.prompt, body.style)
-      : body.prompt;
 
     const result = await generateVideoClip({
       prompt,

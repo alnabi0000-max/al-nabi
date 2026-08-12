@@ -58,10 +58,10 @@ export function RenderProgress({
             )}
             {stageText}
           </span>
-          <span className="tabular-nums text-zinc-500">{pct}%</span>
+          <span className="tabular-nums text-nabi-muted">{pct}%</span>
         </div>
       )}
-      <div className="relative h-2 overflow-hidden rounded-full bg-zinc-800/90">
+      <div className="relative h-2 overflow-hidden rounded-full bg-nabi-elevated">
         <div
           className={clsx(
             "h-full rounded-full transition-all duration-500 ease-out",

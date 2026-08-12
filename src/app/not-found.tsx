@@ -16,7 +16,7 @@ export default function NotFound() {
       <p className="text-xs uppercase tracking-[0.2em] text-nabi-neon">
         Al-Nabi
       </p>
-      <h1 className="text-4xl font-bold text-white">404</h1>
+      <h1 className="text-4xl font-bold text-nabi-ink">404</h1>
       <p className="text-sm text-nabi-muted">
         This page doesn&apos;t exist, or it may have moved.
       </p>
@@ -30,7 +30,7 @@ export default function NotFound() {
         </Link>
         <Link
           href="/generate"
-          className="inline-flex items-center gap-2 rounded-xl border border-nabi-border px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/5"
+          className="inline-flex items-center gap-2 rounded-xl border border-nabi-border px-4 py-2 text-sm font-medium text-nabi-ink transition hover:bg-nabi-elevated"
         >
           <Sparkles size={16} />
           Start creating

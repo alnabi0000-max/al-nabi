@@ -85,10 +85,10 @@ export async function generateViralPack(opts: {
     title,
     neonClass:
       i === 0
-        ? "from-fuchsia-500 to-cyan-400"
+        ? "from-[var(--accent-from)] to-[var(--accent-to)]"
         : i === 1
-          ? "from-amber-400 to-rose-500"
-          : "from-emerald-400 to-blue-500",
+          ? "from-nabi-gold to-[var(--accent-to)]"
+          : "from-nabi-neon to-nabi-gold",
   }));
   const hooks = buildHooks(locale, opts.scriptOrPrompt, emotionLabel);
 

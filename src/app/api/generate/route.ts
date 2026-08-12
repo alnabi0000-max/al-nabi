@@ -6,7 +6,7 @@ import { AlnabiySentinelEngine } from "@/lib/sentinel-engine";
 import { WATERMARK, chargeableDurationSec } from "@/lib/credits";
 import { t, resolveLocale } from "@/lib/i18n/messages";
 import { prisma } from "@/lib/prisma";
-import { atomicChargeCoins } from "@/lib/ledger/atomic";
+import { assertSufficientCoins } from "@/lib/ledger/atomic";
 import { enqueueGeneration } from "@/lib/generation/enqueue";
 import { sanitizePublicPayload } from "@/lib/models";
 import type { GenerationType } from "@prisma/client";
@@ -73,6 +73,8 @@ const schema = z.object({
   /** Video yoki image engine (UI image da ham `engine` yuboradi) */
   engine: z.enum(ENGINE_IDS).optional(),
   imageEngine: z.enum(["flux-pro", "sd3.5-large", "auto"]).optional(),
+  bgmMode: z.enum(["ai", "manual", "off"]).optional().default("ai"),
+  bgmTrackId: z.string().max(200).optional().nullable(),
 });
 
 function generationType(mediaKind: "image" | "video"): GenerationType {
@@ -163,6 +165,46 @@ export async function POST(req: NextRequest) {
     }
     const user = ensured.user;
 
+    const costEngine =
+      body.mediaKind === "image"
+        ? body.imageEngine || body.engine || "auto"
+        : body.engine || "auto";
+    const costOpts = {
+      engine: costEngine,
+      quality: body.quality,
+      frameRate: body.frameRate,
+    };
+
+    /* Preflight only — NC is NOT debited until the provider call starts. */
+    const preflight = await assertSufficientCoins({
+      userId: user.id,
+      kind,
+      durationSec: body.mediaKind === "image" ? 1 : duration,
+      costOpts,
+    });
+    if (!preflight.ok) {
+      return apiJson(
+        {
+          success: false,
+          ok: false,
+          error: preflight.message,
+          code: preflight.code,
+          cost: preflight.cost,
+          required: preflight.required ?? preflight.cost,
+          balanceAfter: preflight.balanceAfter,
+        },
+        {
+          status:
+            preflight.code === "INSUFFICIENT"
+              ? 402
+              : preflight.code === "BANNED"
+                ? 403
+                : 400,
+        }
+      );
+    }
+    const expectedCost = preflight.cost;
+
     let enhanced = gate.renderPrompt;
     if (body.autoEnhance) {
       try {
@@ -200,57 +242,11 @@ export async function POST(req: NextRequest) {
               : body.engine || "auto",
           imageEngine: body.imageEngine || body.engine || "auto",
           frameRate: body.frameRate,
+          bgmMode: body.bgmMode || "ai",
+          bgmTrackId: body.bgmTrackId || null,
         },
       },
     });
-
-    const costEngine =
-      body.mediaKind === "image"
-        ? body.imageEngine || body.engine || "auto"
-        : body.engine || "auto";
-
-    const charge = await atomicChargeCoins({
-      userId: user.id,
-      kind,
-      durationSec: body.mediaKind === "image" ? 1 : duration,
-      generationId: generation.id,
-      reason: `generate:${kind}:${costEngine}`,
-      costOpts: {
-        engine: costEngine,
-        quality: body.quality,
-        frameRate: body.frameRate,
-      },
-    });
-
-    if (!charge.ok) {
-      await prisma.generation.update({
-        where: { id: generation.id },
-        data: {
-          status: "FAILED",
-          errorMessage: charge.message,
-        },
-      });
-      return apiJson(
-        {
-          success: false,
-          ok: false,
-          error: charge.message,
-          code: charge.code,
-          cost: charge.cost,
-          required: charge.required ?? charge.cost,
-          balanceAfter: charge.balanceAfter,
-          generationId: generation.id,
-        },
-        {
-          status:
-            charge.code === "INSUFFICIENT"
-              ? 402
-              : charge.code === "BANNED"
-                ? 403
-                : 400,
-        }
-      );
-    }
 
     const { shouldInstantMockGenerate } = await import(
       "@/lib/generation/dev-mock"
@@ -261,17 +257,25 @@ export async function POST(req: NextRequest) {
     let status: "QUEUED" | "COMPLETED" | "FAILED" = "QUEUED";
     let resultUrl: string | null = null;
     let r2Key: string | null = null;
-    /** Prefer post-refund balance when generation fails after charge. */
-    let balanceAfter: number = charge.balanceAfter;
+    let balanceAfter: number = user.coins;
+    let creditsCost = 0;
+    let receiptId: string | undefined;
 
     if (instant) {
-      /* Test/local: sync mock — polling timeout bo‘lmasin */
+      /* Test/local: sync — charge happens inside processGenerationJob
+       * immediately before provider/mock paid work. */
       try {
         const { processGenerationJob } = await import(
           "@/lib/generation/process"
         );
         const done = await processGenerationJob(generation.id);
         queueMode = "sync";
+        if (typeof done.balanceAfter === "number") {
+          balanceAfter = done.balanceAfter;
+        }
+        if (typeof done.creditsCost === "number") {
+          creditsCost = done.creditsCost;
+        }
         if (done.ok && done.resultUrl) {
           status = "COMPLETED";
           resultUrl = done.resultUrl;
@@ -297,20 +301,21 @@ export async function POST(req: NextRequest) {
       try {
         const queue = await enqueueGeneration(generation.id);
         queueMode = queue.mode;
+        /* Not charged yet — worker debits right before provider. */
+        creditsCost = 0;
+        balanceAfter = user.coins;
       } catch (queueErr) {
-        console.warn("[Alnabiy] enqueue failed — refunding", queueErr);
-        const { failAndRefundGeneration } = await import(
-          "@/lib/generation/fail-and-refund"
-        );
-        const refunded = await failAndRefundGeneration({
-          generationId: generation.id,
-          error: queueErr,
-          area: "generate-enqueue",
-          reason: "rollback:enqueue_failed",
+        console.warn("[Alnabiy] enqueue failed — no charge applied", queueErr);
+        await prisma.generation.update({
+          where: { id: generation.id },
+          data: {
+            status: "FAILED",
+            errorMessage:
+              queueErr instanceof Error
+                ? queueErr.message.slice(0, 500)
+                : "Enqueue failed",
+          },
         });
-        if (typeof refunded.balanceAfter === "number") {
-          balanceAfter = refunded.balanceAfter;
-        }
         status = "FAILED";
       }
     }
@@ -318,26 +323,11 @@ export async function POST(req: NextRequest) {
     if (status === "COMPLETED" && resultUrl) {
       const row = await prisma.generation.findUnique({
         where: { id: generation.id },
-        select: { r2Key: true, resultUrl: true },
+        select: { r2Key: true, resultUrl: true, creditsCost: true },
       });
       r2Key = row?.r2Key || null;
       resultUrl = row?.resultUrl || resultUrl;
-    }
-
-    /* Sync mock can fail inside processGenerationJob without throwing —
-     * ensure FAILED jobs are refunded and balanceAfter is post-refund. */
-    if (status === "FAILED" && instant) {
-      const { failAndRefundGeneration } = await import(
-        "@/lib/generation/fail-and-refund"
-      );
-      const refunded = await failAndRefundGeneration({
-        generationId: generation.id,
-        error: "Sync generation failed",
-        area: "generate-sync-status",
-      });
-      if (typeof refunded.balanceAfter === "number") {
-        balanceAfter = refunded.balanceAfter;
-      }
+      if (row && row.creditsCost > 0) creditsCost = row.creditsCost;
     }
 
     const payload = sanitizePublicPayload({
@@ -356,12 +346,14 @@ export async function POST(req: NextRequest) {
       r2Key,
       statusUrl: `/api/generations/${generation.id}/status`,
       queueMode,
-      creditsCost: charge.cost,
+      expectedCost,
+      creditsCost,
+      creditsPending: status === "QUEUED" && creditsCost === 0,
       balanceAfter,
       alnabiyKey: user.alnabiyKey,
       alnabiy_key: user.alnabiyKey,
       guestSession: ensured.guestCreated,
-      receiptId: charge.receiptId,
+      receiptId,
       watermark: WATERMARK,
       clipDurationSec: CLIP_DURATION_SEC,
       emotionMode: body.emotionMode,

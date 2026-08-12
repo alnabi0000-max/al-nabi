@@ -110,7 +110,7 @@ export function TemplatePreviewMedia({
   return (
     <div
       className={clsx(
-        "relative h-full w-full overflow-hidden bg-zinc-900",
+        "relative h-full w-full overflow-hidden bg-nabi-surface",
         className
       )}
       onMouseEnter={!posterOnly && loadOnHover ? play : undefined}

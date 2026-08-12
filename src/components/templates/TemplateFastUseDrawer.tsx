@@ -69,16 +69,16 @@ export function TemplateFastUseDrawer({ template, open, onClose }: Props) {
         aria-modal="true"
         aria-labelledby="tpl-drawer-title"
         tabIndex={-1}
-        className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#0B0C12] shadow-2xl outline-none"
+        className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-nabi-border bg-nabi-surface shadow-2xl outline-none"
       >
-        <div className="flex items-start justify-between gap-3 border-b border-white/5 px-5 py-4">
+        <div className="flex items-start justify-between gap-3 border-b border-nabi-border px-5 py-4">
           <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-500">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-nabi-muted">
               Fast Use · {template.category}
             </p>
             <h2
               id="tpl-drawer-title"
-              className="mt-1 truncate text-lg font-semibold text-white"
+              className="mt-1 truncate text-lg font-semibold text-nabi-ink"
             >
               {template.title}
             </h2>
@@ -87,14 +87,14 @@ export function TemplateFastUseDrawer({ template, open, onClose }: Props) {
             type="button"
             onClick={onClose}
             aria-label={tr("close")}
-            className="rounded-lg p-2 text-zinc-500 transition hover:bg-white/5 hover:text-white"
+            className="rounded-lg p-2 text-nabi-muted transition hover:bg-nabi-elevated hover:text-nabi-ink"
           >
             <X size={18} />
           </button>
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-          <div className="overflow-hidden rounded-xl border border-white/10 bg-black">
+          <div className="overflow-hidden rounded-xl border border-nabi-border bg-black">
             <TemplatePreviewMedia
               key={template.id}
               templateId={template.id}
@@ -104,21 +104,21 @@ export function TemplateFastUseDrawer({ template, open, onClose }: Props) {
             />
           </div>
 
-          <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+          <div className="rounded-xl border border-white/8 bg-nabi-card p-3">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-nabi-muted">
               Prompt structure
             </p>
-            <p className="mt-2 font-mono text-[12px] leading-relaxed text-zinc-300">
+            <p className="mt-2 font-mono text-[12px] leading-relaxed text-nabi-ink">
               {template.prompt_structure}
             </p>
-            <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-zinc-500">
-              <span className="rounded-md border border-white/10 px-2 py-0.5">
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-nabi-muted">
+              <span className="rounded-md border border-nabi-border px-2 py-0.5">
                 {resolved.aspect}
               </span>
-              <span className="rounded-md border border-white/10 px-2 py-0.5">
+              <span className="rounded-md border border-nabi-border px-2 py-0.5">
                 Motion {template.system_preset.motion_level}/5
               </span>
-              <span className="rounded-md border border-white/10 px-2 py-0.5">
+              <span className="rounded-md border border-nabi-border px-2 py-0.5">
                 {resolved.publicModelLabel}
               </span>
             </div>
@@ -127,7 +127,7 @@ export function TemplateFastUseDrawer({ template, open, onClose }: Props) {
           <div>
             <label
               htmlFor={inputId}
-              className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-500"
+              className="mb-2 block text-xs font-medium uppercase tracking-wider text-nabi-muted"
             >
               Obyektingiz / subject
             </label>
@@ -136,27 +136,27 @@ export function TemplateFastUseDrawer({ template, open, onClose }: Props) {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder={template.subject_placeholder}
-              className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/25"
+              className="w-full rounded-xl border border-nabi-border bg-nabi-input px-3 py-2.5 text-sm text-nabi-ink outline-none transition placeholder:text-nabi-muted focus:border-nabi-neon/40"
               autoFocus
             />
-            <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+            <p className="mt-2 text-[11px] leading-relaxed text-nabi-muted">
               Preview:{" "}
-              <span className="text-zinc-400">{previewPrompt.slice(0, 160)}</span>
+              <span className="text-nabi-muted">{previewPrompt.slice(0, 160)}</span>
               {previewPrompt.length > 160 ? "…" : ""}
             </p>
           </div>
         </div>
 
-        <div className="border-t border-white/5 p-5">
+        <div className="border-t border-nabi-border p-5">
           <button
             type="button"
             onClick={transfer}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-nabi-bg transition hover:bg-nabi-muted"
           >
             <Sparkles size={16} />
             Shu uslubda yaratish
           </button>
-          <p className="mt-2 text-center text-[11px] text-zinc-400">
+          <p className="mt-2 text-center text-[11px] text-nabi-muted">
             Stil, aspekt va model Studio generatoriga uzatiladi
           </p>
         </div>

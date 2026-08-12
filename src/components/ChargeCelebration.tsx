@@ -24,7 +24,7 @@ export function ChargeCelebration() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-amber-500/40 bg-[#14110a]/95 p-4 font-mono text-xs text-amber-100 shadow-[0_0_28px_rgba(245,200,66,0.25)]">
+        <div className="rounded-xl border border-amber-500/40 bg-nabi-surface/95 p-4 font-mono text-xs text-amber-100 shadow-[0_0_28px_rgba(245,200,66,0.25)]">
           <div className="mb-2 flex items-center justify-between border-b border-amber-500/30 pb-2">
             <span className="font-bold text-nabi-gold">
               {tr("digital_receipt")}
@@ -34,7 +34,7 @@ export function ChargeCelebration() {
             </span>
           </div>
           <p className="text-amber-200/90">{chargeReceipt.label}</p>
-          <p className="mt-1 text-zinc-400">
+          <p className="mt-1 text-nabi-muted">
             {new Date(chargeReceipt.at).toLocaleString()}
           </p>
           <p className="mt-3 text-emerald-400">

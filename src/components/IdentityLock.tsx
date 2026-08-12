@@ -97,7 +97,7 @@ export function IdentityLock({ onImage }: Props) {
             className="max-h-36 w-full object-cover"
           />
         ) : (
-          <p className="text-xs text-zinc-500">{tr("identity_sim")}</p>
+          <p className="text-xs text-nabi-muted">{tr("identity_sim")}</p>
         )}
         <input
           type="file"

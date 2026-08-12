@@ -26,7 +26,7 @@ export default function ErrorBoundary({
       <p className="text-xs uppercase tracking-[0.2em] text-nabi-neon">
         Al-Nabi
       </p>
-      <h1 className="text-xl font-bold text-white">Something went wrong</h1>
+      <h1 className="text-xl font-bold text-nabi-ink">Something went wrong</h1>
       <p className="text-sm text-nabi-muted">
         An unexpected error occurred while loading this page. You can try
         again, or head back to the home page.
@@ -42,7 +42,7 @@ export default function ErrorBoundary({
         </button>
         <Link
           href="/"
-          className="inline-flex items-center gap-2 rounded-xl border border-nabi-border px-4 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/5"
+          className="inline-flex items-center gap-2 rounded-xl border border-nabi-border px-4 py-2 text-sm font-medium text-nabi-ink transition hover:bg-nabi-elevated"
         >
           <Home size={16} />
           Go home

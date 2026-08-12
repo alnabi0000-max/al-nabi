@@ -20,7 +20,7 @@ const MediaLibrary = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-48 animate-pulse rounded-2xl border border-white/10 bg-white/[0.03]" />
+      <div className="h-48 animate-pulse rounded-2xl border border-nabi-border bg-nabi-card" />
     ),
   }
 );
@@ -96,24 +96,24 @@ export function ProfileKabinetPanel() {
         />
       </section>
 
-      <section className="rounded-2xl border border-nabi-border bg-[#121418] p-4 md:p-5">
+      <section className="rounded-2xl border border-nabi-border bg-nabi-surface p-4 md:p-5">
         <h3 className="mb-3 text-sm font-semibold text-nabi-muted">
           {t("dashboard_profile_card")}
         </h3>
         <ClientOnly
           fallback={
-            <p className="text-sm text-zinc-500">{t("loading")}</p>
+            <p className="text-sm text-nabi-muted">{t("loading")}</p>
           }
         >
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
-              <dt className="text-[11px] text-zinc-400">{t("email_placeholder")}</dt>
-              <dd className="truncate text-white">
+              <dt className="text-[11px] text-nabi-muted">{t("email_placeholder")}</dt>
+              <dd className="truncate text-nabi-ink">
                 {email || t("dashboard_guest")}
               </dd>
             </div>
             <div>
-              <dt className="text-[11px] text-zinc-400">Al-Nabi Key</dt>
+              <dt className="text-[11px] text-nabi-muted">Al-Nabi Key</dt>
               <dd className="truncate font-mono text-xs text-nabi-neon">
                 {alnabiyKey
                   ? `${alnabiyKey.slice(0, 8)}…${alnabiyKey.slice(-4)}`
@@ -121,7 +121,7 @@ export function ProfileKabinetPanel() {
               </dd>
             </div>
             <div>
-              <dt className="text-[11px] text-zinc-400">{t("referral")}</dt>
+              <dt className="text-[11px] text-nabi-muted">{t("referral")}</dt>
               <dd className="truncate font-mono text-xs">{referralCode}</dd>
             </div>
             <div className="flex items-end gap-2">

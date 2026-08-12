@@ -30,7 +30,7 @@ export function MotionBrush({ imageUrl }: Props) {
 
   if (!imageUrl) {
     return (
-      <div className="nabi-card text-xs text-zinc-500">
+      <div className="nabi-card text-xs text-nabi-muted">
         {tr("motion_need_image")}
       </div>
     );
@@ -72,7 +72,7 @@ export function MotionBrush({ imageUrl }: Props) {
           onMouseMove={paint}
         />
       </div>
-      <p className="text-[10px] text-zinc-400">{tr("motion_hint")}</p>
+      <p className="text-[10px] text-nabi-muted">{tr("motion_hint")}</p>
     </div>
   );
 }

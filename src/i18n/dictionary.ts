@@ -51,6 +51,13 @@ export type Dictionary = {
     aspect: string;
     narration: string;
     audio: string;
+    bgmTitle: string;
+    bgmAi: string;
+    bgmManual: string;
+    bgmOff: string;
+    bgmAiHint: string;
+    bgmEmpty: string;
+    bgmLoading: string;
     currency: string;
     output: string;
     rendering: string;
@@ -151,6 +158,13 @@ const en: Dictionary = {
     aspect: "Aspect",
     narration: "Narration",
     audio: "Al-Nabi Audio Engine",
+    bgmTitle: "Background music",
+    bgmAi: "AI picks",
+    bgmManual: "I choose",
+    bgmOff: "No music",
+    bgmAiHint: "Matches mood from your brief (calm / epic / suspense / upbeat).",
+    bgmEmpty: "No tracks yet — add files under public/music/",
+    bgmLoading: "Loading tracks…",
     currency: "NC",
     output: "Output",
     rendering: "Rendering picture + voice + Foley…",
@@ -254,6 +268,13 @@ const uz: Dictionary = {
     aspect: "Format",
     narration: "Ovoz",
     audio: "Al-Nabi Audio Engine",
+    bgmTitle: "Fon musiqasi",
+    bgmAi: "AI tanlasin",
+    bgmManual: "O'zim tanlayman",
+    bgmOff: "Musiqasiz",
+    bgmAiHint: "Skript kayfiyatiga qarab tanlanadi (tinch / epik / suspense / quvnoq).",
+    bgmEmpty: "Treklar yo'q — public/music/ ga fayl qo'shing",
+    bgmLoading: "Treklar yuklanmoqda…",
     currency: "NC",
     output: "Natija",
     rendering: "Rasm + ovoz + Foley render qilinmoqda…",
@@ -358,6 +379,13 @@ const ru: Dictionary = {
     aspect: "Формат",
     narration: "Озвучка",
     audio: "Al-Nabi Audio Engine",
+    bgmTitle: "Фоновая музыка",
+    bgmAi: "Выберет ИИ",
+    bgmManual: "Выберу сам",
+    bgmOff: "Без музыки",
+    bgmAiHint: "По настроению брифа (спокойная / эпик / саспенс / энергичная).",
+    bgmEmpty: "Треков нет — добавьте файлы в public/music/",
+    bgmLoading: "Загрузка треков…",
     currency: "NC",
     output: "Результат",
     rendering: "Рендер картинки + голоса + Foley…",

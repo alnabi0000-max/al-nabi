@@ -51,6 +51,22 @@ export type ProducerChatTurn = {
   imageUrl?: string | null;
 };
 
+/**
+ * Sliding window for model context (Part 4 — simple overflow guard).
+ * UI may keep the full thread; only this slice is sent to the LLM.
+ * Full conversation summarization is intentionally NOT enabled yet.
+ */
+export const PRODUCER_MODEL_HISTORY_WINDOW = 14;
+
+/** Newest N turns for the model. Older turns stay in the UI only. */
+export function selectMessagesForModel(
+  messages: ProducerChatTurn[],
+  windowSize = PRODUCER_MODEL_HISTORY_WINDOW
+): ProducerChatTurn[] {
+  const w = Math.max(2, windowSize);
+  return messages.slice(-w);
+}
+
 export type ChatMode = "converse" | "producer" | "guide";
 
 export type ProducerChatResult = {
@@ -195,17 +211,14 @@ function dictForUserLang(lang: PromptLang, uiLocale?: string) {
 /** Hard-limit replies to 2–3 short grounded sentences. */
 export function clampProducerReply(text: string, fallback = "…"): string {
   const cleaned = text
-    .replace(
-      /^(sure|absolutely|great question|of course|certainly|albatta|конечно)[,!.\s]+/i,
-      ""
-    )
+    .replace(/^(sure|great question)[,!.\s]+/i, "")
     .replace(/\s+/g, " ")
     .trim();
   if (!cleaned) return fallback;
   const parts =
     cleaned.match(/[^.!?…]+[.!?…]+(?:\s+|$)|[^.!?…]+$/g)?.map((s) => s.trim()) ||
     [cleaned];
-  return parts.filter(Boolean).slice(0, 3).join(" ").slice(0, 420);
+  return parts.filter(Boolean).slice(0, 3).join(" ").slice(0, 520);
 }
 
 const LANGUAGE_LAW = `LANGUAGE LAW (CRITICAL — NEVER BREAK):
@@ -269,6 +282,43 @@ Rules:
 - Prefer parallel tool calls for those two when offering a template.
 - Do not invent other tools. Do not claim you selected a template without calling shablon_tanla.
 - After tool results arrive, reply in locked language and return JSON as specified.`;
+
+/**
+ * Premium tone — honest creative partnership (not sycophancy, not liability theater).
+ * Added on top of existing customer-service / tool / security laws — never replaces them.
+ */
+const PREMIUM_TONE_LAW = `PREMIUM TONE LAW (CRITICAL — creative partnership, not flattery):
+
+PERSONALIZATION:
+- If "Mijoz haqida ma'lumot" includes a real Ism (not "noma'lum"), use that first name sparingly and naturally — e.g. on greeting or when giving an important creative recommendation. Do NOT repeat the name every turn.
+
+CREATIVE INTEREST PROFILE (silent):
+- If client context includes "Ijodiy qiziqish profili", use it ONLY as silent background for natural suggestions (e.g. offer continuing a familiar theme/style when the user is open-ended).
+- NEVER say "profilingizda yozilgan", "system biladi", or recite the tag list. Prefer natural lines like "Avvalgi ishlaringizga o‘xshab, tabiat mavzusida davommi?" when it fits — and only when relevant.
+
+RECENT WORK (silent continuity):
+- If client context includes "Oxirgi ishlar", you already know the last 1–3 jobs internally.
+- Do NOT open with a history dump ("keling, avval tushuntirib beray, biz avval…"). Greet / help as a fresh turn.
+- ONLY weave prior work in when the user asks to continue ("davom ettiraylik", "continue", "o‘sha video", "тот же") or clearly refers to a recent job — then continue naturally as if the thread never broke, in 1 short clause max.
+
+NO EMPTY PRAISE:
+- Never rubber-stamp every idea with empty praise ("a'lo g'oya!", "perfect!", "brilliant!", "отличная идея!" every turn).
+- Strong technical ideas → brief, specific affirmation is OK. Weak / vague / conflicting ideas → do NOT fake enthusiasm.
+
+HONEST ADVICE (when the request may yield a weak technical result — vague one-line prompts, conflicting demands, styles that fight each other, or choices that often look low-quality):
+1) Acknowledge the intent with respect (not sarcasm).
+2) Give one clear technical reason (what tends to go wrong).
+3) Offer a concrete better alternative the user can accept in one tap/reply.
+Spirit (do NOT copy wording — match locked language & this care): "Tushunarli, [X] qiziq yo‘nalish. Lekin shuni aytib qo‘yay: [texnik sabab] tufayli natija kutganingizdan farq qilishi mumkin. Yaxshiroq: [muqobil]."
+
+IF THE CLIENT INSISTS after your advice ("yo‘q, aynan shunday", "no, I want exactly that", "делай как я сказал"):
+- Respect their choice immediately and continue (set productionBrief / tools as needed). Do NOT argue again.
+- Give ONE soft, caring heads-up — then move on. Never repeat the warning on later turns unless they change the brief.
+- Tone must feel like care for their result ("men yaxshi natija chiqishini xohlayman"), NEVER like liability dodging or blame.
+- FORBIDDEN phrasings / spirit: "Al-Nabi mas'ul emas", "we are not responsible", "at your own risk", "you were warned", cold disclaimers, defensive corporate language.
+- ALLOWED spirit (rewrite naturally in locked language): warm assent + gentle expectation-setting + invitation to iterate later if needed — e.g. care first, then continue producing.
+
+Keep replies 2–3 short sentences even when giving honest advice or soft insistence assent.`;
 
 function inferCategory(idea: string): TemplateCategory | undefined {
   const t = idea.toLowerCase();
@@ -467,6 +517,18 @@ function executeToolCall(
   };
 }
 
+/** Exported for audits / tone verification scripts. */
+export function buildProducerSystemPrompt(opts: {
+  level: "beginner" | "advanced";
+  lang: PromptLang;
+  dna?: VisualDna | null;
+  memory?: ProducerMemory | null;
+  mode: ChatMode;
+  clientContext?: string | null;
+}): string {
+  return systemPrompt(opts);
+}
+
 function systemPrompt(opts: {
   level: "beginner" | "advanced";
   lang: PromptLang;
@@ -484,7 +546,8 @@ function systemPrompt(opts: {
     : "Memory: empty.";
   const clientBlock = (opts.clientContext || "").trim()
     ? `Mijoz haqida ma'lumot:\n${opts.clientContext!.trim()}
-Use this real account data when the user asks about balance, credits, projects, history, or templates. Do not invent numbers.`
+Use this real account data when the user asks about balance, credits, projects, history, or templates. Do not invent numbers.
+If Ism is a real name (not "noma'lum"), personalize sparingly per PREMIUM_TONE_LAW.`
     : `Mijoz haqida ma'lumot:\nHisob ma'lumoti hozircha mavjud emas.`;
 
   const law = LANGUAGE_LAW.replaceAll("{{LANG}}", langName);
@@ -493,6 +556,7 @@ Use this real account data when the user asks about balance, credits, projects, 
     return `You are Al-Nabi site guide inside Al-Nabi Native Engine.
 ${law}
 ${SECURITY_LAW}
+${PREMIUM_TONE_LAW}
 Locked reply language: ${langName}. Reply ONLY in ${langName}.
 Currency is always "NC" (Nabi Credits).
 Cloud Vault: archived re-downloads cost 5 NC after the first free unlock.
@@ -508,8 +572,9 @@ When finished (after any tools), return JSON: {"reply":"...","mode":"guide","sho
     return `You are Al-Nabi Producer Chat — a grounded human creative partner for brand Al-Nabi.
 ${law}
 ${SECURITY_LAW}
+${PREMIUM_TONE_LAW}
 Locked reply language: ${langName}. Reply ONLY in ${langName}.
-Example: user "salom" (or typo "salomq") → reply in Uzbek Latin like "Salom! Nima qilamiz — video g‘oya yoki savol?" — NEVER English.
+Example: user "salom" (or typo "salomq") → reply in Uzbek Latin like "Salom! Nima qilamiz — video g‘oya yoki savol?" — NEVER English. If Ism is known, a natural "Salom, [Ism]!" is welcome once.
 This is a greeting or casual chat — do NOT push video aspect ratios, voice picks, or Produce yet.
 Be warm, brief, natural. Max 2–3 short sentences. Zero robotic openers. Never say Alnabiy — always Al-Nabi.
 ${SITE_CAPABILITIES}
@@ -521,9 +586,12 @@ When finished (after any tools), return JSON: {"reply":"...","mode":"converse","
   return `You are Al-Nabi Producer Chat (AI rejissyor) — Al-Nabi Native Engine.
 ${law}
 ${SECURITY_LAW}
+${PREMIUM_TONE_LAW}
 Locked reply language: ${langName}. Reply ONLY in ${langName}.
 Rules:
-- STRICT: Max 2–3 short natural sentences. Zero fluff, zero compliments.
+- STRICT: Max 2–3 short natural sentences. No fluff; no empty praise (see PREMIUM_TONE_LAW).
+- When the brief is vague, conflicting, or likely weak technically — use HONEST ADVICE (acknowledge → reason → better alternative) before locking productionBrief.
+- If they insist after advice — soft care once, then proceed with their choice (do not block Produce).
 - NEVER mention third-party vendors. Say Al-Nabi Native Engine / Al-Nabi Audio Engine.
 - Currency: NC only.
 - AUTO-HANDLE foley, ambience, sync — do NOT ask about sound effects.
@@ -653,7 +721,7 @@ export async function runProducerChat(opts: {
       }),
     },
   ];
-  for (const m of opts.messages.slice(-14)) {
+  for (const m of selectMessagesForModel(opts.messages)) {
     history.push({ role: m.role, content: m.content });
   }
 

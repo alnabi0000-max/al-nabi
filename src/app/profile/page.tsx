@@ -32,7 +32,7 @@ function ProfileTabs() {
         tab === "umumiy" ? "max-w-lg" : "max-w-6xl"
       )}
     >
-      <div className="flex gap-1 rounded-xl bg-black/30 p-1">
+      <div className="flex gap-1 rounded-xl bg-nabi-input p-1">
         {sections.map(({ id, label }) => (
           <Link
             key={id}
@@ -42,7 +42,7 @@ function ProfileTabs() {
               "flex-1 rounded-lg px-3 py-2.5 text-center text-xs font-medium transition md:text-sm",
               tab === id
                 ? "bg-cyan-500/20 text-nabi-neon"
-                : "text-zinc-500 hover:text-white"
+                : "text-nabi-muted hover:text-nabi-ink"
             )}
           >
             {label}

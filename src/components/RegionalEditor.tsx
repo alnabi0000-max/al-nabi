@@ -44,7 +44,7 @@ export function RegionalEditor() {
         </button>
       </div>
       {status && (
-        <p className="rounded-lg border border-nabi-border bg-[#0d0f12] px-3 py-2 text-xs text-nabi-muted">
+        <p className="rounded-lg border border-nabi-border bg-nabi-surface px-3 py-2 text-xs text-nabi-muted">
           {status}
         </p>
       )}

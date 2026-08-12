@@ -14,6 +14,7 @@ import type { CameraMovement } from "@/lib/types";
 import { WATERMARK, PROMPT_TO_VIDEO_CLIP_SEC } from "@/lib/credits";
 import type { ImageEngineId, VideoEngineId } from "@/lib/ai/catalog";
 import { getResolvedModelId } from "@/lib/admin/model-registry";
+import { resolveNegativePrompt } from "@/lib/ai/negative-prompt";
 
 /** Render + billable ceiling for a single P2V clip (shared with credits.ts). */
 export const CLIP_DURATION_SEC = PROMPT_TO_VIDEO_CLIP_SEC;
@@ -177,7 +178,7 @@ function requireReplicateClient(): void {
   if (!client()) throw new Error("REPLICATE_NOT_CONFIGURED");
 }
 
-/** FLUX.1 Pro still */
+/** FLUX.1 Pro still — no native negative_prompt; quality via positive prompt only. */
 export async function generateFluxImage(opts: {
   prompt: string;
   aspect?: "16:9" | "9:16" | "1:1";
@@ -216,6 +217,7 @@ export async function generateSd35Image(opts: {
     model,
     {
       prompt: opts.prompt,
+      negative_prompt: resolveNegativePrompt(opts.prompt),
       aspect_ratio: aspectRatio,
       output_format: "png",
     },
@@ -232,15 +234,26 @@ type VideoOpts = {
   aspect?: "16:9" | "9:16" | "1:1";
 };
 
+/**
+ * Shared video provider input. Always attaches a conflict-aware negative_prompt
+ * (silent quality gate — not shown to the user). Callers may override via extra.
+ */
 function videoInput(opts: VideoOpts, extra: Record<string, unknown> = {}) {
   const prompt = withCamera(opts.prompt, opts.cameraMove);
   const seconds = Math.min(
     CLIP_DURATION_SEC,
     opts.durationSec || CLIP_DURATION_SEC
   );
+  const negative_prompt =
+    typeof extra.negative_prompt === "string"
+      ? extra.negative_prompt
+      : resolveNegativePrompt(opts.prompt);
+  const restExtra = { ...extra };
+  delete restExtra.negative_prompt;
   const input: Record<string, unknown> = {
     prompt,
-    ...extra,
+    negative_prompt,
+    ...restExtra,
   };
   if (opts.imageUrl) {
     input.image = opts.imageUrl;

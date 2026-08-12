@@ -38,11 +38,11 @@ export function AppToast() {
         className={clsx(
           "pointer-events-auto flex max-w-md items-start gap-3 rounded-2xl border px-4 py-3 shadow-2xl transition-opacity duration-200",
           appToast.type === "success" &&
-            "border-emerald-500/40 bg-[#0d1a14]/95 text-emerald-200",
+            "border-emerald-500/40 bg-nabi-surface/95 text-emerald-500",
           appToast.type === "info" &&
-            "border-cyan-500/40 bg-[#0d141a]/95 text-cyan-100",
+            "border-nabi-neon/40 bg-nabi-surface/95 text-nabi-neon",
           appToast.type === "error" &&
-            "border-rose-500/50 bg-[#1a0d12]/95 text-rose-100"
+            "border-rose-500/50 bg-nabi-surface/95 text-rose-500"
         )}
       >
         <Icon size={18} className="mt-0.5 shrink-0" />

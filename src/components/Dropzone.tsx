@@ -41,7 +41,7 @@ export function Dropzone({ onFile }: Props) {
         "relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed transition-all duration-300 ease-apple",
         drag
           ? "border-nabi-neon bg-cyan-500/5"
-          : "border-nabi-border bg-[#0d0f12] hover:border-nabi-neon/50"
+          : "border-nabi-border bg-nabi-surface hover:border-nabi-neon/50"
       )}
     >
       {preview ? (
@@ -53,9 +53,9 @@ export function Dropzone({ onFile }: Props) {
         />
       ) : (
         <>
-          <Upload className="text-zinc-500" size={28} />
+          <Upload className="text-nabi-muted" size={28} />
           <p className="text-sm text-nabi-muted">{tr("drag_drop_zone")}</p>
-          <p className="text-xs text-zinc-400">{tr("drag_drop_hint")}</p>
+          <p className="text-xs text-nabi-muted">{tr("drag_drop_hint")}</p>
         </>
       )}
       <input

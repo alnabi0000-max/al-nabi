@@ -90,17 +90,38 @@ model User {
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  coinLedger  CoinLedger[]
-  generations Generation[]
-  purchases   Purchase[]
-  referrals   Referral[]   @relation("Referrer")
-  referredAs  Referral[]   @relation("Invitee")
-  sessions    Session[]
+  coinLedger       CoinLedger[]
+  generations      Generation[]
+  purchases        Purchase[]
+  referrals        Referral[]   @relation("Referrer")
+  referredAs       Referral[]   @relation("Invitee")
+  sessions         Session[]
+  interestProfile  ProducerInterestProfile?
 
   @@index([email])
   @@index([alnabiyKey])
   @@index([referralCode])
   @@map("users")
+}
+
+/// Long-term creative interests for Producer Chat (learned from renders/generations)
+model ProducerInterestProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique @map("user_id") @db.Uuid
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Weighted tags: [{ "tag": "nature", "count": 3 }, ...]
+  interestTags     Json     @default("[]") @map("interest_tags")
+  /// Weighted styles: [{ "tag": "cinematic", "count": 2 }, ...]
+  styleTags        Json     @default("[]") @map("style_tags")
+  /// short | medium | long — most common duration bucket
+  durationBucket   String?  @map("duration_bucket")
+  preferredAspect  String?  @map("preferred_aspect")
+  sampleCount      Int      @default(0) @map("sample_count")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("producer_interest_profiles")
 }
 
 // ─── CoinLedger ───────────────────────────────────────────────────────────────

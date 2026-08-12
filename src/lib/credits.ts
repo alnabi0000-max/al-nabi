@@ -86,6 +86,43 @@ export function formatInsufficientFundsMessage(
   return `Balansingiz yetarli emas, kerak: ${requiredNc} ${COIN_NAME}, sizda: ${availableNc} ${COIN_NAME}`;
 }
 
+/**
+ * Find the longest duration (from candidates or minute steps) the user can
+ * afford with `availableNc` under the shared pricing formula.
+ */
+export function suggestAffordableDurationSec(
+  kind: GenerationKind,
+  availableNc: number,
+  opts?: CostOpts,
+  candidates: number[] = [30, 60, 180, 300, 600]
+): { durationSec: number; cost: number } | null {
+  if (availableNc <= 0) return null;
+  if (kind === "image") {
+    const cost = calculateGenerationCost("image", 1, opts);
+    return availableNc >= cost ? { durationSec: 1, cost } : null;
+  }
+
+  const sorted = [...new Set(candidates)]
+    .filter((s) => s > 0)
+    .sort((a, b) => b - a);
+
+  for (const durationSec of sorted) {
+    const cost = calculateGenerationCost(kind, durationSec, opts);
+    if (cost <= availableNc) return { durationSec, cost };
+  }
+
+  /* Minute-step fallback for movie (down to 1 min). */
+  if (kind === "text_to_movie") {
+    for (let mins = Math.floor(availableNc / CREDIT_RATES.text_to_movie_per_min); mins >= 1; mins--) {
+      const durationSec = mins * 60;
+      const cost = calculateGenerationCost(kind, durationSec, opts);
+      if (cost <= availableNc) return { durationSec, cost };
+    }
+  }
+
+  return null;
+}
+
 export type CostOpts = {
   /** Official video/image engine id (kling-v3, flux-pro, …) */
   engine?: string | null;

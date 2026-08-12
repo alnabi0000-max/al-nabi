@@ -27,7 +27,7 @@ export function InsufficientFundsModal() {
         aria-modal="true"
         aria-labelledby="insufficient-funds-title"
         tabIndex={-1}
-        className="insufficient-neon relative w-full max-w-md rounded-2xl border-2 border-rose-500/70 bg-[#12080c] p-6 shadow-[0_0_40px_rgba(244,63,94,0.55)] outline-none"
+        className="insufficient-neon relative w-full max-w-md rounded-2xl border-2 border-rose-500/70 bg-nabi-surface p-6 shadow-[0_0_40px_rgba(244,63,94,0.55)] outline-none"
       >
         <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-b from-rose-500/10 to-transparent" />
         <p className="relative text-center text-xs uppercase tracking-[0.25em] text-rose-400">

@@ -73,7 +73,7 @@ export function ModelSwitcher({
   return (
     <div className="space-y-4">
       <div>
-        <p className="mb-1 text-xs uppercase tracking-wider text-zinc-500">
+        <p className="mb-1 text-xs uppercase tracking-wider text-nabi-muted">
           Al-Nabi Models
         </p>
         <p className="mb-2 text-[11px] text-nabi-muted">
@@ -96,12 +96,12 @@ export function ModelSwitcher({
                 className={clsx(
                   "rounded-xl border px-3 py-2.5 text-left transition",
                   active
-                    ? "border-white/25 bg-white/[0.06]"
-                    : "border-white/10 bg-black/20 hover:border-white/20"
+                    ? "border-nabi-neon/40 bg-nabi-elevated"
+                    : "border-nabi-border bg-nabi-input hover:border-nabi-neon/35"
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold text-white">
+                  <span className="text-sm font-semibold text-nabi-ink">
                     {card.label}
                   </span>
                   {card.coinMultiplier !== 1 && (
@@ -110,7 +110,7 @@ export function ModelSwitcher({
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-[11px] text-zinc-400">
+                <p className="mt-0.5 text-[11px] text-nabi-muted">
                   {card.description}
                 </p>
               </button>
@@ -121,7 +121,7 @@ export function ModelSwitcher({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <p className="mb-2 text-xs uppercase tracking-wider text-zinc-500">
+          <p className="mb-2 text-xs uppercase tracking-wider text-nabi-muted">
             {tr("quality")}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -145,7 +145,7 @@ export function ModelSwitcher({
 
         {media === "video" && (
           <div>
-            <p className="mb-2 text-xs uppercase tracking-wider text-zinc-500">
+            <p className="mb-2 text-xs uppercase tracking-wider text-nabi-muted">
               {tr("frame_rate")}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -169,7 +169,7 @@ export function ModelSwitcher({
 
       {media === "video" && onCamera && (
         <div>
-          <p className="mb-2 text-xs uppercase tracking-wider text-zinc-500">
+          <p className="mb-2 text-xs uppercase tracking-wider text-nabi-muted">
             {tr("camera_motion")}
           </p>
           <div className="flex flex-wrap gap-2">

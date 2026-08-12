@@ -211,7 +211,7 @@ export function MediaLibrary({
 
   if (!mounted) {
     return (
-      <div className={clsx("nabi-card text-sm text-zinc-500", className)}>
+      <div className={clsx("nabi-card text-sm text-nabi-muted", className)}>
         {t("loading")}
       </div>
     );
@@ -239,8 +239,8 @@ export function MediaLibrary({
               className={clsx(
                 "rounded-lg px-3 py-1.5 text-xs transition",
                 filter === id
-                  ? "bg-gradient-to-r from-indigo-500/25 to-pink-500/25 text-white"
-                  : "bg-white/5 text-zinc-400 hover:text-white"
+                  ? "bg-gradient-to-r from-[var(--accent-from)]/25 to-[var(--accent-to)]/25 text-nabi-ink"
+                  : "bg-nabi-card text-nabi-muted hover:text-nabi-ink"
               )}
             >
               {t(key)}
@@ -264,11 +264,11 @@ export function MediaLibrary({
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-zinc-500">
+        <div className="flex items-center gap-2 text-sm text-nabi-muted">
           <Loader2 className="animate-spin" size={16} /> {t("loading")}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="nabi-card text-sm text-zinc-500">
+        <div className="nabi-card text-sm text-nabi-muted">
           {t("media_empty")}{" "}
           <Link href="/generate" className="text-nabi-neon underline">
             {t("generate")}
@@ -284,7 +284,7 @@ export function MediaLibrary({
                 key={`${asset.source}-${asset.id}`}
                 className="nabi-bento-item group flex min-h-[220px] flex-col"
               >
-                <div className="relative min-h-[140px] flex-1 bg-black/40">
+                <div className="relative min-h-[140px] flex-1 bg-nabi-input">
                   {url ? (
                     video ? (
                       <video
@@ -312,11 +312,11 @@ export function MediaLibrary({
                       />
                     )
                   ) : (
-                    <div className="flex h-full min-h-[140px] items-center justify-center text-zinc-400">
+                    <div className="flex h-full min-h-[140px] items-center justify-center text-nabi-muted">
                       {video ? <Film size={28} /> : <ImageIcon size={28} />}
                     </div>
                   )}
-                  <span className="absolute left-2 top-2 rounded-full border border-white/10 bg-black/50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-purple-200 backdrop-blur-md">
+                  <span className="absolute left-2 top-2 rounded-full border border-nabi-border bg-black/50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-nabi-neon backdrop-blur-md">
                     {video ? t("mode_video") : t("mode_image")}
                     {asset.quality ? ` · ${asset.quality}` : ""}
                   </span>
@@ -325,9 +325,9 @@ export function MediaLibrary({
                 <div className="space-y-3 p-3">
                   <div>
                     <p className="truncate text-sm font-medium">{asset.title}</p>
-                    <p className="mt-1 text-[11px] text-zinc-500">
+                    <p className="mt-1 text-[11px] text-nabi-muted">
                       {asset.durationSec}s ·{" "}
-                      <span className="text-pink-300/90">
+                      <span className="text-nabi-gold">
                         {asset.emotionMode}
                       </span>
                       {" · "}
@@ -340,7 +340,7 @@ export function MediaLibrary({
                       type="button"
                       onClick={() => onDownload(asset)}
                       disabled={!url || busyId === asset.id}
-                      className="inline-flex items-center gap-1 rounded-lg bg-pink-500/15 px-2.5 py-1.5 text-[11px] font-medium text-pink-200 transition hover:bg-pink-500/25 disabled:opacity-40"
+                      className="inline-flex items-center gap-1 rounded-lg bg-nabi-gold/15 px-2.5 py-1.5 text-[11px] font-medium text-nabi-gold transition hover:bg-nabi-gold/25 disabled:opacity-40"
                     >
                       <Download size={12} />
                       {t("media_download_4k")}
@@ -349,7 +349,7 @@ export function MediaLibrary({
                       type="button"
                       onClick={() => onRegenerate(asset)}
                       disabled={busyId === asset.id}
-                      className="inline-flex items-center gap-1 rounded-lg bg-indigo-500/15 px-2.5 py-1.5 text-[11px] font-medium text-indigo-200 transition hover:bg-indigo-500/25"
+                      className="inline-flex items-center gap-1 rounded-lg bg-nabi-neon/15 px-2.5 py-1.5 text-[11px] font-medium text-nabi-neon transition hover:bg-nabi-neon/25"
                     >
                       <RefreshCw size={12} />
                       {t("media_regenerate")}
@@ -358,7 +358,7 @@ export function MediaLibrary({
                       type="button"
                       onClick={() => void onDelete(asset)}
                       disabled={busyId === asset.id}
-                      className="inline-flex items-center gap-1 rounded-lg bg-white/5 px-2.5 py-1.5 text-[11px] font-medium text-zinc-400 transition hover:bg-rose-500/20 hover:text-rose-200 disabled:opacity-40"
+                      className="inline-flex items-center gap-1 rounded-lg bg-nabi-card px-2.5 py-1.5 text-[11px] font-medium text-nabi-muted transition hover:bg-rose-500/20 hover:text-rose-200 disabled:opacity-40"
                     >
                       {busyId === asset.id ? (
                         <Loader2 size={12} className="animate-spin" />
@@ -376,7 +376,7 @@ export function MediaLibrary({
       )}
 
       {!alnabiyKey && (
-        <p className="text-[11px] text-zinc-400">
+        <p className="text-[11px] text-nabi-muted">
           {t("media_local_only", { n: coins })}
         </p>
       )}

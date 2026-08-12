@@ -31,9 +31,9 @@ export function LanguageDropdown() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={t.header.language}
-        className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs text-zinc-200 transition hover:border-white/30 hover:text-white"
+        className="flex items-center gap-1.5 rounded-full border border-nabi-border bg-nabi-card px-3 py-1.5 text-xs text-nabi-ink transition hover:border-[var(--accent)]/40"
       >
-        <Languages size={14} className="text-zinc-400" />
+        <Languages size={14} className="text-nabi-muted" />
         {isMounted ? current?.native || "…" : "…"}
       </button>
       {open && isMounted && (
@@ -45,7 +45,7 @@ export function LanguageDropdown() {
             className="fixed inset-0 z-40 cursor-default"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 z-50 mt-2 max-h-72 w-52 overflow-y-auto rounded-xl border border-white/10 bg-[#12121a] p-1 shadow-xl">
+          <div className="absolute right-0 z-50 mt-2 max-h-72 w-52 overflow-y-auto rounded-xl border border-nabi-border bg-nabi-surface p-1 shadow-xl">
             {locales.map((l) => (
               <button
                 key={l.code}
@@ -54,10 +54,10 @@ export function LanguageDropdown() {
                   setLocale(l.code);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition hover:bg-white/5 ${
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition hover:bg-nabi-elevated ${
                   locale === l.code
-                    ? "bg-white/10 text-white"
-                    : "text-zinc-400"
+                    ? "bg-nabi-elevated text-nabi-ink"
+                    : "text-nabi-muted"
                 }`}
               >
                 <span>{l.native}</span>

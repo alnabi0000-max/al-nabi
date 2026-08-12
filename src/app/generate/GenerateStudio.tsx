@@ -21,6 +21,7 @@ import {
   type EmotionMode,
   type StyleKey,
 } from "@/lib/credits";
+import { InsufficientBalanceHint } from "@/components/InsufficientBalanceHint";
 import { friendlyApiError, parseApiResponse } from "@/lib/api-errors";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import { pushHistory } from "@/lib/generation-history";
@@ -44,6 +45,9 @@ import {
 } from "@/lib/templates/resolve";
 import type { StudioTemplate } from "@/lib/templates/types";
 import type { CameraMovement } from "@/lib/types";
+import { BgmPicker } from "@/components/BgmPicker";
+import type { BgmMode } from "@/lib/bgm/types";
+import { DEFAULT_BGM_SELECTION } from "@/lib/bgm/types";
 
 const MediaViewer = dynamic(
   () =>
@@ -63,6 +67,14 @@ const TemplatePicker = dynamic(
   () =>
     import("@/components/TemplatePicker").then((m) => ({
       default: m.TemplatePicker,
+    })),
+  { ssr: false }
+);
+
+const VideoShowcasePanel = dynamic(
+  () =>
+    import("@/components/VideoShowcasePanel").then((m) => ({
+      default: m.VideoShowcasePanel,
     })),
   { ssr: false }
 );
@@ -94,8 +106,12 @@ export default function GenerateStudio() {
   const [prompt, setPrompt] = useState("");
   const [mediaKind, setMediaKind] = useState<"image" | "video">("video");
   const [emotionMode, setEmotionMode] = useState<EmotionMode>("epic");
+  const [bgmMode, setBgmMode] = useState<BgmMode>(DEFAULT_BGM_SELECTION.mode);
+  const [bgmTrackId, setBgmTrackId] = useState<string | null>(
+    DEFAULT_BGM_SELECTION.trackId
+  );
   const [style] = useState<StyleKey>("cinematic");
-  const [quality] = useState<RenderQuality>("1080p");
+  const [quality, setQuality] = useState<RenderQuality>("1080p");
   const [frameRate] = useState<FrameRate>(24);
   const [videoEngine, setVideoEngine] = useState<VideoEngineId>("kling-v2.5");
   const [imageEngine, setImageEngine] = useState<ImageEngineId>("flux-pro");
@@ -278,6 +294,8 @@ export default function GenerateStudio() {
             emotionMode,
             locale,
             mediaKind: mediaKind === "image" ? "image" : "video",
+            bgmMode: mediaKind === "video" ? bgmMode : "off",
+            bgmTrackId: mediaKind === "video" ? bgmTrackId : null,
             alnabiyKey: key,
             clientBalance: coins,
             engine: mediaKind === "image" ? imageEngine : videoEngine,
@@ -328,7 +346,10 @@ export default function GenerateStudio() {
       }
       applyServerCharge({
         ok: true,
-        cost: data.creditsCost as number | undefined,
+        cost:
+          data.creditsPending || !data.creditsCost
+            ? undefined
+            : (data.creditsCost as number | undefined),
         balanceAfter: data.balanceAfter as number | undefined,
         receiptId: data.receiptId as string | undefined,
         label: tr("create_with_alnabiy"),
@@ -368,9 +389,28 @@ export default function GenerateStudio() {
         });
         if (status.failed) {
           setRenderStage("failed");
+          if (typeof status.balanceAfter === "number") {
+            applyServerCharge({
+              ok: true,
+              balanceAfter: status.balanceAfter,
+            });
+          }
           throw new Error(
             status.errorMessage || status.error || tr("generate_failed")
           );
+        }
+        if (
+          typeof status.creditsCost === "number" &&
+          status.creditsCost > 0
+        ) {
+          applyServerCharge({
+            ok: true,
+            cost: status.creditsCost,
+            balanceAfter:
+              typeof status.balanceAfter === "number"
+                ? status.balanceAfter
+                : undefined,
+          });
         }
         resultUrl =
           (status.resultUrl ||
@@ -441,14 +481,14 @@ export default function GenerateStudio() {
     <div key={locale} className="mx-auto max-w-7xl">
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
-          <p className="mb-1 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-zinc-500">
+          <p className="mb-1 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-nabi-muted">
             <Clapperboard size={12} />
             Studio Dashboard
           </p>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-white md:text-3xl">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-nabi-ink md:text-3xl">
             Al-Nabi
           </h1>
-          <p className="mt-1 max-w-lg text-sm text-zinc-500">
+          <p className="mt-1 max-w-lg text-sm text-nabi-muted">
             {tr("studio_subtitle")}
           </p>
         </div>
@@ -461,15 +501,15 @@ export default function GenerateStudio() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-        {/* Left — inputs */}
-        <section className="space-y-5 rounded-2xl border border-white/10 bg-white/[0.02] p-5 md:p-6">
+        {/* Left — inputs (below showcase on mobile) */}
+        <section className="order-2 space-y-5 rounded-2xl border border-nabi-border bg-nabi-card p-5 md:p-6 lg:order-1">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-nabi-muted">
               Featured templates
             </p>
             <Link
               href="/templates"
-              className="inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-white"
+              className="inline-flex items-center gap-1.5 text-xs text-nabi-muted transition hover:text-nabi-ink"
             >
               <LayoutTemplate size={12} />
               500+ Explorer
@@ -478,7 +518,7 @@ export default function GenerateStudio() {
           <TemplatePicker selectedId={templateId} onSelect={applyTemplate} />
 
           <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-nabi-muted">
               Al-Nabi Models
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -498,14 +538,14 @@ export default function GenerateStudio() {
                     className={clsx(
                       "rounded-xl border px-3 py-2.5 text-left transition",
                       active
-                        ? "border-white/30 bg-white/[0.08]"
-                        : "border-white/10 bg-black/20 hover:border-white/20"
+                        ? "border-nabi-neon/50 bg-nabi-elevated"
+                        : "border-nabi-border bg-nabi-input hover:border-nabi-neon/35"
                     )}
                   >
-                    <span className="block text-sm font-semibold text-white">
+                    <span className="block text-sm font-semibold text-nabi-ink">
                       {card.label}
                     </span>
-                    <span className="mt-0.5 block text-[11px] text-zinc-500">
+                    <span className="mt-0.5 block text-[11px] text-nabi-muted">
                       {card.description}
                     </span>
                   </button>
@@ -517,7 +557,7 @@ export default function GenerateStudio() {
           <div>
             <label
               htmlFor="studio-prompt"
-              className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-500"
+              className="mb-2 block text-xs font-medium uppercase tracking-wider text-nabi-muted"
             >
               {tr("prompt_label")}
             </label>
@@ -532,7 +572,7 @@ export default function GenerateStudio() {
           </div>
 
           <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-nabi-muted">
               Aspect Ratio
             </p>
             <div className="flex flex-wrap gap-2">
@@ -544,8 +584,8 @@ export default function GenerateStudio() {
                   className={clsx(
                     "rounded-lg border px-3 py-1.5 text-sm transition",
                     aspect === a
-                      ? "border-white/30 bg-white/10 text-white"
-                      : "border-white/10 text-zinc-400 hover:border-white/20"
+                      ? "border-nabi-neon/50 bg-nabi-elevated text-nabi-ink"
+                      : "border-nabi-border text-nabi-muted hover:border-nabi-neon/35"
                   )}
                 >
                   {a}
@@ -555,7 +595,7 @@ export default function GenerateStudio() {
           </div>
 
           <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-nabi-muted">
               Media
             </p>
             <div className="flex flex-wrap gap-2">
@@ -565,8 +605,8 @@ export default function GenerateStudio() {
                 className={clsx(
                   "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition",
                   mediaKind === "video"
-                    ? "border-white/30 bg-white/10 text-white"
-                    : "border-white/10 text-zinc-400 hover:border-white/20"
+                    ? "border-nabi-neon/50 bg-nabi-elevated text-nabi-ink"
+                    : "border-nabi-border text-nabi-muted hover:border-nabi-neon/35"
                 )}
               >
                 <Video size={14} />
@@ -578,8 +618,8 @@ export default function GenerateStudio() {
                 className={clsx(
                   "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition",
                   mediaKind === "image"
-                    ? "border-white/30 bg-white/10 text-white"
-                    : "border-white/10 text-zinc-400 hover:border-white/20"
+                    ? "border-nabi-neon/50 bg-nabi-elevated text-nabi-ink"
+                    : "border-nabi-border text-nabi-muted hover:border-nabi-neon/35"
                 )}
               >
                 <ImageIcon size={14} />
@@ -590,7 +630,7 @@ export default function GenerateStudio() {
 
           {mediaKind === "video" && (
             <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-nabi-muted">
                 Duration
               </p>
               <div className="flex flex-wrap gap-2">
@@ -602,8 +642,8 @@ export default function GenerateStudio() {
                     className={clsx(
                       "rounded-lg border px-3 py-1.5 text-sm transition",
                       duration === d
-                        ? "border-white/30 bg-white/10 text-white"
-                        : "border-white/10 text-zinc-400 hover:border-white/20"
+                        ? "border-nabi-neon/50 bg-nabi-elevated text-nabi-ink"
+                        : "border-nabi-border text-nabi-muted hover:border-nabi-neon/35"
                     )}
                   >
                     {d}s
@@ -613,10 +653,53 @@ export default function GenerateStudio() {
             </div>
           )}
 
+          {mediaKind === "video" && (
+            <BgmPicker
+              mode={bgmMode}
+              trackId={bgmTrackId}
+              onModeChange={setBgmMode}
+              onTrackChange={setBgmTrackId}
+              disabled={loading}
+              labels={{
+                title: tr("bgm_title"),
+                ai: tr("bgm_ai"),
+                manual: tr("bgm_manual"),
+                off: tr("bgm_off"),
+                aiHint: tr("bgm_ai_hint"),
+                empty: tr("bgm_empty"),
+                loading: tr("bgm_loading"),
+              }}
+            />
+          )}
+
+          <InsufficientBalanceHint
+            kind={generationKind}
+            cost={cost}
+            coins={coins}
+            durationSec={duration}
+            costOpts={{
+              engine: selectedEngine,
+              quality,
+              frameRate: mediaKind === "video" ? frameRate : undefined,
+            }}
+            durationCandidates={[5, 10, 15]}
+            onSelectDuration={setDuration}
+            onSelectQuality={(q) => setQuality(q as RenderQuality)}
+            currentQuality={quality}
+            storeLabel={tr("store")}
+            tryDurationLabel={(sec, nc) =>
+              tr("try_shorter_duration")
+                .replace("{duration}", `${sec}s`)
+                .replace("{cost}", String(nc))
+            }
+            tryQualityLabel={tr("try_quality_720p")}
+            tr={tr}
+          />
+
           <button
             type="button"
             onClick={generate}
-            disabled={loading || !prompt.trim() || isOffline}
+            disabled={loading || !prompt.trim() || isOffline || coins < cost}
             className="nabi-btn-primary w-full justify-center py-3"
           >
             {loading ? (
@@ -636,29 +719,31 @@ export default function GenerateStudio() {
           {error && <p className="text-sm text-rose-400">{error}</p>}
         </section>
 
-        {/* Right — preview / download */}
-        <aside className="space-y-4 lg:sticky lg:top-20 lg:h-fit">
-          <MediaViewer
-            loading={loading}
-            imageUrl={resultImage}
-            videoUrl={videoUrl}
-            progressPercent={progressPercent}
-            renderStage={renderStage}
-            generationId={generationId}
-            r2Key={r2Key}
-            mediaTitle={prompt.slice(0, 60)}
-            showActions={false}
-            providerLine={
-              provider
-                ? `${provider} · ${tr(`emotion_${emotionMode}`)}`
-                : undefined
-            }
-            className="!border-white/10"
-          />
+        {/* Right — showcase / preview (first on mobile for first impression) */}
+        <aside className="order-1 space-y-4 lg:sticky lg:top-20 lg:order-2 lg:h-fit">
+          {(hasOutput || loading) && (
+            <MediaViewer
+              loading={loading}
+              imageUrl={resultImage}
+              videoUrl={videoUrl}
+              progressPercent={progressPercent}
+              renderStage={renderStage}
+              generationId={generationId}
+              r2Key={r2Key}
+              mediaTitle={prompt.slice(0, 60)}
+              showActions={false}
+              providerLine={
+                provider
+                  ? `${provider} · ${tr(`emotion_${emotionMode}`)}`
+                  : undefined
+              }
+              className="!border-nabi-border"
+            />
+          )}
 
           {hasOutput && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-              <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-zinc-500">
+            <div className="rounded-2xl border border-nabi-border bg-nabi-card p-4">
+              <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-nabi-muted">
                 <Download size={12} />
                 Download
               </p>
@@ -674,9 +759,7 @@ export default function GenerateStudio() {
           )}
 
           {!hasOutput && !loading && (
-            <p className="text-center text-xs text-zinc-400">
-              {tr("media_viewer_empty")}
-            </p>
+            <VideoShowcasePanel />
           )}
         </aside>
       </div>

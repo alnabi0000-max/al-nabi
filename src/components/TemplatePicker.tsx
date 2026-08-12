@@ -49,11 +49,11 @@ function FeaturedCard({
       className={clsx(
         "group overflow-hidden rounded-xl border text-left transition",
         active
-          ? "border-white/35 bg-white/[0.08]"
-          : "border-white/10 bg-black/25 hover:border-white/20"
+          ? "border-white/35 bg-nabi-elevated"
+          : "border-nabi-border bg-nabi-input hover:border-nabi-neon/35"
       )}
     >
-      <div className="relative aspect-video bg-zinc-900">
+      <div className="relative aspect-video bg-nabi-surface">
         <TemplatePreviewMedia
           templateId={template.id}
           previewVideo={template.preview_video}
@@ -65,10 +65,10 @@ function FeaturedCard({
         </span>
       </div>
       <div className="px-2 py-1.5">
-        <p className="truncate text-xs font-medium text-white">
+        <p className="truncate text-xs font-medium text-nabi-ink">
           {template.title}
         </p>
-        <p className="truncate text-[10px] text-zinc-500">{resolved.aspect}</p>
+        <p className="truncate text-[10px] text-nabi-muted">{resolved.aspect}</p>
       </div>
     </button>
   );

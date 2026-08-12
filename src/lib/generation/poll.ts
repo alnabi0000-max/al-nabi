@@ -1,14 +1,19 @@
 import { progressFromStatus } from "@/lib/generation/progress";
 
 export type GenerationStatusPayload = {
-  ok: boolean;
+  ok?: boolean;
+  generationId?: string;
+  jobId?: string;
+  status?: string;
   done?: boolean;
   failed?: boolean;
-  status?: string;
   resultUrl?: string | null;
   videoUrl?: string | null;
   imageUrl?: string | null;
   r2Key?: string | null;
+  provider?: string | null;
+  creditsCost?: number;
+  balanceAfter?: number;
   errorMessage?: string | null;
   error?: string;
   percent?: number;

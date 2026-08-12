@@ -11,7 +11,7 @@ export default function BalancePage() {
     <div className="mx-auto max-w-lg space-y-6">
       <h1 className="text-2xl font-bold">{tr("balance")}</h1>
       <div className="nabi-card space-y-4">
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-6 text-center shadow-gold">
+        <div className="rounded-xl border border-nabi-gold/40 bg-nabi-gold/5 p-6 text-center shadow-gold">
           <p className="text-xs uppercase tracking-wider text-nabi-muted">
             {tr("current_balance")}
           </p>

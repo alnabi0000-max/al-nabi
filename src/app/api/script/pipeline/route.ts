@@ -15,11 +15,13 @@ import {
   muxVideoWithAudio,
   runMoviePipeline,
 } from "@/lib/ffmpeg-worker";
-import { withCreditGuard } from "@/lib/credit-gate";
+import { mixVoiceAndFoley } from "@/lib/producer/compose";
+import { resolveBgmSelection } from "@/lib/bgm";
+import { chargeCredits, computeCost, rollbackCredits } from "@/lib/credit-gate";
 import { persistJobAsset } from "@/lib/assets";
 import { ALNABIY_ENGINES, sanitizePublicPayload } from "@/lib/models";
 import { AlnabiySentinelEngine } from "@/lib/sentinel-engine";
-import { WATERMARK } from "@/lib/credits";
+import { WATERMARK, formatInsufficientFundsMessage } from "@/lib/credits";
 import type { VideoStyle } from "@/lib/types";
 import type { WordTiming } from "@/lib/audio";
 import { guardSensitiveRequest } from "@/lib/security/request-guard";
@@ -64,15 +66,19 @@ const schema = z.object({
       "orbit",
     ])
     .optional(),
+  bgmMode: z.enum(["ai", "manual", "off"]).optional().default("ai"),
+  bgmTrackId: z.string().max(200).optional().nullable(),
 });
 
 /**
  * Script-to-Movie:
- * Har sahnа ≈8s Wan/MiniMax + ElevenLabs → mux → final MP4
- * Coin guard (40/min) + rollback
+ * Analyze (free of NC debit) → charge once before first paid speech/video
+ * provider call → scenes → mux. Failure after debit → rollback.
  */
 export async function POST(req: NextRequest) {
   const jobId = `job_${Date.now()}`;
+  let charge: Awaited<ReturnType<typeof chargeCredits>> | null = null;
+  let ledgerKey: string | null | undefined;
 
   try {
     const blocked = await guardSensitiveRequest(req);
@@ -113,193 +119,238 @@ export async function POST(req: NextRequest) {
       alnabiyKey: body.alnabiyKey,
       allowGuest: isSoftAuthEnabled(),
     });
-    const ledgerKey = ensured?.user.alnabiyKey || body.alnabiyKey;
+    if (!ensured) {
+      return NextResponse.json(
+        { ok: false, code: "AUTH_REQUIRED", error: "Sign in required" },
+        { status: 401 }
+      );
+    }
+    ledgerKey = ensured.user.alnabiyKey || body.alnabiyKey;
 
-    const guarded = await withCreditGuard({
-      kind: "text_to_movie",
-      durationSec: body.durationSec,
-      alnabiyKey: ledgerKey,
-      clientBalance: body.clientBalance,
-      jobId,
-      reason: `pipeline:text_to_movie:${body.engine || "auto"}`,
-      costOpts: {
-        engine: body.engine || "auto",
-        quality: body.quality,
-        frameRate: body.frameRate,
-      },
-      run: async () => {
-        const analysis = await analyzeScriptToScenes(
-          gate.renderPrompt,
-          body.durationSec,
-          body.style as VideoStyle
-        );
+    const costOpts = {
+      engine: body.engine || "auto",
+      quality: body.quality,
+      frameRate: body.frameRate,
+    };
+    const expectedCost = computeCost(
+      "text_to_movie",
+      body.durationSec,
+      costOpts
+    );
 
-        const storage = process.env.STORAGE_DIR || "./storage";
-        const enriched: Array<{
-          index: number;
-          visual_prompt: string;
-          voice_text: string;
-          camera_movement: string;
-          duration: number;
-          videoUrl?: string;
-          audioPath?: string;
-          muxedPath?: string;
-          words?: WordTiming[];
-          durationMs?: number;
-        }> = [];
-
-        for (const scene of analysis.scenes) {
-          const sceneDuration = CLIP_DURATION_SEC;
-          const audioPath = path.join(
-            storage,
-            "jobs",
-            jobId,
-            `a_${scene.index}.mp3`
-          );
-
-          const speech = await synthesizeSpeech({
-            text: scene.voice_text,
-            outPath: audioPath,
-            emotion: body.emotionMode,
-            voiceId: body.voiceId,
-          });
-
-          const video = await generateVideoClip({
-            prompt: scene.visual_prompt,
-            cameraMove:
-              body.cameraMove ||
-              (scene.camera_movement as
-                | "static"
-                | "zoom_in"
-                | "zoom_out"
-                | "pan_left"
-                | "pan_right"
-                | "tilt_up"
-                | "tilt_down"
-                | "slow_mo"
-                | "orbit"
-                | undefined),
-            engine: body.engine || "auto",
-            durationSec: sceneDuration,
-            quality: body.quality || "1080p",
-            frameRate: body.frameRate,
-          });
-
-          if (!video.url) {
-            throw new Error(`Scene ${scene.index} video empty`);
-          }
-
-          const muxedPath = path.join(
-            storage,
-            "jobs",
-            jobId,
-            `mux_${scene.index}.mp4`
-          );
-
-          if (!speech.mock) {
-            await muxVideoWithAudio({
-              videoPathOrUrl: video.url,
-              audioPath: speech.audioPath,
-              outputPath: muxedPath,
-              durationSec: sceneDuration,
-            });
-          }
-
-          enriched.push({
-            index: scene.index,
-            visual_prompt: scene.visual_prompt,
-            voice_text: scene.voice_text,
-            camera_movement: scene.camera_movement,
-            duration: sceneDuration,
-            videoUrl: video.url,
-            audioPath,
-            muxedPath: speech.mock ? undefined : muxedPath,
-            words: speech.words,
-            durationMs: speech.durationMs,
-          });
-        }
-
-        const director = buildMovieDirectorPlan({
-          scenes: enriched.map((s) => ({
-            visual_prompt: s.visual_prompt,
-            voice_text: s.voice_text,
-            camera_movement: s.camera_movement,
-            words: s.words,
-            durationMs: s.durationMs || CLIP_DURATION_SEC * 1000,
-          })),
-          fps: 24,
-          engine: "hybrid",
-        });
-        const keyframes = planToKeyframePrompts(director, 500);
-
-        const muxedClips = enriched.filter((s) => s.muxedPath);
-        let resultPath: string;
-
-        if (muxedClips.length > 0) {
-          const { mergeClipsToMp4 } = await import("@/lib/ffmpeg-worker");
-          resultPath = path.join(storage, "jobs", jobId, "final.mp4");
-          await mergeClipsToMp4(
-            muxedClips.map((s) => ({
-              videoPath: s.muxedPath!,
-              duration: CLIP_DURATION_SEC,
-            })),
-            resultPath
-          );
-        } else {
-          resultPath = await runMoviePipeline({
-            jobId,
-            scenes: enriched.map((s) => ({
-              index: s.index,
-              visual_prompt: s.visual_prompt,
-              voice_text: s.voice_text,
-              camera_movement: s.camera_movement,
-              duration: s.duration,
-              videoUrl: s.videoUrl,
-              audioPath: s.audioPath,
-            })),
-          });
-        }
-
-        return {
-          analysis,
-          enriched,
-          director,
-          keyframes,
-          resultPath,
-          sceneCount: enriched.length,
-        };
-      },
-    });
-
-    if (!guarded.ok) {
+    if (ensured.user.coins < expectedCost) {
       return NextResponse.json(
         {
           ok: false,
           jobId,
           status: "FAILED",
-          error: guarded.error || guarded.charge.message,
-          code: guarded.charge.code,
-          cost: guarded.charge.cost,
-          required: guarded.charge.required ?? guarded.charge.cost,
-          balanceAfter: guarded.charge.balanceAfter,
-          rolledBack: guarded.rolledBack,
+          code: "INSUFFICIENT",
+          cost: expectedCost,
+          required: expectedCost,
+          balanceAfter: ensured.user.coins,
+          error: formatInsufficientFundsMessage(
+            expectedCost,
+            ensured.user.coins
+          ),
         },
-        {
-          status:
-            guarded.charge.code === "INSUFFICIENT"
-              ? 402
-              : guarded.charge.code === "BANNED"
-                ? 403
-                : guarded.charge.code === "UNAVAILABLE"
-                  ? 503
-                  : 500,
-        }
+        { status: 402 }
       );
     }
 
-    const { analysis, director, keyframes, resultPath, sceneCount } =
-      guarded.data;
-    const charge = guarded.charge;
+    const analysis = await analyzeScriptToScenes(
+      gate.renderPrompt,
+      body.durationSec,
+      body.style as VideoStyle
+    );
+
+    const storage = process.env.STORAGE_DIR || "./storage";
+    const bgm = await resolveBgmSelection({
+      mode: body.bgmMode || "ai",
+      trackId: body.bgmTrackId,
+      prompt: body.script,
+      emotion: body.emotionMode,
+      seed: jobId,
+    });
+    const enriched: Array<{
+      index: number;
+      visual_prompt: string;
+      voice_text: string;
+      camera_movement: string;
+      duration: number;
+      videoUrl?: string;
+      audioPath?: string;
+      muxedPath?: string;
+      words?: WordTiming[];
+      durationMs?: number;
+    }> = [];
+
+    for (const scene of analysis.scenes) {
+      if (!charge) {
+        charge = await chargeCredits({
+          kind: "text_to_movie",
+          durationSec: body.durationSec,
+          alnabiyKey: ledgerKey,
+          clientBalance: body.clientBalance,
+          jobId,
+          reason: `pipeline:text_to_movie:${body.engine || "auto"}:provider`,
+          costOpts,
+          noBonus: true,
+        });
+        if (!charge.ok) {
+          return NextResponse.json(
+            {
+              ok: false,
+              jobId,
+              status: "FAILED",
+              error: charge.message,
+              code: charge.code,
+              cost: charge.cost,
+              required: charge.required ?? charge.cost,
+              balanceAfter: charge.balanceAfter,
+            },
+            {
+              status:
+                charge.code === "INSUFFICIENT"
+                  ? 402
+                  : charge.code === "BANNED"
+                    ? 403
+                    : charge.code === "UNAVAILABLE"
+                      ? 503
+                      : 500,
+            }
+          );
+        }
+      }
+
+      const sceneDuration = CLIP_DURATION_SEC;
+      const audioPath = path.join(
+        storage,
+        "jobs",
+        jobId,
+        `a_${scene.index}.mp3`
+      );
+
+      const speech = await synthesizeSpeech({
+        text: scene.voice_text,
+        outPath: audioPath,
+        emotion: body.emotionMode,
+        voiceId: body.voiceId,
+      });
+
+      const video = await generateVideoClip({
+        prompt: scene.visual_prompt,
+        cameraMove:
+          body.cameraMove ||
+          (scene.camera_movement as
+            | "static"
+            | "zoom_in"
+            | "zoom_out"
+            | "pan_left"
+            | "pan_right"
+            | "tilt_up"
+            | "tilt_down"
+            | "slow_mo"
+            | "orbit"
+            | undefined),
+        engine: body.engine || "auto",
+        durationSec: sceneDuration,
+        quality: body.quality || "1080p",
+        frameRate: body.frameRate,
+      });
+
+      if (!video.url) {
+        throw new Error(`Scene ${scene.index} video empty`);
+      }
+
+      const muxedPath = path.join(
+        storage,
+        "jobs",
+        jobId,
+        `mux_${scene.index}.mp4`
+      );
+
+      if (!speech.mock) {
+        let audioForMux = speech.audioPath;
+        if (bgm) {
+          const mixedPath = path.join(
+            storage,
+            "jobs",
+            jobId,
+            `mix_${scene.index}.m4a`
+          );
+          await mixVoiceAndFoley({
+            voicePath: speech.audioPath,
+            foley: [],
+            outputPath: mixedPath,
+            durationSec: sceneDuration,
+            bgmPath: bgm.path,
+          });
+          audioForMux = mixedPath;
+        }
+        await muxVideoWithAudio({
+          videoPathOrUrl: video.url,
+          audioPath: audioForMux,
+          outputPath: muxedPath,
+          durationSec: sceneDuration,
+        });
+      }
+
+      enriched.push({
+        index: scene.index,
+        visual_prompt: scene.visual_prompt,
+        voice_text: scene.voice_text,
+        camera_movement: scene.camera_movement,
+        duration: sceneDuration,
+        videoUrl: video.url,
+        audioPath,
+        muxedPath: speech.mock ? undefined : muxedPath,
+        words: speech.words,
+        durationMs: speech.durationMs,
+      });
+    }
+
+    const director = buildMovieDirectorPlan({
+      scenes: enriched.map((s) => ({
+        visual_prompt: s.visual_prompt,
+        voice_text: s.voice_text,
+        camera_movement: s.camera_movement,
+        words: s.words,
+        durationMs: s.durationMs || CLIP_DURATION_SEC * 1000,
+      })),
+      fps: 24,
+      engine: "hybrid",
+    });
+    const keyframes = planToKeyframePrompts(director, 500);
+
+    const muxedClips = enriched.filter((s) => s.muxedPath);
+    let resultPath: string;
+
+    if (muxedClips.length > 0) {
+      const { mergeClipsToMp4 } = await import("@/lib/ffmpeg-worker");
+      resultPath = path.join(storage, "jobs", jobId, "final.mp4");
+      await mergeClipsToMp4(
+        muxedClips.map((s) => ({
+          videoPath: s.muxedPath!,
+          duration: CLIP_DURATION_SEC,
+        })),
+        resultPath
+      );
+    } else {
+      resultPath = await runMoviePipeline({
+        jobId,
+        scenes: enriched.map((s) => ({
+          index: s.index,
+          visual_prompt: s.visual_prompt,
+          voice_text: s.voice_text,
+          camera_movement: s.camera_movement,
+          duration: s.duration,
+          videoUrl: s.videoUrl,
+          audioPath: s.audioPath,
+        })),
+      });
+    }
+
+    const sceneCount = enriched.length;
     const resultUrl = `/api/media/jobs/${jobId}/final.mp4`;
 
     await persistJobAsset({
@@ -315,7 +366,7 @@ export async function POST(req: NextRequest) {
       style: body.style,
       quality: "4K",
       provider: "script-pipeline",
-      creditsCost: charge.cost,
+      creditsCost: charge?.cost || expectedCost,
     });
 
     return NextResponse.json(
@@ -324,9 +375,9 @@ export async function POST(req: NextRequest) {
         jobId,
         status: "COMPLETED",
         sceneCount,
-        creditsCost: charge.cost,
-        balanceAfter: charge.balanceAfter,
-        receiptId: charge.receiptId,
+        creditsCost: charge?.cost || expectedCost,
+        balanceAfter: charge?.balanceAfter,
+        receiptId: charge?.receiptId,
         resultPath,
         resultUrl,
         clipDurationSec: CLIP_DURATION_SEC,
@@ -357,8 +408,25 @@ export async function POST(req: NextRequest) {
     );
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Pipeline failed";
+    if (charge?.ok) {
+      await rollbackCredits({
+        amount: charge.cost,
+        alnabiyKey: ledgerKey,
+        userId: charge.userId,
+        receiptId: charge.receiptId,
+        jobId,
+        clientBalance: charge.balanceAfter,
+        reason: `rollback:${msg.slice(0, 80)}`,
+      }).catch(() => undefined);
+    }
     return NextResponse.json(
-      { ok: false, jobId, status: "FAILED", error: msg },
+      {
+        ok: false,
+        jobId,
+        status: "FAILED",
+        error: msg,
+        rolledBack: charge?.ok ? charge.cost : 0,
+      },
       { status: 500 }
     );
   }

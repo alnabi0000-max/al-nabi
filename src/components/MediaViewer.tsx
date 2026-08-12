@@ -75,7 +75,7 @@ export function MediaViewer({
           {t("preview_secure_title")}
         </h2>
         {loading && (
-          <span className="inline-flex items-center gap-1.5 text-[11px] text-purple-300">
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-nabi-neon">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-pink-400" />
             {t("render_in_progress")}
           </span>
@@ -85,10 +85,10 @@ export function MediaViewer({
       {loading && (
         <div className="space-y-3">
           <div className="nabi-neon-frame aspect-video">
-            <div className="absolute inset-[2px] flex flex-col items-center justify-center gap-4 rounded-[14px] bg-[#090A0F]/90 p-6">
-              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-indigo-500/30 via-purple-500/20 to-pink-500/30 blur-sm" />
-              <div className="absolute h-10 w-10 animate-pulse rounded-full bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 opacity-80" />
-              <p className="relative z-10 mt-14 text-center text-xs text-zinc-400">
+            <div className="absolute inset-[2px] flex flex-col items-center justify-center gap-4 rounded-[14px] bg-nabi-bg/90 p-6">
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[var(--accent-from)]/30 via-[var(--accent-via)]/20 to-[var(--accent-to)]/30 blur-sm" />
+              <div className="absolute h-10 w-10 animate-pulse rounded-full bg-gradient-to-r from-[var(--accent-from)] via-[var(--accent-via)] to-[var(--accent-to)] opacity-80" />
+              <p className="relative z-10 mt-14 text-center text-xs text-nabi-muted">
                 {t("render_skeleton_hint")}
               </p>
               <div className="relative z-10 w-full max-w-sm">
@@ -106,7 +106,7 @@ export function MediaViewer({
             <img
               src={imageUrl}
               alt="Generated result"
-              className="w-full rounded-xl border border-white/10"
+              className="w-full rounded-xl border border-nabi-border"
             />
           ) : videoUrl && !videoUrlB ? (
             <SecurePlayer src={videoUrl} autoPlay muted />
@@ -119,12 +119,12 @@ export function MediaViewer({
               autoPlay
             />
           ) : (
-            <p className="py-10 text-center text-xs text-zinc-400">
+            <p className="py-10 text-center text-xs text-nabi-muted">
               {t("media_viewer_empty")}
             </p>
           )}
           {providerLine && (
-            <p className="text-[10px] text-zinc-500">{providerLine}</p>
+            <p className="text-[10px] text-nabi-muted">{providerLine}</p>
           )}
           {showActions && hasMedia && (
             <MediaActions

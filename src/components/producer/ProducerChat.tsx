@@ -40,6 +40,9 @@ import {
   buildTransferPayload,
   saveTemplateTransfer,
 } from "@/lib/templates/resolve";
+import { BgmPicker } from "@/components/BgmPicker";
+import type { BgmMode } from "@/lib/bgm/types";
+import { DEFAULT_BGM_SELECTION } from "@/lib/bgm/types";
 
 type Msg = {
   id: string;
@@ -81,8 +84,8 @@ const ChatBubble = memo(function ChatBubble({ message }: { message: Msg }) {
           "text-sm leading-relaxed shadow-md",
           /* Telegram-style: no white ovals / white borders */
           isUser
-            ? "max-w-[80%] self-end rounded-2xl rounded-tr-sm border-0 bg-gradient-to-br from-purple-600 to-indigo-700 px-4 py-2.5 text-white"
-            : "max-w-[85%] self-start rounded-2xl rounded-tl-sm border border-zinc-700/40 bg-zinc-800/90 px-4 py-2.5 text-zinc-100 backdrop-blur-md"
+            ? "max-w-[80%] self-end rounded-2xl rounded-tr-sm border-0 bg-gradient-to-br from-[var(--accent-from)] to-[var(--accent-to)] px-4 py-2.5 text-nabi-on"
+            : "max-w-[85%] self-start rounded-2xl rounded-tl-sm border border-nabi-border bg-nabi-elevated px-4 py-2.5 text-nabi-ink backdrop-blur-md"
         )}
       >
         {message.imageUrl && (
@@ -140,7 +143,7 @@ const QuickActionBar = memo(function QuickActionBar({
 }) {
   if (!actions.length) return null;
   return (
-    <div className="pc-quick-bar shrink-0 border-t border-white/5 bg-[#0B0C12]/85 px-3 py-2 backdrop-blur-md sm:px-4">
+    <div className="pc-quick-bar shrink-0 border-t border-nabi-border bg-nabi-surface/85 px-3 py-2 backdrop-blur-md sm:px-4">
       <div className="flex max-h-[4.75rem] flex-wrap gap-2 overflow-y-auto overscroll-contain pr-0.5">
       {actions.map((a) => {
         const label = labelForQuickAction(a, t);
@@ -159,12 +162,12 @@ const QuickActionBar = memo(function QuickActionBar({
             className={clsx(
               "shrink-0 rounded-full border px-3 py-1.5 text-xs transition",
               a.id === "produce"
-                ? "border-white/30 bg-white text-zinc-950"
+                ? "border-nabi-neon/50 bg-nabi-ink text-nabi-bg"
                 : a.id === "select_template"
                   ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-50 hover:border-emerald-300/70"
                   : a.id === "voice_preview"
-                    ? "border-fuchsia-400/40 text-fuchsia-100"
-                    : "border-white/10 text-zinc-300 hover:border-white/25"
+                    ? "border-nabi-gold/40 text-nabi-gold"
+                    : "border-nabi-border text-nabi-ink hover:border-nabi-neon/40"
             )}
           >
             {a.id === "produce" ? (
@@ -224,9 +227,9 @@ const ChatComposer = memo(function ChatComposer({
   }, [draft, onSend]);
 
   return (
-    <div className="pc-composer shrink-0 border-t border-white/5 bg-[#0B0C12] px-3 pt-3 backdrop-blur-md">
+    <div className="pc-composer shrink-0 border-t border-nabi-border bg-nabi-surface px-3 pt-3 backdrop-blur-md">
       {(imageUrl || linkNote) && (
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-nabi-muted">
           {imageUrl && (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -242,7 +245,7 @@ const ChatComposer = memo(function ChatComposer({
             </>
           )}
           {linkNote && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5">
+            <span className="inline-flex items-center gap-1 rounded-full border border-nabi-border px-2 py-0.5">
               <Link2 size={11} />
               {linkNote.slice(0, 42)}
               <button
@@ -260,7 +263,7 @@ const ChatComposer = memo(function ChatComposer({
         <button
           type="button"
           onClick={onPickFile}
-          className="shrink-0 rounded-xl border border-white/10 p-2.5 text-zinc-400 hover:text-white"
+          className="shrink-0 rounded-xl border border-nabi-border p-2.5 text-nabi-muted hover:text-nabi-ink"
           aria-label={t.chat.uploadImage}
         >
           <ImagePlus size={18} />
@@ -268,7 +271,7 @@ const ChatComposer = memo(function ChatComposer({
         <button
           type="button"
           onClick={() => setDraft(onAttachLink(draft))}
-          className="shrink-0 rounded-xl border border-white/10 p-2.5 text-zinc-400 hover:text-white"
+          className="shrink-0 rounded-xl border border-nabi-border p-2.5 text-nabi-muted hover:text-nabi-ink"
           aria-label={t.chat.attachLink}
           title={t.chat.attachLink}
         >
@@ -279,7 +282,7 @@ const ChatComposer = memo(function ChatComposer({
           onChange={onChange}
           rows={2}
           placeholder={t.chat.placeholder}
-          className="min-h-[44px] min-w-0 flex-1 resize-none rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-white/25"
+          className="min-h-[44px] min-w-0 flex-1 resize-none rounded-xl border border-nabi-border bg-nabi-input px-3 py-2 text-sm text-nabi-ink outline-none placeholder:text-nabi-muted focus:border-nabi-neon/40"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -292,7 +295,7 @@ const ChatComposer = memo(function ChatComposer({
           disabled={busy}
           onClick={submit}
           aria-label={t.chat.send}
-          className="shrink-0 rounded-xl bg-white p-2.5 text-zinc-950 disabled:opacity-50"
+          className="shrink-0 rounded-xl bg-nabi-ink p-2.5 text-nabi-bg disabled:opacity-50"
         >
           {busy ? (
             <Loader2 size={18} className="animate-spin" />
@@ -315,6 +318,10 @@ const SessionPanel = memo(function SessionPanel({
   resultUrl,
   audioRef,
   onPreview,
+  bgmMode,
+  bgmTrackId,
+  onBgmModeChange,
+  onBgmTrackChange,
 }: {
   t: Dictionary;
   aspect: string;
@@ -325,29 +332,51 @@ const SessionPanel = memo(function SessionPanel({
   resultUrl: string | null;
   audioRef: RefObject<HTMLAudioElement | null>;
   onPreview: () => void;
+  bgmMode: BgmMode;
+  bgmTrackId: string | null;
+  onBgmModeChange: (mode: BgmMode) => void;
+  onBgmTrackChange: (trackId: string | null) => void;
 }) {
   return (
     <>
-      <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-        <p className="text-[10px] uppercase tracking-wider text-zinc-500">
+      <div className="rounded-2xl border border-nabi-border bg-nabi-card p-4">
+        <p className="text-[10px] uppercase tracking-wider text-nabi-muted">
           {t.chat.session}
         </p>
         <dl className="mt-3 space-y-2 text-sm">
           <div className="flex justify-between gap-2">
-            <dt className="text-zinc-500">{t.chat.aspect}</dt>
-            <dd className="text-white">{aspect}</dd>
+            <dt className="text-nabi-muted">{t.chat.aspect}</dt>
+            <dd className="text-nabi-ink">{aspect}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-zinc-500">{t.chat.narration}</dt>
-            <dd className="capitalize text-white">{narration}</dd>
+            <dt className="text-nabi-muted">{t.chat.narration}</dt>
+            <dd className="capitalize text-nabi-ink">{narration}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-zinc-500">Audio</dt>
-            <dd className="text-white">{t.chat.audio}</dd>
+            <dt className="text-nabi-muted">Audio</dt>
+            <dd className="text-nabi-ink">{t.chat.audio}</dd>
           </div>
         </dl>
+        <div className="mt-4 border-t border-nabi-border pt-4">
+          <BgmPicker
+            mode={bgmMode}
+            trackId={bgmTrackId}
+            onModeChange={onBgmModeChange}
+            onTrackChange={onBgmTrackChange}
+            disabled={busy === "render"}
+            labels={{
+              title: t.chat.bgmTitle,
+              ai: t.chat.bgmAi,
+              manual: t.chat.bgmManual,
+              off: t.chat.bgmOff,
+              aiHint: t.chat.bgmAiHint,
+              empty: t.chat.bgmEmpty,
+              loading: t.chat.bgmLoading,
+            }}
+          />
+        </div>
         {dna && (
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-nabi-muted">
             {dna.artStyle} · {dna.lighting}
           </p>
         )}
@@ -355,7 +384,7 @@ const SessionPanel = memo(function SessionPanel({
           type="button"
           disabled={busy === "preview"}
           onClick={onPreview}
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-fuchsia-400/30 bg-fuchsia-500/10 px-3 py-2 text-xs text-fuchsia-100"
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-nabi-gold/30 bg-nabi-gold/10 px-3 py-2 text-xs text-nabi-gold"
         >
           <Volume2 size={14} />
           {t.chat.voicePreviewFree}
@@ -364,13 +393,13 @@ const SessionPanel = memo(function SessionPanel({
           <audio ref={audioRef} src={previewUrl} controls className="mt-3 w-full" />
         )}
       </div>
-      <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-        <p className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-zinc-500">
+      <div className="rounded-2xl border border-nabi-border bg-nabi-card p-4">
+        <p className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-nabi-muted">
           <Clapperboard size={12} />
           {t.chat.output}
         </p>
         {busy === "render" && (
-          <p className="flex items-center gap-2 text-sm text-zinc-400">
+          <p className="flex items-center gap-2 text-sm text-nabi-muted">
             <Loader2 size={14} className="animate-spin" />
             {t.chat.rendering}
           </p>
@@ -380,11 +409,11 @@ const SessionPanel = memo(function SessionPanel({
             src={resultUrl}
             controls
             playsInline
-            className="mt-2 w-full rounded-xl border border-white/10"
+            className="mt-2 w-full rounded-xl border border-nabi-border"
           />
         )}
         {!resultUrl && busy !== "render" && (
-          <p className="text-xs text-zinc-400">{t.chat.vaultHint}</p>
+          <p className="text-xs text-nabi-muted">{t.chat.vaultHint}</p>
         )}
       </div>
     </>
@@ -414,6 +443,10 @@ export function ProducerChat({
   const [narration, setNarration] = useState<
     "epic" | "calm" | "drama" | "joy" | "neutral"
   >("epic");
+  const [bgmMode, setBgmMode] = useState<BgmMode>(DEFAULT_BGM_SELECTION.mode);
+  const [bgmTrackId, setBgmTrackId] = useState<string | null>(
+    DEFAULT_BGM_SELECTION.trackId
+  );
   const [brief, setBrief] = useState("");
   const [busy, setBusy] = useState<"chat" | "render" | "preview" | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
@@ -433,6 +466,8 @@ export function ProducerChat({
     level,
     aspect,
     narration,
+    bgmMode,
+    bgmTrackId,
     brief,
     memoryKey,
     alnabiyKey,
@@ -447,6 +482,8 @@ export function ProducerChat({
     level,
     aspect,
     narration,
+    bgmMode,
+    bgmTrackId,
     brief,
     memoryKey,
     alnabiyKey,
@@ -525,7 +562,8 @@ export function ProducerChat({
             ...(s.alnabiyKey ? { "x-alnabiy-key": s.alnabiyKey } : {}),
           },
           body: JSON.stringify({
-            messages: nextMessages.map((m) => ({
+            /* Full thread stays in UI; only a recent window is posted (silent). */
+            messages: nextMessages.slice(-20).map((m) => ({
               role: m.role,
               content: m.content,
               imageUrl: m.imageUrl,
@@ -642,6 +680,8 @@ export function ProducerChat({
             narration: s.narration,
             visualDna: s.dna,
             durationSec: 8,
+            bgmMode: s.bgmMode,
+            bgmTrackId: s.bgmTrackId,
           }),
         },
         /* Full render: video + VO + Foley + mux — matches server maxDuration=300s */
@@ -726,15 +766,15 @@ export function ProducerChat({
           "flex min-h-0 flex-col overflow-hidden",
           compact
             ? "flex-1"
-            : "min-h-[min(70vh,720px)] max-h-[calc(100dvh-10rem)] rounded-2xl border border-white/10 bg-[#0B0C12]/40"
+            : "min-h-[min(70vh,720px)] max-h-[calc(100dvh-10rem)] rounded-2xl border border-nabi-border bg-nabi-surface/40"
         )}
       >
-        <header className="flex items-center justify-between gap-3 border-b border-white/5 bg-[#0B0C12]/90 px-4 py-3 backdrop-blur-md">
+        <header className="flex items-center justify-between gap-3 border-b border-nabi-border bg-nabi-surface/90 px-4 py-3 backdrop-blur-md">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-nabi-muted">
               {t.chat.engine}
             </p>
-            <h1 className="truncate text-lg font-semibold text-white">
+            <h1 className="truncate text-lg font-semibold text-nabi-ink">
               ✨ {t.chat.title}
             </h1>
           </div>
@@ -744,11 +784,11 @@ export function ProducerChat({
               onClick={cycleWallpaper}
               title={`${t.chat.wallpaper}: ${wallpaper.label}`}
               aria-label={`${t.chat.wallpaper}: ${wallpaper.label}`}
-              className="inline-flex items-center justify-center rounded-lg border border-white/10 px-2 py-1.5 text-base leading-none transition hover:border-white/25 hover:bg-white/5"
+              className="inline-flex items-center justify-center rounded-lg border border-nabi-border px-2 py-1.5 text-base leading-none transition hover:border-nabi-neon/40 hover:bg-nabi-elevated"
             >
               <span aria-hidden>🎨</span>
             </button>
-            <div className="flex gap-1 rounded-full border border-white/10 p-0.5 text-xs">
+            <div className="flex gap-1 rounded-full border border-nabi-border p-0.5 text-xs">
               {(["beginner", "advanced"] as const).map((l) => (
                 <button
                   key={l}
@@ -756,7 +796,7 @@ export function ProducerChat({
                   onClick={() => setLevel(l)}
                   className={clsx(
                     "rounded-full px-2.5 py-1 capitalize",
-                    level === l ? "bg-white text-zinc-950" : "text-zinc-400"
+                    level === l ? "bg-nabi-ink text-nabi-bg" : "text-nabi-muted"
                   )}
                 >
                   {l === "beginner" ? t.chat.beginner : t.chat.advanced}
@@ -767,7 +807,7 @@ export function ProducerChat({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-lg p-1.5 text-zinc-400 hover:bg-white/5 hover:text-white"
+                className="rounded-lg p-1.5 text-nabi-muted hover:bg-nabi-elevated hover:text-nabi-ink"
                 aria-label={t.chat.close}
               >
                 <X size={16} />
@@ -784,6 +824,27 @@ export function ProducerChat({
           t={t}
           onQuick={onQuick}
         />
+
+        {compact && (
+          <div className="shrink-0 border-t border-nabi-border px-3 py-2">
+            <BgmPicker
+              mode={bgmMode}
+              trackId={bgmTrackId}
+              onModeChange={setBgmMode}
+              onTrackChange={setBgmTrackId}
+              disabled={busy === "render"}
+              labels={{
+                title: t.chat.bgmTitle,
+                ai: t.chat.bgmAi,
+                manual: t.chat.bgmManual,
+                off: t.chat.bgmOff,
+                aiHint: t.chat.bgmAiHint,
+                empty: t.chat.bgmEmpty,
+                loading: t.chat.bgmLoading,
+              }}
+            />
+          </div>
+        )}
 
         <input
           ref={fileRef}
@@ -824,13 +885,17 @@ export function ProducerChat({
             resultUrl={resultUrl}
             audioRef={audioRef}
             onPreview={voicePreview}
+            bgmMode={bgmMode}
+            bgmTrackId={bgmTrackId}
+            onBgmModeChange={setBgmMode}
+            onBgmTrackChange={setBgmTrackId}
           />
         </aside>
       )}
 
       {compact && (previewUrl || resultUrl || busy === "render") && (
-        <div className="shrink-0 border-t border-white/5 px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-          <div className="flex items-center justify-between gap-2 text-[11px] text-zinc-500">
+        <div className="shrink-0 border-t border-nabi-border px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <div className="flex items-center justify-between gap-2 text-[11px] text-nabi-muted">
             <span className="truncate">
               {aspect} · {narration}
             </span>
@@ -838,7 +903,7 @@ export function ProducerChat({
               type="button"
               disabled={busy === "preview"}
               onClick={() => void voicePreview()}
-              className="inline-flex shrink-0 items-center gap-1 text-fuchsia-200"
+              className="inline-flex shrink-0 items-center gap-1 text-nabi-gold"
             >
               {busy === "preview" ? (
                 <Loader2 size={12} className="animate-spin" />
@@ -857,7 +922,7 @@ export function ProducerChat({
             />
           )}
           {busy === "render" && (
-            <p className="mt-2 flex items-center gap-2 text-xs text-zinc-400">
+            <p className="mt-2 flex items-center gap-2 text-xs text-nabi-muted">
               <Loader2 size={12} className="animate-spin" />
               {t.chat.rendering}
             </p>
@@ -867,7 +932,7 @@ export function ProducerChat({
               src={resultUrl}
               controls
               playsInline
-              className="mt-2 max-h-40 w-full rounded-lg border border-white/10"
+              className="mt-2 max-h-40 w-full rounded-lg border border-nabi-border"
             />
           )}
         </div>
