@@ -81,7 +81,15 @@ export async function POST(req: NextRequest) {
         data: { status: "FAILED", errorMessage: charge.message },
       });
       return apiJson(
-        { ok: false, success: false, error: charge.message, code: charge.code },
+        {
+          ok: false,
+          success: false,
+          error: charge.message,
+          code: charge.code,
+          cost: charge.cost,
+          required: charge.required ?? charge.cost,
+          balanceAfter: charge.balanceAfter,
+        },
         { status: charge.code === "INSUFFICIENT" ? 402 : charge.code === "BANNED" ? 403 : 400 }
       );
     }

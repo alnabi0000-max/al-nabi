@@ -58,10 +58,10 @@ export async function POST(req: NextRequest) {
         { status: 503 }
       );
     }
-    const rawNext = body.next || "/dashboard";
+    const rawNext = body.next || "/profile?tab=kabinet";
     const next = /^\/(?!\/)[a-zA-Z0-9/_?&=%.-]*$/.test(rawNext)
       ? rawNext
-      : "/dashboard";
+      : "/profile?tab=kabinet";
 
     const { error } = await supabase.auth.signInWithOtp({
       email: body.email.toLowerCase(),

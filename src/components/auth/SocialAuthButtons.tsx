@@ -15,7 +15,7 @@ type Props = {
  * One-click Google & Apple — parol talab qilinmaydi.
  */
 export function SocialAuthButtons({
-  next = "/dashboard",
+  next = "/profile?tab=kabinet",
   className,
   compact,
 }: Props) {

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { enhancePrompt } from "@/lib/llm";
 import { generateVideoClip } from "@/lib/video-provider";
-import { WATERMARK } from "@/lib/credits";
+import { WATERMARK, chargeableDurationSec } from "@/lib/credits";
 import { sanitizePublicPayload, whiteLabelEngine, whiteLabelModel } from "@/lib/models";
 import { apiError, apiJson, formatRouteError } from "@/lib/api/json-response";
 import { sanitizeGenerationError } from "@/lib/generation/public-error";
@@ -64,6 +64,11 @@ export async function POST(req: NextRequest) {
     }
     const user = ensured.user;
 
+    const billableDuration = chargeableDurationSec(
+      "prompt_to_video",
+      body.durationSec
+    );
+
     const generation = await prisma.generation.create({
       data: {
         userId: user.id,
@@ -71,7 +76,7 @@ export async function POST(req: NextRequest) {
         status: "QUEUED",
         prompt: body.prompt,
         style: body.style,
-        durationSec: body.durationSec,
+        durationSec: billableDuration,
         cameraMove: body.cameraMove,
         sourceImageUrl: body.imageUrl || null,
       },
@@ -81,7 +86,7 @@ export async function POST(req: NextRequest) {
     const charge = await atomicChargeCoins({
       userId: user.id,
       kind: "prompt_to_video",
-      durationSec: body.durationSec,
+      durationSec: billableDuration,
       generationId: generation.id,
       reason: "generate-video:legacy",
     });
@@ -92,7 +97,15 @@ export async function POST(req: NextRequest) {
         data: { status: "FAILED", errorMessage: charge.message },
       });
       return apiJson(
-        { ok: false, success: false, error: charge.message, code: charge.code },
+        {
+          ok: false,
+          success: false,
+          error: charge.message,
+          code: charge.code,
+          cost: charge.cost,
+          required: charge.required ?? charge.cost,
+          balanceAfter: charge.balanceAfter,
+        },
         { status: charge.code === "INSUFFICIENT" ? 402 : charge.code === "BANNED" ? 403 : 400 }
       );
     }

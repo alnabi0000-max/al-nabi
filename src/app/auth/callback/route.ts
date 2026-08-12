@@ -8,8 +8,8 @@ import { isSupabaseConfigured } from "@/lib/auth/config";
  */
 /** Only allow same-site relative paths — blocks `//evil.com`, `https://evil.com`, `\\evil.com`. */
 function safeNextPath(raw: string | null): string {
-  if (!raw) return "/dashboard";
-  if (!/^\/(?!\/)[a-zA-Z0-9/_?&=%.-]*$/.test(raw)) return "/dashboard";
+  if (!raw) return "/profile?tab=kabinet";
+  if (!/^\/(?!\/)[a-zA-Z0-9/_?&=%.-]*$/.test(raw)) return "/profile?tab=kabinet";
   return raw;
 }
 

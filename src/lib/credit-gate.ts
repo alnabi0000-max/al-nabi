@@ -6,6 +6,7 @@
 
 import {
   calculateGenerationCost,
+  formatInsufficientFundsMessage,
   type CostOpts,
   type GenerationKind,
 } from "@/lib/credits";
@@ -19,6 +20,11 @@ export interface ChargeRequest {
   jobId?: string;
   /** CoinLedger.generationId (Phase 2+) */
   generationId?: string;
+  /**
+   * Soft/dev-only hint for local UI sync. NEVER used as billable cost.
+   * NEVER trusted in production (softCharge disabled when NODE_ENV=production
+   * unless ALLOW_SOFT_CREDITS=1).
+   */
   clientBalance?: number;
   /** Render guard: bonus berilmasin */
   noBonus?: boolean;
@@ -31,6 +37,7 @@ export interface ChargeResult {
   code?: "INSUFFICIENT" | "BANNED" | "ERROR" | "UNAVAILABLE";
   cost: number;
   balanceAfter?: number;
+  required?: number;
   bonusGift?: number;
   receiptId?: string;
   message?: string;
@@ -120,12 +127,14 @@ export async function chargeCredits(
         });
         if (updated.count === 0) {
           const current = await tx.user.findUnique({ where: { id: uid } });
+          const available = current?.coins ?? 0;
           return {
             ok: false as const,
             code: "INSUFFICIENT" as const,
             cost,
-            balanceAfter: current?.coins,
-            message: "Mablag' yetarli emas",
+            required: cost,
+            balanceAfter: available,
+            message: formatInsufficientFundsMessage(cost, available),
           };
         }
         let afterUser = await tx.user.findUniqueOrThrow({ where: { id: uid } });
@@ -201,7 +210,7 @@ export async function rollbackCredits(opts: {
   jobId?: string;
   reason?: string;
   clientBalance?: number;
-}): Promise<{ ok: boolean; balanceAfter?: number; rolledBack: number }> {
+}): Promise<{ ok: boolean; balanceAfter?: number; rolledBack: number; alreadyRefunded?: boolean }> {
   const amount = Math.max(0, opts.amount);
   if (amount <= 0) return { ok: true, rolledBack: 0 };
 
@@ -232,7 +241,24 @@ export async function rollbackCredits(opts: {
     }
     if (user) {
       const uid = user.id;
-      const balanceAfter = await prisma.$transaction(async (tx) => {
+      const genKey = opts.jobId || null;
+      const result = await prisma.$transaction(async (tx) => {
+        if (genKey) {
+          const existing = await tx.coinLedger.findFirst({
+            where: {
+              OR: [{ generationId: genKey }, { jobId: genKey }],
+              type: "ROLLBACK",
+            },
+            select: { id: true, balanceAfter: true, delta: true },
+          });
+          if (existing) {
+            return {
+              balanceAfter: existing.balanceAfter ?? undefined,
+              rolledBack: existing.delta,
+              alreadyRefunded: true as const,
+            };
+          }
+        }
         const updated = await tx.user.update({
           where: { id: uid },
           data: { coins: { increment: amount } },
@@ -248,9 +274,13 @@ export async function rollbackCredits(opts: {
             balanceAfter: updated.coins,
           },
         });
-        return updated.coins;
+        return {
+          balanceAfter: updated.coins,
+          rolledBack: amount,
+          alreadyRefunded: false as const,
+        };
       });
-      return { ok: true, balanceAfter, rolledBack: amount };
+      return { ok: true, ...result };
     }
   } catch {
     /* soft */
@@ -317,6 +347,10 @@ export async function withCreditGuard<T>(opts: {
   }
 }
 
+/**
+ * Soft/dev ledger only. Missing clientBalance is NEVER treated as Infinity
+ * (that was a free-generation faucet). Without a numeric balance → UNAVAILABLE.
+ */
 function softCharge(
   clientBalance: number | undefined,
   cost: number,
@@ -324,18 +358,27 @@ function softCharge(
   receiptId: string,
   req: ChargeRequest
 ): ChargeResult {
-  const bal = typeof clientBalance === "number" ? clientBalance : Infinity;
+  if (typeof clientBalance !== "number" || !Number.isFinite(clientBalance)) {
+    return {
+      ok: false,
+      code: "UNAVAILABLE",
+      cost,
+      required: cost,
+      message: "Billing temporarily unavailable — sign in required",
+    };
+  }
+  const bal = Math.max(0, Math.floor(clientBalance));
   if (bal < cost) {
     return {
       ok: false,
       code: "INSUFFICIENT",
       cost,
-      balanceAfter: bal === Infinity ? undefined : bal,
-      message: "Mablag' yetarli emas",
+      required: cost,
+      balanceAfter: bal,
+      message: formatInsufficientFundsMessage(cost, bal),
     };
   }
-  const balanceAfter =
-    bal === Infinity ? undefined : bal - cost + bonusGift;
+  const balanceAfter = bal - cost + bonusGift;
   softCharges.set(receiptId, {
     cost,
     bonus: bonusGift,

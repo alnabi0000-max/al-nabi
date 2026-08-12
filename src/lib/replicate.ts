@@ -11,11 +11,12 @@
 
 import Replicate from "replicate";
 import type { CameraMovement } from "@/lib/types";
-import { WATERMARK } from "@/lib/credits";
+import { WATERMARK, PROMPT_TO_VIDEO_CLIP_SEC } from "@/lib/credits";
 import type { ImageEngineId, VideoEngineId } from "@/lib/ai/catalog";
 import { getResolvedModelId } from "@/lib/admin/model-registry";
 
-export const CLIP_DURATION_SEC = 8;
+/** Render + billable ceiling for a single P2V clip (shared with credits.ts). */
+export const CLIP_DURATION_SEC = PROMPT_TO_VIDEO_CLIP_SEC;
 
 /** Preferred: REPLICATE_API_KEY · fallback: REPLICATE_API_TOKEN */
 export function getReplicateApiKey(): string | null {

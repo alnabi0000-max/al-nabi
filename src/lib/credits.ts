@@ -46,8 +46,44 @@ export const CREDIT_RATES = {
 
 export const CREDITS_PER_MINUTE = CREDIT_RATES.prompt_to_video_per_min;
 
+/**
+ * Single prompt-to-video clip billable ceiling.
+ * MUST stay equal to CLIP_DURATION_SEC in lib/replicate.ts — P2V is billed
+ * for the clip that can actually be rendered, not an arbitrary client duration.
+ * text_to_movie is NOT capped here (scales to product max, e.g. 10 min).
+ */
+export const PROMPT_TO_VIDEO_CLIP_SEC = 8;
+
 export function billableMinutes(durationSec: number): number {
   return Math.max(1, Math.ceil(Math.max(0, durationSec) / 60));
+}
+
+/**
+ * Duration actually used for NC pricing (shared FE estimate + BE charge).
+ * - image → 1s placeholder (flat 1 NC)
+ * - prompt_to_video → min(requested, clip ceiling)
+ * - text_to_movie → full requested seconds (proportional minutes)
+ */
+export function chargeableDurationSec(
+  kind: GenerationKind,
+  requestedSec: number,
+  clipMaxSec: number = PROMPT_TO_VIDEO_CLIP_SEC
+): number {
+  if (kind === "image") return 1;
+  const requested = Math.max(0, Number(requestedSec) || 0);
+  if (kind === "prompt_to_video") {
+    const ceiling = Math.max(1, clipMaxSec);
+    return Math.min(ceiling, requested > 0 ? requested : ceiling);
+  }
+  return requested;
+}
+
+/** Exact insufficient-funds copy for API clients (required + available). */
+export function formatInsufficientFundsMessage(
+  requiredNc: number,
+  availableNc: number
+): string {
+  return `Balansingiz yetarli emas, kerak: ${requiredNc} ${COIN_NAME}, sizda: ${availableNc} ${COIN_NAME}`;
 }
 
 export type CostOpts = {
@@ -55,6 +91,8 @@ export type CostOpts = {
   engine?: string | null;
   quality?: string | null;
   frameRate?: number | null;
+  /** Override P2V clip ceiling (defaults to PROMPT_TO_VIDEO_CLIP_SEC) */
+  clipMaxSec?: number | null;
 };
 
 function applyModelMultipliers(base: number, opts?: CostOpts): number {
@@ -107,11 +145,16 @@ export function calculateGenerationCost(
   durationSec = 60,
   opts?: CostOpts
 ): number {
+  const billableSec = chargeableDurationSec(
+    kind,
+    durationSec,
+    opts?.clipMaxSec ?? PROMPT_TO_VIDEO_CLIP_SEC
+  );
   let base: number;
   if (kind === "image") {
     base = CREDIT_RATES.image;
   } else {
-    const mins = billableMinutes(durationSec);
+    const mins = billableMinutes(billableSec);
     base =
       kind === "prompt_to_video"
         ? mins * CREDIT_RATES.prompt_to_video_per_min

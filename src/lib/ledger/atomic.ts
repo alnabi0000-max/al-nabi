@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import {
   calculateGenerationCost,
+  formatInsufficientFundsMessage,
   type CostOpts,
   type GenerationKind,
 } from "@/lib/credits";
@@ -18,7 +19,9 @@ export type AtomicChargeResult =
       ok: false;
       code: "INSUFFICIENT" | "BANNED" | "NOT_FOUND" | "ERROR";
       cost: number;
+      /** Current balance when known (not deducted). */
       balanceAfter?: number;
+      required?: number;
       message: string;
     };
 
@@ -83,8 +86,9 @@ export async function atomicChargeCoins(opts: {
           ok: false as const,
           code: "INSUFFICIENT" as const,
           cost,
+          required: cost,
           balanceAfter: user.coins,
-          message: "Mablag' yetarli emas",
+          message: formatInsufficientFundsMessage(cost, user.coins),
         };
       }
 

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { enhancePrompt, SentinelBlockedError } from "@/lib/llm";
 import { CLIP_DURATION_SEC } from "@/lib/video-provider";
 import { AlnabiySentinelEngine } from "@/lib/sentinel-engine";
-import { WATERMARK } from "@/lib/credits";
+import { WATERMARK, chargeableDurationSec } from "@/lib/credits";
 import { t, resolveLocale } from "@/lib/i18n/messages";
 import { prisma } from "@/lib/prisma";
 import { atomicChargeCoins } from "@/lib/ledger/atomic";
@@ -137,9 +137,12 @@ export async function POST(req: NextRequest) {
       console.warn("[Alnabiy] moderation skipped", modErr);
     }
 
-    const duration = Math.min(
-      CLIP_DURATION_SEC,
-      body.customSeconds || body.durationSec || CLIP_DURATION_SEC
+    const requestedDuration =
+      body.customSeconds || body.durationSec || CLIP_DURATION_SEC;
+    const duration = chargeableDurationSec(
+      "prompt_to_video",
+      requestedDuration,
+      CLIP_DURATION_SEC
     );
     const kind =
       body.mediaKind === "image" ? "image" : "prompt_to_video";
@@ -234,6 +237,7 @@ export async function POST(req: NextRequest) {
           error: charge.message,
           code: charge.code,
           cost: charge.cost,
+          required: charge.required ?? charge.cost,
           balanceAfter: charge.balanceAfter,
           generationId: generation.id,
         },
@@ -257,6 +261,8 @@ export async function POST(req: NextRequest) {
     let status: "QUEUED" | "COMPLETED" | "FAILED" = "QUEUED";
     let resultUrl: string | null = null;
     let r2Key: string | null = null;
+    /** Prefer post-refund balance when generation fails after charge. */
+    let balanceAfter: number = charge.balanceAfter;
 
     if (instant) {
       /* Test/local: sync mock — polling timeout bo‘lmasin */
@@ -277,11 +283,14 @@ export async function POST(req: NextRequest) {
         const { failAndRefundGeneration } = await import(
           "@/lib/generation/fail-and-refund"
         );
-        await failAndRefundGeneration({
+        const refunded = await failAndRefundGeneration({
           generationId: generation.id,
           error: syncErr,
           area: "generate-sync",
         });
+        if (typeof refunded.balanceAfter === "number") {
+          balanceAfter = refunded.balanceAfter;
+        }
         status = "FAILED";
       }
     } else {
@@ -293,12 +302,15 @@ export async function POST(req: NextRequest) {
         const { failAndRefundGeneration } = await import(
           "@/lib/generation/fail-and-refund"
         );
-        await failAndRefundGeneration({
+        const refunded = await failAndRefundGeneration({
           generationId: generation.id,
           error: queueErr,
           area: "generate-enqueue",
           reason: "rollback:enqueue_failed",
         });
+        if (typeof refunded.balanceAfter === "number") {
+          balanceAfter = refunded.balanceAfter;
+        }
         status = "FAILED";
       }
     }
@@ -310,6 +322,22 @@ export async function POST(req: NextRequest) {
       });
       r2Key = row?.r2Key || null;
       resultUrl = row?.resultUrl || resultUrl;
+    }
+
+    /* Sync mock can fail inside processGenerationJob without throwing —
+     * ensure FAILED jobs are refunded and balanceAfter is post-refund. */
+    if (status === "FAILED" && instant) {
+      const { failAndRefundGeneration } = await import(
+        "@/lib/generation/fail-and-refund"
+      );
+      const refunded = await failAndRefundGeneration({
+        generationId: generation.id,
+        error: "Sync generation failed",
+        area: "generate-sync-status",
+      });
+      if (typeof refunded.balanceAfter === "number") {
+        balanceAfter = refunded.balanceAfter;
+      }
     }
 
     const payload = sanitizePublicPayload({
@@ -329,7 +357,7 @@ export async function POST(req: NextRequest) {
       statusUrl: `/api/generations/${generation.id}/status`,
       queueMode,
       creditsCost: charge.cost,
-      balanceAfter: charge.balanceAfter,
+      balanceAfter,
       alnabiyKey: user.alnabiyKey,
       alnabiy_key: user.alnabiyKey,
       guestSession: ensured.guestCreated,

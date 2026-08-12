@@ -280,6 +280,8 @@ export async function POST(req: NextRequest) {
           error: guarded.error || guarded.charge.message,
           code: guarded.charge.code,
           cost: guarded.charge.cost,
+          required: guarded.charge.required ?? guarded.charge.cost,
+          balanceAfter: guarded.charge.balanceAfter,
           rolledBack: guarded.rolledBack,
         },
         {
@@ -288,7 +290,9 @@ export async function POST(req: NextRequest) {
               ? 402
               : guarded.charge.code === "BANNED"
                 ? 403
-                : 500,
+                : guarded.charge.code === "UNAVAILABLE"
+                  ? 503
+                  : 500,
         }
       );
     }

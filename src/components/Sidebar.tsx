@@ -9,9 +9,7 @@ import {
   Home,
   User,
   Wallet,
-  Store,
   History,
-  LayoutDashboard,
   LayoutTemplate,
   MessagesSquare,
   ChevronsLeft,
@@ -62,13 +60,11 @@ export function Sidebar() {
 
   const links = [
     { href: "/", label: t.nav.home, icon: Home },
-    { href: "/dashboard", label: t.nav.dashboard, icon: LayoutDashboard },
     { href: "/generate", label: t.nav.generate, icon: Clapperboard },
     { href: "/producer", label: t.nav.producer, icon: MessagesSquare },
     { href: "/templates", label: t.nav.templates, icon: LayoutTemplate },
     { href: "/script-to-movie", label: t.nav.scriptMovie, icon: Film },
     { href: "/history", label: t.nav.history, icon: History },
-    { href: "/store", label: t.nav.store, icon: Store },
     { href: "/profile", label: t.nav.profile, icon: User },
     { href: "/balance", label: t.nav.balance, icon: Wallet },
   ];

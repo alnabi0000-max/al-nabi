@@ -9,7 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/templates`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${base}/script-to-movie`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${base}/producer`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
-    { url: `${base}/store`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${base}/profile`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${base}/balance`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     { url: `${base}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.4 },
     { url: `${base}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.4 },

@@ -21,7 +21,7 @@ export default function HistoryPage() {
           <p className="mt-1 text-sm text-nabi-muted">{t("history_subtitle")}</p>
         </div>
         <Link
-          href="/dashboard"
+          href="/profile?tab=kabinet"
           className="text-sm text-purple-300 underline decoration-purple-500/40 underline-offset-4"
         >
           {t("dashboard_title")}

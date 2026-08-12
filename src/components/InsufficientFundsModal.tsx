@@ -44,7 +44,7 @@ export function InsufficientFundsModal() {
         </p>
         <div className="relative mt-6 flex flex-wrap justify-center gap-3">
           <Link
-            href="/store"
+            href="/profile?tab=dokon"
             onClick={close}
             className="nabi-btn-primary !bg-gradient-to-r !from-rose-600 !to-orange-600"
           >

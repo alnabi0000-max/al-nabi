@@ -95,7 +95,7 @@ export default function AuthResetPage() {
       {done ? (
         <div className="nabi-card space-y-3">
           <p className="text-sm text-nabi-neon">{tr("password_updated")}</p>
-          <Link href="/dashboard" className="nabi-btn-primary inline-flex">
+          <Link href="/profile?tab=kabinet" className="nabi-btn-primary inline-flex">
             {tr("go_dashboard")}
           </Link>
         </div>

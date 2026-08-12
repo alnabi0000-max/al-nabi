@@ -43,7 +43,7 @@ export default function BalancePage() {
             </span>
           </div>
         </div>
-        <Link href="/store" className="nabi-btn-primary w-full">
+        <Link href="/profile?tab=dokon" className="nabi-btn-primary w-full">
           {tr("store")}
         </Link>
       </div>
