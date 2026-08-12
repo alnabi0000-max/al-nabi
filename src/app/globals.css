@@ -45,6 +45,10 @@ body::before {
     @apply rounded-2xl border border-white/10 bg-white/[0.04] p-5 shadow-glass;
   }
 
+  .nabi-stat-card {
+    animation: nabi-stat-in 0.45s cubic-bezier(0.25, 1, 0.5, 1) both;
+  }
+
   .nabi-btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
       transition-transform duration-200
@@ -126,6 +130,23 @@ body::before {
 
   .nabi-bento-item:nth-child(4n + 1) {
     @apply sm:col-span-2 sm:row-span-2;
+  }
+}
+
+@keyframes nabi-stat-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nabi-stat-card {
+    animation: none;
   }
 }
 

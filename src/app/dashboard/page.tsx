@@ -9,6 +9,7 @@ import { useMaster } from "@/context/MasterControllerContext";
 import { useIsMounted } from "@/hooks/useIsMounted";
 import { formatCredits } from "@/lib/credits";
 import { ClientOnly } from "@/components/ClientOnly";
+import { StatCard } from "@/components/StatCard";
 
 const MediaLibrary = dynamic(
   () =>
@@ -58,56 +59,40 @@ export default function DashboardPage() {
       </header>
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-nabi-border bg-gradient-to-br from-[#161a22] to-[#0d0f12] p-4">
-          <div className="mb-2 flex items-center gap-2 text-xs text-nabi-muted">
-            <Coins size={14} className="text-nabi-gold" />
-            {t("current_balance")}
-          </div>
-          <ClientOnly
-            fallback={
-              <p className="text-2xl font-semibold text-nabi-gold">—</p>
-            }
-          >
-            <p className="text-2xl font-semibold text-nabi-gold">
+        <StatCard
+          icon={Coins}
+          label={t("current_balance")}
+          accent="gold"
+          index={0}
+          hint={t("coins")}
+          value={
+            <ClientOnly fallback="—">
               {formatCredits(displayCoins)}
-            </p>
-          </ClientOnly>
-          <p className="mt-1 text-[11px] text-zinc-400">{t("coins")}</p>
-        </div>
-
-        <div className="rounded-2xl border border-nabi-border bg-gradient-to-br from-[#161a22] to-[#0d0f12] p-4">
-          <div className="mb-2 flex items-center gap-2 text-xs text-nabi-muted">
-            <TrendingDown size={14} className="text-rose-300" />
-            {t("dashboard_total_spent")}
-          </div>
-          <ClientOnly
-            fallback={<p className="text-2xl font-semibold text-white">—</p>}
-          >
-            <p className="text-2xl font-semibold text-white">
+            </ClientOnly>
+          }
+        />
+        <StatCard
+          icon={TrendingDown}
+          label={t("dashboard_total_spent")}
+          accent="rose"
+          index={1}
+          hint={t("dashboard_spent_hint")}
+          value={
+            <ClientOnly fallback="—">
               {formatCredits(stats.totalSpent)}
-            </p>
-          </ClientOnly>
-          <p className="mt-1 text-[11px] text-zinc-400">
-            {t("dashboard_spent_hint")}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-nabi-border bg-gradient-to-br from-[#161a22] to-[#0d0f12] p-4">
-          <div className="mb-2 flex items-center gap-2 text-xs text-nabi-muted">
-            <Images size={14} className="text-nabi-neon" />
-            {t("dashboard_assets")}
-          </div>
-          <ClientOnly
-            fallback={<p className="text-2xl font-semibold text-nabi-neon">—</p>}
-          >
-            <p className="text-2xl font-semibold text-nabi-neon">
-              {stats.assetCount}
-            </p>
-          </ClientOnly>
-          <p className="mt-1 text-[11px] text-zinc-400">
-            {t("media_library_title")}
-          </p>
-        </div>
+            </ClientOnly>
+          }
+        />
+        <StatCard
+          icon={Images}
+          label={t("dashboard_assets")}
+          accent="neon"
+          index={2}
+          hint={t("media_library_title")}
+          value={
+            <ClientOnly fallback="—">{stats.assetCount}</ClientOnly>
+          }
+        />
       </section>
 
       <section className="rounded-2xl border border-nabi-border bg-[#121418] p-4 md:p-5">
