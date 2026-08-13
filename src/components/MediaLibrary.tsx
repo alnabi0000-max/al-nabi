@@ -21,6 +21,8 @@ import {
 } from "@/lib/generation-history";
 import { formatCredits } from "@/lib/credits";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
+import { SecurePlayer } from "@/components/SecurePlayer";
+import { SecureStill } from "@/components/SecureStill";
 import clsx from "clsx";
 
 export type LibraryAsset = {
@@ -285,31 +287,22 @@ export function MediaLibrary({
                 key={`${asset.source}-${asset.id}`}
                 className="nabi-bento-item group flex min-h-[220px] flex-col"
               >
-                <div className="relative min-h-[140px] flex-1 bg-nabi-input">
+                <div className="relative min-h-[140px] flex-1 overflow-hidden bg-nabi-input">
                   {url ? (
                     video ? (
-                      <video
+                      <SecurePlayer
                         src={url}
-                        aria-label={asset.title || t("media_library_title")}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                        mode="thumb"
+                        hoverPlay
+                        autoPlay={false}
                         muted
-                        playsInline
-                        loop
-                        preload="metadata"
-                        onMouseEnter={(e) => {
-                          void e.currentTarget.play().catch(() => {});
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.pause();
-                          e.currentTarget.currentTime = 0;
-                        }}
+                        className="h-full min-h-[140px] transition duration-500 group-hover:scale-[1.03]"
                       />
                     ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <SecureStill
                         src={url}
                         alt={asset.title || "Generated media"}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                        className="h-full min-h-[140px] rounded-none border-0 [&>img]:h-full [&>img]:object-cover [&>img]:transition [&>img]:duration-500 group-hover:[&>img]:scale-[1.03]"
                       />
                     )
                   ) : (

@@ -694,7 +694,8 @@ html.alnabiy-capture-lock {
 }
 html.alnabiy-capture-lock video,
 html.alnabiy-capture-lock canvas.alnabiy-secure-canvas,
-html.alnabiy-capture-lock [data-alnabiy-secure] {
+html.alnabiy-capture-lock [data-alnabiy-secure],
+html.alnabiy-capture-lock img[data-alnabiy-secure-still] {
   filter: brightness(0) !important;
   opacity: 0 !important;
 }

@@ -2,6 +2,7 @@
 
 import { DualPreview } from "@/components/DualPreview";
 import { SecurePlayer } from "@/components/SecurePlayer";
+import { SecureStill } from "@/components/SecureStill";
 import { RenderProgress } from "@/components/RenderProgress";
 import { MediaActions } from "@/components/MediaActions";
 import { useTranslations } from "@/lib/i18n/useTranslations";
@@ -102,12 +103,7 @@ export function MediaViewer({
       {!loading && (
         <>
           {imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={imageUrl}
-              alt="Generated result"
-              className="w-full rounded-xl border border-nabi-border"
-            />
+            <SecureStill src={imageUrl} alt="Generated result" />
           ) : videoUrl && !videoUrlB ? (
             <SecurePlayer src={videoUrl} autoPlay muted />
           ) : hasMedia ? (
@@ -121,6 +117,11 @@ export function MediaViewer({
           ) : (
             <p className="py-10 text-center text-xs text-nabi-muted">
               {t("media_viewer_empty")}
+            </p>
+          )}
+          {hasMedia && (
+            <p className="text-[10px] text-nabi-muted">
+              {t("preview_secure_hint")}
             </p>
           )}
           {providerLine && (

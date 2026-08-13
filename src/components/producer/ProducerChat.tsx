@@ -41,6 +41,7 @@ import {
   saveTemplateTransfer,
 } from "@/lib/templates/resolve";
 import { BgmPicker } from "@/components/BgmPicker";
+import { SecurePlayer } from "@/components/SecurePlayer";
 import type { BgmMode } from "@/lib/bgm/types";
 import { DEFAULT_BGM_SELECTION } from "@/lib/bgm/types";
 
@@ -405,11 +406,11 @@ const SessionPanel = memo(function SessionPanel({
           </p>
         )}
         {resultUrl && (
-          <video
+          <SecurePlayer
             src={resultUrl}
-            controls
-            playsInline
-            className="mt-2 w-full rounded-xl border border-nabi-border"
+            autoPlay={false}
+            muted={false}
+            className="mt-2"
           />
         )}
         {!resultUrl && busy !== "render" && (
@@ -928,11 +929,11 @@ export function ProducerChat({
             </p>
           )}
           {resultUrl && (
-            <video
+            <SecurePlayer
               src={resultUrl}
-              controls
-              playsInline
-              className="mt-2 max-h-40 w-full rounded-lg border border-nabi-border"
+              autoPlay={false}
+              muted={false}
+              className="mt-2 max-h-40"
             />
           )}
         </div>
