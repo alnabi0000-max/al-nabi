@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { MainShell } from "@/components/MainShell";
 import { ProducerChatTrigger } from "@/components/ProducerChatTrigger";
 import { CreditsBadge } from "@/components/CreditsBadge";
+import { ChatQueryOpener } from "@/components/ChatQueryOpener";
 
 const Sidebar = dynamic(
   () => import("@/components/Sidebar").then((m) => ({ default: m.Sidebar })),
@@ -80,11 +81,12 @@ export function AppShellChrome({ children }: { children: React.ReactNode }) {
       {chromeReady ? <AppToast /> : null}
       {chromeReady ? <Sidebar /> : null}
       <MainShell>
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-nabi-border bg-nabi-bg/90 px-4 py-3 backdrop-blur-md md:px-8">
-          <p className="text-sm font-semibold tracking-wide text-nabi-ink md:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-nabi-border bg-nabi-bg/80 px-4 py-2.5 backdrop-blur-md md:px-8">
+          <p className="text-sm font-medium tracking-tight text-nabi-ink md:hidden">
             Al-Nabi
           </p>
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <ChatQueryOpener />
             <ProducerChatTrigger />
             {chromeReady ? <ThemePicker /> : null}
             {chromeReady ? <LanguageDropdown /> : null}
@@ -92,7 +94,7 @@ export function AppShellChrome({ children }: { children: React.ReactNode }) {
             {chromeReady ? <StudioProfileMenu /> : null}
           </div>
         </header>
-        <main className="relative px-4 py-6 pb-24 md:px-8 md:pb-8">
+        <main className="relative px-4 py-8 pb-24 md:px-8 md:py-10">
           {children}
         </main>
         {chromeReady ? <SiteFooter /> : null}

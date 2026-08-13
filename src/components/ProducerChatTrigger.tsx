@@ -1,12 +1,10 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { useProducerChat } from "@/context/ProducerChatContext";
 import { useLanguage } from "@/context/LanguageContext";
 
-/**
- * Header CTA — neon glow opens floating Producer Chat.
- */
+/** Header copilot — opens floating Producer Chat. */
 export function ProducerChatTrigger() {
   const { open, toggleChat } = useProducerChat();
   const { t } = useLanguage();
@@ -17,15 +15,11 @@ export function ProducerChatTrigger() {
       onClick={toggleChat}
       aria-expanded={open}
       aria-controls="producer-chat-float"
-      aria-label="Producer Chat"
-      className="producer-chat-trigger group relative inline-flex items-center gap-1.5 overflow-hidden rounded-full px-3 py-1.5 text-xs font-semibold text-nabi-on sm:text-sm"
+      aria-label={t.header.producerChat}
+      className="producer-chat-trigger inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium sm:text-sm"
     >
-      <span className="producer-chat-trigger__glow" aria-hidden />
-      <Sparkles size={14} className="relative z-10 text-nabi-on" />
-      <span className="relative z-10 hidden whitespace-nowrap sm:inline">
-        <span aria-hidden>✨ </span>
-        Producer Chat
-      </span>
+      <MessageSquare size={14} />
+      <span className="hidden sm:inline">{t.header.producerChat}</span>
     </button>
   );
 }

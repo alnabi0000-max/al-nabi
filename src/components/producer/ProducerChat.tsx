@@ -717,7 +717,7 @@ export function ProducerChat({
         saveTemplateTransfer(payload);
         onClose?.();
         router.push(
-          `/generate?template=${tpl.id}&from=producer&subject=${encodeURIComponent(payload.subject)}`
+          `/?template=${tpl.id}&from=producer&subject=${encodeURIComponent(payload.subject)}`
         );
         return;
       }

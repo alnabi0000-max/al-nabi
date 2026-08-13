@@ -14,6 +14,8 @@ export type Dictionary = {
   };
   nav: {
     home: string;
+    studio: string;
+    cabinet: string;
     dashboard: string;
     generate: string;
     producer: string;
@@ -114,12 +116,14 @@ export type Dictionary = {
 const en: Dictionary = {
   header: {
     brand: "Al-Nabi",
-    producerChat: "Producer Chat",
+    producerChat: "Chat",
     language: "Language",
     balance: "Balance",
   },
   nav: {
     home: "Home",
+    studio: "Studio",
+    cabinet: "Cabinet",
     dashboard: "Dashboard",
     generate: "AI Generate",
     producer: "Producer",
@@ -180,7 +184,7 @@ const en: Dictionary = {
     fallbackResponse:
       "Send an idea, screenshot, or link. Tap Reels or YouTube, pick a voice, then Produce.",
     fallbackGuide:
-      "Use Generate, Templates, or History from the sidebar. Balance is in NC. Cloud Vault re-downloads cost 5 NC after the first unlock.",
+      "Studio creates video. Cabinet holds balance and history. Chat can pick a template. Vault re-downloads cost 5 NC after the first unlock.",
     fallbackConverse: "Hey — what are we making? Share an idea or ask a question.",
     fallbackContinue: "Continue.",
     fallbackDescribe: "Describe the scene or pick a format.",
@@ -224,12 +228,14 @@ const en: Dictionary = {
 const uz: Dictionary = {
   header: {
     brand: "Al-Nabi",
-    producerChat: "Producer Chat",
+    producerChat: "Chat",
     language: "Til",
     balance: "Balans",
   },
   nav: {
     home: "Bosh sahifa",
+    studio: "Studio",
+    cabinet: "Kabinet",
     dashboard: "Kabinet",
     generate: "AI Generatsiya",
     producer: "Producer",
@@ -291,7 +297,7 @@ const uz: Dictionary = {
     fallbackResponse:
       "G‘oya, skrinshot yoki havola yuboring. Reels yoki YouTube ni tanlang, ovozni belgilang, keyin Produce.",
     fallbackGuide:
-      "Yon menyudan Generatsiya, Shablonlar yoki Tarixni oching. Balans NC da. Cloud Vault qayta yuklash: birinchi bepul, keyin 5 NC.",
+      "Studio video yaratadi. Kabinetda balans va tarix. Chat shablon tanlaydi. Cloud Vault qayta yuklash: birinchi bepul, keyin 5 NC.",
     fallbackConverse: "Salom — nima qilamiz? G‘oya ayting yoki savol bering.",
     fallbackContinue: "Davom eting.",
     fallbackDescribe: "Sahna yoki formatni tasvirlab bering.",
@@ -335,12 +341,14 @@ const uz: Dictionary = {
 const ru: Dictionary = {
   header: {
     brand: "Al-Nabi",
-    producerChat: "Producer Chat",
+    producerChat: "Чат",
     language: "Язык",
     balance: "Баланс",
   },
   nav: {
     home: "Главная",
+    studio: "Студия",
+    cabinet: "Кабинет",
     dashboard: "Кабинет",
     generate: "AI Генерация",
     producer: "Продюсер",
@@ -402,7 +410,7 @@ const ru: Dictionary = {
     fallbackResponse:
       "Отправьте идею, скриншот или ссылку. Выберите Reels или YouTube, голос — затем Produce.",
     fallbackGuide:
-      "В меню: Генерация, Шаблоны или История. Баланс в NC. Повторная загрузка Cloud Vault: 5 NC после первого раза.",
+      "Студия создаёт видео. Кабинет — баланс и история. Чат подберёт шаблон. Повторная загрузка Cloud Vault: 5 NC после первого раза.",
     fallbackConverse: "Привет — что делаем? Идею или вопрос — пишите.",
     fallbackContinue: "Продолжайте.",
     fallbackDescribe: "Опишите сцену или выберите формат.",

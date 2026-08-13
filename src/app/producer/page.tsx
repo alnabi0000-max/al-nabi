@@ -1,15 +1,12 @@
-import { ProducerChat } from "@/components/producer/ProducerChat";
+import { redirect } from "next/navigation";
+import { homeRedirectFromSearch } from "@/lib/home-redirect";
 
-export const metadata = {
-  title: "Al-Nabi Producer Chat",
-  description:
-    "Creative Co-Pilot — vision, voice, and Foley in one native engine",
-};
-
-export default function ProducerPage() {
-  return (
-    <div className="mx-auto max-w-6xl pb-8 md:pb-4">
-      <ProducerChat />
-    </div>
-  );
+/** Legacy /producer → Studio + open chat */
+export default async function ProducerRedirect({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  redirect(homeRedirectFromSearch(params, { chat: "1" }));
 }

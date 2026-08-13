@@ -33,10 +33,10 @@ export type QuickAction =
   | { id: "narration_dialogue"; label: string; narration: "drama" }
   | { id: "voice_preview"; label: string; voicePreview: true }
   | { id: "produce"; label: string; produce: true }
-  | { id: "nav_generate"; label: string; href: "/generate" }
-  | { id: "nav_templates"; label: string; href: "/templates" }
-  | { id: "nav_balance"; label: string; href: "/balance" }
-  | { id: "nav_history"; label: string; href: "/history" }
+  | { id: "nav_generate"; label: string; href: "/" }
+  | { id: "nav_templates"; label: string; href: "/?templates=1" }
+  | { id: "nav_balance"; label: string; href: "/profile?tab=kabinet" }
+  | { id: "nav_history"; label: string; href: "/profile?tab=kabinet" }
   | {
       id: "select_template";
       label: string;
@@ -91,10 +91,10 @@ const PRODUCER_ACTIONS: QuickAction[] = [
 ];
 
 const GUIDE_ACTIONS: QuickAction[] = [
-  { id: "nav_generate", label: "Generate", href: "/generate" },
-  { id: "nav_templates", label: "Templates", href: "/templates" },
-  { id: "nav_balance", label: "Balance · NC", href: "/balance" },
-  { id: "nav_history", label: "Cloud Vault", href: "/history" },
+  { id: "nav_generate", label: "Studio", href: "/" },
+  { id: "nav_templates", label: "Templates", href: "/?templates=1" },
+  { id: "nav_balance", label: "Balance · NC", href: "/profile?tab=kabinet" },
+  { id: "nav_history", label: "Cloud Vault", href: "/profile?tab=kabinet" },
 ];
 
 const ALLOWED_NAV_PATHS = new Set([
@@ -143,14 +143,14 @@ const PRODUCER_TOOLS: ChatToolDefinition[] = [
     function: {
       name: "sahifaga_yonaltir",
       description:
-        "Mijozni kerakli sahifaga olib boradigan link/tugma ko‘rsatadi (masalan /generate, /templates, /balance).",
+        "Mijozni kerakli sahifaga olib boradigan link/tugma ko‘rsatadi (masalan /, /?templates=1, /profile).",
       parameters: {
         type: "object",
         properties: {
           yol: {
             type: "string",
             description:
-              "Sahifa yo‘li — faqat saytdagi mavjud yo‘llar (masalan /generate)",
+              "Sahifa yo‘li — faqat saytdagi mavjud yo‘llar (masalan / yoki /profile)",
           },
           yorliq: {
             type: "string",
@@ -245,16 +245,11 @@ ALLOWED (ordinary curiosity — answer openly and briefly):
 
 const SITE_CAPABILITIES = `Sayt imkoniyatlari:
 NIMA QILA OLADI:
-- / — Bosh sahifa: qisqa prompt yoki skript bilan tez video/rasm yaratish, prompt enhance, natijani ko‘rish.
-- /generate — Al-Nabi Studio: matndan rasm yoki video generatsiya, model/aspekt/davomiylik/stil tanlash, yuklab olish.
-- /script-to-movie — Uzun skriptdan film: enhance → sahnalar → ovoz (TTS) + video montaj (30s–10 daqiqa).
-- /templates — Shablonlar: kategoriyalar bo‘yicha qidirish/filtrlash va bir marta bosib Studio’ga o‘tkazish.
-- /producer — Producer Chat (shu yordamchi): g‘oya muhokamasi, rasm/YouTube input, Reels/YouTube aspekt, ovoz, Produce → Cloud Vault.
-- /dashboard — Shaxsiy kabinet: NC balansi, sarf, mediakutubxona, hisob/kalit/referral.
-- /history — Cloud Vault / tarix: avvalgi generatsiyalar, qayta ko‘rish va yuklab olish.
-- /store — NC sotib olish: kredit paketlari, Stripe to‘lov, bonuslar.
-- /balance — Joriy NC, tariflar (rasm / prompt-video / script-movie) va Store’ga o‘tish.
-- /profile — Kirish/chiqish, parol, Al-Nabi Key, magic link, social auth, referral havola.
+- / — Studio: matndan rasm yoki video (Video) yoki uzun skriptdan film (Film). Shablonlar Studio ichida (?templates=1).
+- /?mode=film — Film: enhance → sahnalar → ovoz (TTS) + video montaj (30s–10 daqiqa).
+- /?templates=1 — Studio ichida shablon tanlash.
+- Chat (header copilot, /?chat=1): g‘oya, shablon, Reels/YouTube, Produce. Studio yoki Kabinetga yo‘naltiradi.
+- /profile — Kabinet: hisob, NC balansi, mediakutubxona (tarix), do‘kon (?tab=kabinet | dokon | umumiy).
 - /auth/reset — Tiklash emaili orqali yangi parol o‘rnatish.
 - /terms, /privacy, /refund-policy — Foydalanish shartlari, maxfiylik va NC qaytarish qoidalari.
 - Global: NC bilan to‘lov, ko‘p tillilik, kontent filtri (halal), referral, floating Producer Chat.
@@ -274,11 +269,11 @@ CAPABILITY RULE (CRITICAL):
 const TOOL_LAW = `TOOLS (function calling — use when needed):
 You have exactly two tools:
 1) shablon_tanla — pick a matching Studio template for the user's idea/style. Call it when they describe a video idea or style (cinematic/kinematik, anime, VFX, product, etc.).
-2) sahifaga_yonaltir — show a navigation button to a real site path (e.g. /generate after a template pick).
+2) sahifaga_yonaltir — show a navigation button to a real site path (e.g. / after a template pick).
 
 Rules:
 - When the user wants a video in a certain style/idea, you MUST call shablon_tanla with their idea.
-- In the SAME turn, also call sahifaga_yonaltir with yol="/generate" (and a short yorliq) so the UI shows a Studio button next to the template select button.
+- In the SAME turn, also call sahifaga_yonaltir with yol="/" (and a short yorliq) so the UI shows a Studio button next to the template select button.
 - Prefer parallel tool calls for those two when offering a template.
 - Do not invent other tools. Do not claim you selected a template without calling shablon_tanla.
 - After tool results arrive, reply in locked language and return JSON as specified.`;
@@ -380,31 +375,55 @@ export function matchTemplateForIdea(
   return best;
 }
 
-function normalizePath(raw: string): string | null {
+const NAV_HREF_REMAP: Record<string, string> = {
+  "/generate": "/",
+  "/templates": "/?templates=1",
+  "/script-to-movie": "/?mode=film",
+  "/producer": "/?chat=1",
+  "/balance": "/profile?tab=kabinet",
+  "/history": "/profile?tab=kabinet",
+  "/dashboard": "/profile?tab=kabinet",
+  "/store": "/profile?tab=dokon",
+};
+
+function resolveNavHref(raw: string): string | null {
   const t = raw.trim();
   if (!t) return null;
   const withSlash = t.startsWith("/") ? t : `/${t}`;
-  const path = withSlash.split("?")[0].split("#")[0].replace(/\/+$/, "") || "/";
+  const [pathPart, queryPart] = withSlash.split("?");
+  const path = pathPart.replace(/\/+$/, "") || "/";
   if (!ALLOWED_NAV_PATHS.has(path)) return null;
+  if (NAV_HREF_REMAP[path]) return NAV_HREF_REMAP[path];
+  if (queryPart) return `${path}?${queryPart}`;
   return path;
 }
 
-function defaultNavLabel(path: string, lang: PromptLang): string {
+function defaultNavLabel(href: string, lang: PromptLang): string {
   const uz = lang.startsWith("uz");
   const ru = lang === "ru";
+  const path = href.split("?")[0] || "/";
   const map: Record<string, [string, string, string]> = {
-    "/generate": ["Generatsiya", "Generate", "Генерация"],
+    "/": ["Studio", "Studio", "Студия"],
+    "/profile": ["Kabinet", "Cabinet", "Кабинет"],
+    "/generate": ["Studio", "Studio", "Студия"],
     "/templates": ["Shablonlar", "Templates", "Шаблоны"],
-    "/balance": ["Balans · NC", "Balance · NC", "Баланс · NC"],
-    "/history": ["Cloud Vault", "Cloud Vault", "Cloud Vault"],
+    "/balance": ["Kabinet", "Cabinet", "Кабинет"],
+    "/history": ["Kabinet", "Cabinet", "Кабинет"],
     "/store": ["Do‘kon", "Store", "Магазин"],
-    "/dashboard": ["Kabinet", "Dashboard", "Кабинет"],
+    "/dashboard": ["Kabinet", "Cabinet", "Кабинет"],
     "/producer": ["Producer Chat", "Producer Chat", "Producer Chat"],
-    "/profile": ["Profil", "Profile", "Профиль"],
-    "/": ["Bosh sahifa", "Home", "Главная"],
   };
+  if (href.includes("templates=1")) {
+    return uz ? "Shablonlar" : ru ? "Шаблоны" : "Templates";
+  }
+  if (href.includes("mode=film")) {
+    return uz ? "Film" : ru ? "Фильм" : "Film";
+  }
+  if (href.includes("tab=dokon")) {
+    return uz ? "Do‘kon" : ru ? "Магазин" : "Store";
+  }
   const row = map[path];
-  if (!row) return path;
+  if (!row) return href;
   return uz ? row[0] : ru ? row[2] : row[1];
 }
 
@@ -452,8 +471,8 @@ function execSahifagaYonaltir(
   args: { yol?: string; yorliq?: string },
   lang: PromptLang
 ): ToolExecResult {
-  const path = normalizePath(args.yol || "");
-  if (!path) {
+  const href = resolveNavHref(args.yol || "");
+  if (!href) {
     return {
       payload: {
         ok: false,
@@ -462,20 +481,19 @@ function execSahifagaYonaltir(
       },
     };
   }
-  const label = (args.yorliq || "").trim() || defaultNavLabel(path, lang);
+  const label = (args.yorliq || "").trim() || defaultNavLabel(href, lang);
+  const path = href.split("?")[0] || "/";
   const known =
-    path === "/generate"
-      ? ({ id: "nav_generate", label, href: "/generate" } as const)
-      : path === "/templates"
-        ? ({ id: "nav_templates", label, href: "/templates" } as const)
-        : path === "/balance"
-          ? ({ id: "nav_balance", label, href: "/balance" } as const)
-          : path === "/history"
-            ? ({ id: "nav_history", label, href: "/history" } as const)
-            : null;
+    path === "/" && !href.includes("templates=") && !href.includes("mode=film")
+      ? ({ id: "nav_generate", label, href: "/" } as const)
+      : href.includes("templates=1")
+        ? ({ id: "nav_templates", label, href: "/?templates=1" } as const)
+        : href.includes("tab=kabinet") || path === "/profile"
+          ? ({ id: "nav_balance", label, href: "/profile?tab=kabinet" } as const)
+          : null;
   return {
-    payload: { ok: true, yol: path, yorliq: label },
-    action: known || { id: "tool_navigate", label, href: path },
+    payload: { ok: true, yol: href, yorliq: label },
+    action: known || { id: "tool_navigate", label, href },
   };
 }
 

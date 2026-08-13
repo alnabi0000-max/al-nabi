@@ -30,7 +30,7 @@ export async function sendWelcomeEmail(
       }
       <p><a href="${
         process.env.NEXT_PUBLIC_APP_URL || "https://alnabiy.app"
-      }/generate">Studio’ga o‘tish →</a></p>
+      }/">Studio’ga o‘tish →</a></p>
       <hr/>
       <p style="font-size:12px;color:#666">Alnabiy · legal@alnabiy.app</p>
     </div>

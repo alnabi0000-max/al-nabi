@@ -318,24 +318,13 @@ body {
 
 body {
   -webkit-font-smoothing: antialiased;
-  background-image:
-    radial-gradient(ellipse 80% 50% at 20% -10%, var(--glow-1), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 10%, var(--glow-2), transparent 50%),
-    radial-gradient(ellipse 50% 30% at 50% 100%, var(--glow-3), transparent 45%);
+  background-image: radial-gradient(
+    ellipse 70% 40% at 50% -20%,
+    color-mix(in srgb, var(--glow-1) 45%, transparent),
+    transparent 60%
+  );
   background-attachment: scroll;
   font-family: theme("fontFamily.display");
-}
-
-body::before {
-  content: "";
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 15% 20%, var(--glow-1), transparent 35%),
-    radial-gradient(circle at 85% 15%, var(--glow-2), transparent 32%),
-    radial-gradient(circle at 50% 90%, var(--glow-3), transparent 40%);
 }
 
 @layer components {
@@ -349,7 +338,6 @@ body::before {
     @apply rounded-2xl p-5;
     border: 1px solid var(--nabi-border);
     background: var(--nabi-card);
-    box-shadow: var(--shadow-glass);
     color: var(--text-primary);
   }
 
@@ -364,13 +352,8 @@ body::before {
   }
 
   .nabi-btn-primary {
-    @apply nabi-btn shadow-neon;
-    background-image: linear-gradient(
-      to right,
-      var(--accent-from),
-      var(--accent-via),
-      var(--accent-to)
-    );
+    @apply nabi-btn;
+    background: var(--accent);
     color: var(--btn-on-accent);
   }
 
@@ -397,8 +380,8 @@ body::before {
     opacity: 0.7;
   }
   .nabi-input:focus {
-    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
-    box-shadow: var(--shadow-ring);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    box-shadow: none;
   }
 
   .nabi-hero-prompt {
@@ -552,34 +535,14 @@ body.screenshot-flash {
 }
 
 .producer-chat-trigger {
-  background: linear-gradient(
-    135deg,
-    var(--accent-from),
-    var(--accent-via) 45%,
-    var(--accent-to)
-  );
-  color: var(--btn-on-accent);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--text-primary) 12%, transparent),
-    0 0 14px color-mix(in srgb, var(--accent) 40%, transparent);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid var(--nabi-border);
+  background: var(--nabi-card);
+  color: var(--text-primary);
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 .producer-chat-trigger:hover {
-  transform: translateY(-1px) scale(1.02);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--text-primary) 20%, transparent),
-    0 0 22px color-mix(in srgb, var(--accent) 55%, transparent);
-}
-.producer-chat-trigger__glow {
-  pointer-events: none;
-  position: absolute;
-  inset: -30%;
-  background: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.22) 0%,
-    transparent 55%
-  );
-  opacity: 0.45;
+  background: var(--nabi-elevated);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 .producer-chat-float {
   animation: producer-slide-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);

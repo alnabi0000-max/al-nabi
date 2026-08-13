@@ -202,10 +202,11 @@ export function MediaLibrary({
       emotion: asset.emotionMode || "epic",
     });
     if (asset.kind === "text_to_movie") {
-      router.push(`/script-to-movie?${params.toString()}`);
+      params.set("mode", "film");
+      router.push(`/?${params.toString()}`);
     } else {
       params.set("kind", asset.kind === "image" ? "image" : "video");
-      router.push(`/generate?${params.toString()}`);
+      router.push(`/?${params.toString()}`);
     }
   }
 
@@ -270,7 +271,7 @@ export function MediaLibrary({
       ) : filtered.length === 0 ? (
         <div className="nabi-card text-sm text-nabi-muted">
           {t("media_empty")}{" "}
-          <Link href="/generate" className="text-nabi-neon underline">
+          <Link href="/" className="text-nabi-neon underline">
             {t("generate")}
           </Link>
         </div>

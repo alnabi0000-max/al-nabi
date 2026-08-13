@@ -3,12 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import {
-  Clapperboard,
+  ChevronDown,
   Download,
   ImageIcon,
-  LayoutTemplate,
   Loader2,
   Sparkles,
   Video,
@@ -71,10 +69,10 @@ const TemplatePicker = dynamic(
   { ssr: false }
 );
 
-const VideoShowcasePanel = dynamic(
+const CinemaFrame = dynamic(
   () =>
-    import("@/components/VideoShowcasePanel").then((m) => ({
-      default: m.VideoShowcasePanel,
+    import("@/components/CinemaFrame").then((m) => ({
+      default: m.CinemaFrame,
     })),
   { ssr: false }
 );
@@ -134,6 +132,9 @@ export default function GenerateStudio() {
   const searchParams = useSearchParams();
   const searchKey = searchParams.toString();
   const hydratedFromUrl = useRef(false);
+  const [showAdvanced, setShowAdvanced] = useState(
+    () => searchParams.get("templates") === "1"
+  );
 
   useEffect(() => {
     if (hydratedFromUrl.current) return;
@@ -183,6 +184,8 @@ export default function GenerateStudio() {
         });
       return;
     }
+
+    if (params.get("templates") === "1") setShowAdvanced(true);
 
     const qp = params.get("prompt");
     if (qp) setPrompt(qp);
@@ -478,198 +481,136 @@ export default function GenerateStudio() {
   const hasOutput = Boolean(videoUrl || resultImage);
 
   return (
-    <div key={locale} className="mx-auto max-w-7xl">
-      <div className="mb-6 flex items-end justify-between gap-4">
-        <div>
-          <p className="mb-1 flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.22em] text-nabi-muted">
-            <Clapperboard size={12} />
-            Studio Dashboard
-          </p>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-nabi-ink md:text-3xl">
-            Al-Nabi
-          </h1>
-          <p className="mt-1 max-w-lg text-sm text-nabi-muted">
-            {tr("studio_subtitle")}
-          </p>
-        </div>
-      </div>
-
+    <div key={locale}>
       {isOffline && (
-        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-100">
+        <div className="mb-6 rounded-xl border border-nabi-border px-4 py-2 text-sm text-nabi-muted">
           {tr("offline")}
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-        {/* Left — inputs (below showcase on mobile) */}
-        <section className="order-2 space-y-5 rounded-2xl border border-nabi-border bg-nabi-card p-5 md:p-6 lg:order-1">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-medium uppercase tracking-wider text-nabi-muted">
-              Featured templates
-            </p>
-            <Link
-              href="/templates"
-              className="inline-flex items-center gap-1.5 text-xs text-nabi-muted transition hover:text-nabi-ink"
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <section className="space-y-5">
+          <textarea
+            id="studio-prompt"
+            className="nabi-input min-h-[180px] resize-y text-base leading-relaxed"
+            placeholder={tr("prompt_placeholder")}
+            value={prompt}
+            maxLength={2000}
+            onChange={(e) => setPrompt(e.target.value)}
+            aria-label={tr("prompt_label")}
+          />
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setMediaKind("video")}
+              className={clsx(
+                "nabi-chip inline-flex items-center gap-1.5",
+                mediaKind === "video" && "nabi-chip-active"
+              )}
             >
-              <LayoutTemplate size={12} />
-              500+ Explorer
-            </Link>
-          </div>
-          <TemplatePicker selectedId={templateId} onSelect={applyTemplate} />
-
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-nabi-muted">
-              Al-Nabi Models
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {modelCards.map((card) => {
-                const active = selectedEngine === card.id;
-                return (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onClick={() => {
-                      if (mediaKind === "image") {
-                        setImageEngine(card.id as ImageEngineId);
-                      } else {
-                        setVideoEngine(card.id as VideoEngineId);
-                      }
-                    }}
-                    className={clsx(
-                      "rounded-xl border px-3 py-2.5 text-left transition",
-                      active
-                        ? "border-nabi-neon/50 bg-nabi-elevated"
-                        : "border-nabi-border bg-nabi-input hover:border-nabi-neon/35"
-                    )}
-                  >
-                    <span className="block text-sm font-semibold text-nabi-ink">
-                      {card.label}
-                    </span>
-                    <span className="mt-0.5 block text-[11px] text-nabi-muted">
-                      {card.description}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="studio-prompt"
-              className="mb-2 block text-xs font-medium uppercase tracking-wider text-nabi-muted"
+              <Video size={12} />
+              Video
+            </button>
+            <button
+              type="button"
+              onClick={() => setMediaKind("image")}
+              className={clsx(
+                "nabi-chip inline-flex items-center gap-1.5",
+                mediaKind === "image" && "nabi-chip-active"
+              )}
             >
-              {tr("prompt_label")}
-            </label>
-            <textarea
-              id="studio-prompt"
-              className="nabi-input min-h-[140px] resize-y"
-              placeholder={tr("prompt_placeholder")}
-              value={prompt}
-              maxLength={2000}
-              onChange={(e) => setPrompt(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-nabi-muted">
-              Aspect Ratio
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {(["16:9", "9:16", "1:1"] as const).map((a) => (
+              <ImageIcon size={12} />
+              Image
+            </button>
+            {(["16:9", "9:16", "1:1"] as const).map((a) => (
+              <button
+                key={a}
+                type="button"
+                onClick={() => setAspect(a)}
+                className={clsx("nabi-chip", aspect === a && "nabi-chip-active")}
+              >
+                {a}
+              </button>
+            ))}
+            {mediaKind === "video" &&
+              [5, 10, 15].map((d) => (
                 <button
-                  key={a}
+                  key={d}
                   type="button"
-                  onClick={() => setAspect(a)}
+                  onClick={() => setDuration(d)}
                   className={clsx(
-                    "rounded-lg border px-3 py-1.5 text-sm transition",
-                    aspect === a
-                      ? "border-nabi-neon/50 bg-nabi-elevated text-nabi-ink"
-                      : "border-nabi-border text-nabi-muted hover:border-nabi-neon/35"
+                    "nabi-chip",
+                    duration === d && "nabi-chip-active"
                   )}
                 >
-                  {a}
+                  {d}s
                 </button>
               ))}
-            </div>
           </div>
 
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-nabi-muted">
-              Media
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setMediaKind("video")}
-                className={clsx(
-                  "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition",
-                  mediaKind === "video"
-                    ? "border-nabi-neon/50 bg-nabi-elevated text-nabi-ink"
-                    : "border-nabi-border text-nabi-muted hover:border-nabi-neon/35"
-                )}
-              >
-                <Video size={14} />
-                Video
-              </button>
-              <button
-                type="button"
-                onClick={() => setMediaKind("image")}
-                className={clsx(
-                  "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition",
-                  mediaKind === "image"
-                    ? "border-nabi-neon/50 bg-nabi-elevated text-nabi-ink"
-                    : "border-nabi-border text-nabi-muted hover:border-nabi-neon/35"
-                )}
-              >
-                <ImageIcon size={14} />
-                Image
-              </button>
-            </div>
-          </div>
-
-          {mediaKind === "video" && (
-            <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-nabi-muted">
-                Duration
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {[5, 10, 15].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDuration(d)}
-                    className={clsx(
-                      "rounded-lg border px-3 py-1.5 text-sm transition",
-                      duration === d
-                        ? "border-nabi-neon/50 bg-nabi-elevated text-nabi-ink"
-                        : "border-nabi-border text-nabi-muted hover:border-nabi-neon/35"
-                    )}
-                  >
-                    {d}s
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {mediaKind === "video" && (
-            <BgmPicker
-              mode={bgmMode}
-              trackId={bgmTrackId}
-              onModeChange={setBgmMode}
-              onTrackChange={setBgmTrackId}
-              disabled={loading}
-              labels={{
-                title: tr("bgm_title"),
-                ai: tr("bgm_ai"),
-                manual: tr("bgm_manual"),
-                off: tr("bgm_off"),
-                aiHint: tr("bgm_ai_hint"),
-                empty: tr("bgm_empty"),
-                loading: tr("bgm_loading"),
-              }}
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="inline-flex items-center gap-1.5 text-xs text-nabi-muted transition hover:text-nabi-ink"
+            aria-expanded={showAdvanced}
+          >
+            <ChevronDown
+              size={14}
+              className={clsx(
+                "transition-transform",
+                showAdvanced && "rotate-180"
+              )}
             />
+            {showAdvanced ? tr("studio_advanced_hide") : tr("studio_advanced")}
+          </button>
+
+          {showAdvanced && (
+            <div className="space-y-5 border-t border-nabi-border pt-4">
+              <TemplatePicker selectedId={templateId} onSelect={applyTemplate} />
+              <div className="flex flex-wrap gap-2">
+                {modelCards.map((card) => {
+                  const active = selectedEngine === card.id;
+                  return (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => {
+                        if (mediaKind === "image") {
+                          setImageEngine(card.id as ImageEngineId);
+                        } else {
+                          setVideoEngine(card.id as VideoEngineId);
+                        }
+                      }}
+                      className={clsx(
+                        "nabi-chip",
+                        active && "nabi-chip-active"
+                      )}
+                    >
+                      {card.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {mediaKind === "video" && (
+                <BgmPicker
+                  mode={bgmMode}
+                  trackId={bgmTrackId}
+                  onModeChange={setBgmMode}
+                  onTrackChange={setBgmTrackId}
+                  disabled={loading}
+                  labels={{
+                    title: tr("bgm_title"),
+                    ai: tr("bgm_ai"),
+                    manual: tr("bgm_manual"),
+                    off: tr("bgm_off"),
+                    aiHint: tr("bgm_ai_hint"),
+                    empty: tr("bgm_empty"),
+                    loading: tr("bgm_loading"),
+                  }}
+                />
+              )}
+            </div>
           )}
 
           <InsufficientBalanceHint
@@ -696,57 +637,54 @@ export default function GenerateStudio() {
             tr={tr}
           />
 
-          <button
-            type="button"
-            onClick={generate}
-            disabled={loading || !prompt.trim() || isOffline || coins < cost}
-            className="nabi-btn-primary w-full justify-center py-3"
-          >
-            {loading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Sparkles size={16} />
-            )}
-            <span>
-              Al-Nabi AI orqali Yaratish
-              <span className="mx-1.5 opacity-40">•</span>
-              <span className="tabular-nums text-amber-200">
-                {cost.toLocaleString()} NC
-              </span>
+          <div className="flex items-center justify-end gap-3">
+            <span className="text-sm tabular-nums text-nabi-muted">
+              {cost.toLocaleString()} NC
             </span>
-          </button>
+            <button
+              type="button"
+              onClick={generate}
+              disabled={loading || !prompt.trim() || isOffline || coins < cost}
+              className="nabi-btn-primary min-w-[9rem]"
+            >
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Sparkles size={16} />
+              )}
+              {tr("studio_create")}
+            </button>
+          </div>
 
           {error && <p className="text-sm text-rose-400">{error}</p>}
         </section>
 
-        {/* Right — showcase / preview (first on mobile for first impression) */}
-        <aside className="order-1 space-y-4 lg:sticky lg:top-20 lg:order-2 lg:h-fit">
-          {(hasOutput || loading) && (
-            <MediaViewer
-              loading={loading}
-              imageUrl={resultImage}
-              videoUrl={videoUrl}
-              progressPercent={progressPercent}
-              renderStage={renderStage}
-              generationId={generationId}
-              r2Key={r2Key}
-              mediaTitle={prompt.slice(0, 60)}
-              showActions={false}
-              providerLine={
-                provider
-                  ? `${provider} · ${tr(`emotion_${emotionMode}`)}`
-                  : undefined
-              }
-              className="!border-nabi-border"
-            />
-          )}
+        <aside className="space-y-4 lg:sticky lg:top-24">
+          <CinemaFrame emptyLabel={tr("studio_canvas_empty")}>
+            {hasOutput || loading ? (
+              <MediaViewer
+                loading={loading}
+                imageUrl={resultImage}
+                videoUrl={videoUrl}
+                progressPercent={progressPercent}
+                renderStage={renderStage}
+                generationId={generationId}
+                r2Key={r2Key}
+                mediaTitle={prompt.slice(0, 60)}
+                showActions={false}
+                providerLine={
+                  provider
+                    ? `${provider} · ${tr(`emotion_${emotionMode}`)}`
+                    : undefined
+                }
+                className="!h-full !rounded-none !border-0"
+              />
+            ) : null}
+          </CinemaFrame>
 
           {hasOutput && (
-            <div className="rounded-2xl border border-nabi-border bg-nabi-card p-4">
-              <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-nabi-muted">
-                <Download size={12} />
-                Download
-              </p>
+            <div className="flex items-center gap-3">
+              <Download size={14} className="text-nabi-muted" />
               <MediaActions
                 mediaUrl={videoUrl || resultImage}
                 generationId={generationId}
@@ -756,10 +694,6 @@ export default function GenerateStudio() {
                 archiveFee={false}
               />
             </div>
-          )}
-
-          {!hasOutput && !loading && (
-            <VideoShowcasePanel />
           )}
         </aside>
       </div>

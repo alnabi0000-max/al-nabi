@@ -3,18 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Clapperboard,
-  Film,
-  Home,
-  User,
-  Wallet,
-  History,
-  LayoutTemplate,
-  MessagesSquare,
-  ChevronsLeft,
-  ChevronsRight,
-} from "lucide-react";
+import { Clapperboard, User, ChevronsLeft, ChevronsRight } from "lucide-react";
 import clsx from "clsx";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -59,22 +48,16 @@ export function Sidebar() {
   }
 
   const links = [
-    { href: "/", label: t.nav.home, icon: Home },
-    { href: "/generate", label: t.nav.generate, icon: Clapperboard },
-    { href: "/producer", label: t.nav.producer, icon: MessagesSquare },
-    { href: "/templates", label: t.nav.templates, icon: LayoutTemplate },
-    { href: "/script-to-movie", label: t.nav.scriptMovie, icon: Film },
-    { href: "/history", label: t.nav.history, icon: History },
-    { href: "/profile", label: t.nav.profile, icon: User },
-    { href: "/balance", label: t.nav.balance, icon: Wallet },
+    { href: "/", label: t.nav.studio, icon: Clapperboard },
+    { href: "/profile", label: t.nav.cabinet, icon: User },
   ];
 
   return (
     <aside
       data-collapsed={collapsed ? "1" : "0"}
       className={clsx(
-        "fixed left-3 top-3 z-40 hidden h-[calc(100dvh-1.5rem)] flex-col rounded-3xl border border-nabi-border",
-        "bg-nabi-bg/95 shadow-glass transition-[width] duration-300 md:flex",
+        "fixed left-3 top-3 z-40 hidden h-[calc(100dvh-1.5rem)] flex-col rounded-2xl border border-nabi-border",
+        "bg-nabi-bg/95 transition-[width] duration-300 md:flex",
         collapsed ? "w-[4.25rem]" : "w-56 lg:w-60"
       )}
     >
@@ -86,12 +69,9 @@ export function Sidebar() {
       >
         {!collapsed && (
           <div className="min-w-0">
-            <h1 className="truncate bg-cinema-accent bg-clip-text text-lg font-bold tracking-wide text-transparent">
+            <h1 className="truncate text-lg font-semibold tracking-tight text-nabi-ink">
               Al-Nabi
             </h1>
-            <p className="mt-0.5 truncate text-[10px] uppercase tracking-[0.2em] text-nabi-muted">
-              Cinema
-            </p>
           </div>
         )}
         <button
@@ -107,7 +87,10 @@ export function Sidebar() {
 
       <nav className="relative flex flex-1 flex-col gap-1 overflow-y-auto px-2 pb-3">
         {links.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
+          const active =
+            href === "/"
+              ? pathname === "/"
+              : pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
               key={href}
@@ -119,7 +102,7 @@ export function Sidebar() {
                 "relative flex items-center rounded-2xl py-2.5 text-sm transition-all duration-300 ease-apple",
                 collapsed ? "justify-center px-2" : "gap-2.5 px-3",
                 active
-                  ? "bg-gradient-to-r from-[var(--accent-from)]/25 via-[var(--accent-via)]/20 to-[var(--accent-to)]/25 text-nabi-ink shadow-neon"
+                  ? "bg-nabi-elevated text-nabi-ink"
                   : "text-nabi-muted hover:bg-nabi-elevated hover:text-nabi-ink"
               )}
             >

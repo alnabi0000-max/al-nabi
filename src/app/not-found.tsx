@@ -29,7 +29,7 @@ export default function NotFound() {
           Go home
         </Link>
         <Link
-          href="/generate"
+          href="/"
           className="inline-flex items-center gap-2 rounded-xl border border-nabi-border px-4 py-2 text-sm font-medium text-nabi-ink transition hover:bg-nabi-elevated"
         >
           <Sparkles size={16} />

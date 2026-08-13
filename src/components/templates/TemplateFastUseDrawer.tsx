@@ -51,7 +51,7 @@ export function TemplateFastUseDrawer({ template, open, onClose }: Props) {
     saveTemplateTransfer(payload);
     onClose();
     router.push(
-      `/generate?template=${template.id}&from=explorer&subject=${encodeURIComponent(payload.subject)}`
+      `/?template=${template.id}&from=explorer&subject=${encodeURIComponent(payload.subject)}`
     );
   }
 

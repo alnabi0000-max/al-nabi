@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useMaster } from "@/context/MasterControllerContext";
 import { formatCredits, LS_COINS } from "@/lib/credits";
+import { profileHref } from "@/lib/profile-tabs";
 
 /**
  * Hydration-safe NC balance badge.
@@ -17,18 +19,24 @@ export function CreditsBadge() {
 
   if (!isMounted) {
     return (
-      <div className="flex items-center gap-2 rounded-full border border-nabi-border bg-nabi-card px-3 py-1.5 text-sm font-bold text-nabi-ink">
+      <Link
+        href={profileHref("dokon")}
+        className="flex items-center gap-2 rounded-full border border-nabi-border bg-nabi-card px-3 py-1.5 text-sm tabular-nums text-nabi-ink"
+      >
         <span className="inline-block h-2 w-2 rounded-full bg-nabi-neon/40" />
         <span className="text-nabi-muted">… NC</span>
-      </div>
+      </Link>
     );
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-full border border-nabi-border bg-gradient-to-r from-[var(--accent-from)]/15 via-[var(--accent-via)]/15 to-[var(--accent-to)]/15 px-3 py-1.5 text-sm font-bold tabular-nums text-nabi-ink">
-      <span className="inline-block h-2 w-2 rounded-full bg-gradient-to-r from-[var(--accent-from)] to-[var(--accent-to)]" />
+    <Link
+      href={profileHref("dokon")}
+      className="flex items-center gap-2 rounded-full border border-nabi-border bg-nabi-card px-3 py-1.5 text-sm tabular-nums text-nabi-ink"
+    >
+      <span className="inline-block h-1.5 w-1.5 rounded-full bg-nabi-ink/70" />
       {formatCredits(coins)}
-    </div>
+    </Link>
   );
 }
 
