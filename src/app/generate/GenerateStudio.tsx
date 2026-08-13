@@ -455,7 +455,7 @@ export default function GenerateStudio() {
         const url = toPlayableUrl(resultUrl || (data.videoUrl as string));
         setVideoUrl(url);
         setResultImage(null);
-        setProvider(String(data.provider || "Al-Nabi Cinematic"));
+        setProvider(String(data.provider || "Cinematic"));
         requestAnimationFrame(() => scrollToMediaViewer());
         pushHistory({
           id: (gid || data.jobId) as string,

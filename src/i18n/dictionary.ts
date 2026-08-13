@@ -138,7 +138,7 @@ const en: Dictionary = {
   },
   chat: {
     title: "Producer Chat",
-    engine: "Al-Nabi Native Engine",
+    engine: "Studio",
     welcome:
       "Drop a screenshot, paste a YouTube link, or describe a scene. Ask about NC or Cloud Vault anytime.",
     placeholder: "Idea, YouTube link, or ask about NC…",
@@ -161,7 +161,7 @@ const en: Dictionary = {
     session: "Session",
     aspect: "Aspect",
     narration: "Narration",
-    audio: "Al-Nabi Audio Engine",
+    audio: "Voice",
     bgmTitle: "Background music",
     bgmAi: "AI picks",
     bgmManual: "I choose",
@@ -250,7 +250,7 @@ const uz: Dictionary = {
   },
   chat: {
     title: "Producer Chat",
-    engine: "Al-Nabi Native Engine",
+    engine: "Studio",
     welcome:
       "Skrinshot tashlang, YouTube havolasini joylashtiring yoki sahnani yozing. NC yoki Cloud Vault haqida so‘rang.",
     placeholder: "G‘oya, YouTube havola yoki NC haqida savol…",
@@ -273,7 +273,7 @@ const uz: Dictionary = {
     session: "Sessiya",
     aspect: "Format",
     narration: "Ovoz",
-    audio: "Al-Nabi Audio Engine",
+    audio: "Ovoz",
     bgmTitle: "Fon musiqasi",
     bgmAi: "AI tanlasin",
     bgmManual: "O'zim tanlayman",
@@ -363,7 +363,7 @@ const ru: Dictionary = {
   },
   chat: {
     title: "Producer Chat",
-    engine: "Al-Nabi Native Engine",
+    engine: "Studio",
     welcome:
       "Загрузите скриншот, вставьте ссылку YouTube или опишите сцену. Спросите про NC или Cloud Vault.",
     placeholder: "Идея, ссылка YouTube или вопрос про NC…",
@@ -386,7 +386,7 @@ const ru: Dictionary = {
     session: "Сессия",
     aspect: "Формат",
     narration: "Озвучка",
-    audio: "Al-Nabi Audio Engine",
+    audio: "Голос",
     bgmTitle: "Фоновая музыка",
     bgmAi: "Выберет ИИ",
     bgmManual: "Выберу сам",

@@ -45,6 +45,7 @@
   "studio_advanced_hide": "Скрыть",
   "studio_canvas_empty": "Видео появится здесь",
   "studio_create": "Создать",
+  "studio_models": "Модели",
   "templates": "Шаблоны",
   "drag_drop_zone": "Image-to-Video — Перетащите и отпустите",
   "drag_drop_hint": "JPG / PNG · макс. 5 МБ",
@@ -213,7 +214,7 @@
   "mode_prompt": "Промпт → Видео",
   "mode_script_film": "Сценарий → Фильм",
   "anti_cheat_toast": "Кибер-безопасность активна",
-  "audio_engine": "Al-Nabi Voice AI",
+  "audio_engine": "Голос",
   "director_sync": "Al-Nabi Smart Director",
   "voiceover_ready": "Озвучка готова",
   "voiceover_mock": "Голос mock — ключ сервера не задан",
@@ -284,7 +285,7 @@
   "save_new_password": "Сохранить пароль",
   "go_dashboard": "Перейти в кабинет",
   "model_engine": "Движок модели ИИ",
-  "model_engine_hint": "Выберите Kling, Luma, Runway или FLUX — настройки качества и камеры применяются к каждому рендеру.",
+  "model_engine_hint": "Выберите модель — качество и камера применяются к каждому рендеру.",
   "frame_rate": "Частота кадров",
   "camera_motion": "Движение камеры"
 }

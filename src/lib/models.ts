@@ -4,11 +4,11 @@
  */
 
 export const ALNABIY_ENGINES = {
-  realism: "Al-Nabi Realism",
-  cinema: "Al-Nabi Cinematic",
-  voice: "Al-Nabi Audio Engine",
-  director: "Al-Nabi Director",
-  gateway: "Al-Nabi Native Engine",
+  realism: "Realism",
+  cinema: "Cinematic",
+  voice: "Voice",
+  director: "Director",
+  gateway: "Studio",
 } as const;
 
 export type AlnabiyEngineId = keyof typeof ALNABIY_ENGINES;

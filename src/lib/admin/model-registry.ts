@@ -161,31 +161,31 @@ export const WATCHED_MODELS: Array<{
 }> = [
   {
     slot: "kling25",
-    displayName: "Al-Nabi Cinematic",
+    displayName: "Cinematic",
     defaultModelId: "kwaivgi/kling-v2.1",
     envKey: "REPLICATE_KLING_V25_MODEL",
   },
   {
     slot: "kling3",
-    displayName: "Al-Nabi Cinematic Pro",
+    displayName: "Cinematic Pro",
     defaultModelId: "kwaivgi/kling-v2.1-master",
     envKey: "REPLICATE_KLING_V3_MODEL",
   },
   {
     slot: "lumaRay2",
-    displayName: "Al-Nabi Motion Pro",
+    displayName: "Motion Pro",
     defaultModelId: "luma/ray",
     envKey: "REPLICATE_LUMA_MODEL",
   },
   {
     slot: "wan",
-    displayName: "Al-Nabi Stream",
+    displayName: "Stream",
     defaultModelId: "wavespeedai/wan-2.1-t2v-720p",
     envKey: "REPLICATE_WAN_MODEL",
   },
   {
     slot: "runway",
-    displayName: "Al-Nabi Motion Elite",
+    displayName: "Motion Elite",
     defaultModelId: "minimax/video-01",
     envKey: "REPLICATE_RUNWAY_MODEL",
   },

@@ -14,19 +14,19 @@ const MODEL_MAP: Record<
 > = {
   "alnabi-cinematic": {
     engine: "kling-v2.5",
-    label: "Al-Nabi Cinematic",
+    label: "Cinematic",
   },
   "alnabi-cinematic-ultra": {
     engine: "kling-v3",
-    label: "Al-Nabi Cinematic Pro",
+    label: "Cinematic Pro",
   },
   "alnabi-motion-pro": {
     engine: "luma-ray2",
-    label: "Al-Nabi Motion Pro",
+    label: "Motion Pro",
   },
   "alnabi-auto": {
     engine: "auto",
-    label: "Al-Nabi Auto",
+    label: "Auto",
   },
 };
 

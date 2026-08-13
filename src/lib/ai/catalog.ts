@@ -46,7 +46,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
   {
     id: "kling-v2.5",
     media: "video",
-    label: "Al-Nabi Cinematic",
+    label: "Cinematic",
     vendor: "Al-Nabi",
     description: "High-motion cinematic video",
     coinMultiplier: 1.25,
@@ -54,7 +54,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
   {
     id: "kling-v3",
     media: "video",
-    label: "Al-Nabi Cinematic Pro",
+    label: "Cinematic Pro",
     vendor: "Al-Nabi",
     description: "Flagship cinematic generation",
     coinMultiplier: 1.55,
@@ -62,7 +62,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
   {
     id: "luma-ray2",
     media: "video",
-    label: "Al-Nabi Motion Pro",
+    label: "Motion Pro",
     vendor: "Al-Nabi",
     description: "Fluid dreamlike motion",
     coinMultiplier: 1.35,
@@ -70,7 +70,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
   {
     id: "runway-gen3",
     media: "video",
-    label: "Al-Nabi Motion Elite",
+    label: "Motion Elite",
     vendor: "Al-Nabi",
     description: "Precision motion control",
     coinMultiplier: 1.45,
@@ -78,7 +78,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
   {
     id: "wan-2.5",
     media: "video",
-    label: "Al-Nabi Stream",
+    label: "Stream",
     vendor: "Al-Nabi",
     description: "Fast gateway video route",
     coinMultiplier: 1.0,
@@ -86,7 +86,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
   {
     id: "minimax",
     media: "video",
-    label: "Al-Nabi Pulse",
+    label: "Pulse",
     vendor: "Al-Nabi",
     description: "Dynamic short-form motion",
     coinMultiplier: 1.0,
@@ -94,7 +94,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
   {
     id: "auto",
     media: "video",
-    label: "Al-Nabi Auto",
+    label: "Auto",
     vendor: "Al-Nabi",
     description: "Smart best-available route",
     coinMultiplier: 1.0,
@@ -105,7 +105,7 @@ export const IMAGE_MODEL_CARDS: OfficialModelCard[] = [
   {
     id: "flux-pro",
     media: "image",
-    label: "Al-Nabi Realism",
+    label: "Realism",
     vendor: "Al-Nabi",
     description: "Photoreal still generation",
     coinMultiplier: 1.0,
@@ -113,7 +113,7 @@ export const IMAGE_MODEL_CARDS: OfficialModelCard[] = [
   {
     id: "sd3.5-large",
     media: "image",
-    label: "Al-Nabi Realism Detail",
+    label: "Realism Detail",
     vendor: "Al-Nabi",
     description: "High-detail still render",
     coinMultiplier: 1.1,
@@ -121,7 +121,7 @@ export const IMAGE_MODEL_CARDS: OfficialModelCard[] = [
   {
     id: "auto",
     media: "image",
-    label: "Al-Nabi Realism Auto",
+    label: "Realism Auto",
     vendor: "Al-Nabi",
     description: "Best available still route",
     coinMultiplier: 1.0,
@@ -131,7 +131,7 @@ export const IMAGE_MODEL_CARDS: OfficialModelCard[] = [
 export const AUDIO_MODEL_CARD: OfficialModelCard = {
   id: "alnabi-voice",
   media: "audio",
-  label: "Al-Nabi Voice",
+  label: "Voice",
   vendor: "Al-Nabi",
   description: "Studio-grade speech synthesis",
   coinMultiplier: 1.0,

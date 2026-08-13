@@ -161,8 +161,8 @@ export async function processGenerationJob(generationId: string): Promise<{
     }
 
     let providerUrl = "";
-    let provider = "Al-Nabi Studio";
-    let model = "Al-Nabi Cinematic";
+    let provider = "Studio";
+    let model = "Cinematic";
     let engineId = "auto";
 
     if (isImageType(generation.type)) {

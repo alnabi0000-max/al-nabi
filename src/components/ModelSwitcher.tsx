@@ -74,7 +74,7 @@ export function ModelSwitcher({
     <div className="space-y-4">
       <div>
         <p className="mb-1 text-xs uppercase tracking-wider text-nabi-muted">
-          Al-Nabi Models
+          {tr("studio_models")}
         </p>
         <p className="mb-2 text-[11px] text-nabi-muted">
           {tr("model_engine_hint")}
