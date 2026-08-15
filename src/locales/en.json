@@ -171,6 +171,7 @@
   "nc_receipts_empty": "No receipts yet. Create something — spend shows up here.",
   "nc_receipts_total": "Total spent",
   "nc_receipts_see_library": "Media library",
+  "nc_receipts_see_all": "All receipts",
   "nc_receipts_kind_vault": "Cloud Vault",
   "nc_receipts_kind_other": "NC charged",
   "calculator_type": "Type",

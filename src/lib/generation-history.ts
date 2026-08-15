@@ -1,6 +1,8 @@
 import type { EmotionMode, GenerationKind } from "@/lib/credits";
 import { LS_HISTORY } from "@/lib/credits";
 
+export const HISTORY_CHANGED_EVENT = "alnabiy-history-changed";
+
 export interface GenerationRecord {
   id: string;
   kind: GenerationKind;
@@ -13,7 +15,13 @@ export interface GenerationRecord {
   creditsCost: number;
   provider?: string;
   quality?: string | null;
+  receiptId?: string;
   createdAt: string;
+}
+
+function emitHistoryChanged() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(HISTORY_CHANGED_EVENT));
 }
 
 export function loadHistory(): GenerationRecord[] {
@@ -33,6 +41,7 @@ export function saveHistory(items: GenerationRecord[]) {
   try {
     localStorage.setItem(LS_HISTORY, JSON.stringify(items.slice(0, 80)));
   } catch {}
+  emitHistoryChanged();
 }
 
 export function pushHistory(
@@ -52,10 +61,28 @@ export function pushHistory(
     creditsCost: entry.creditsCost,
     provider: entry.provider,
     quality: entry.quality,
+    receiptId: entry.receiptId,
     createdAt: entry.createdAt || new Date().toISOString(),
   };
-  const next = [record, ...loadHistory()];
+  const next = [record, ...loadHistory().filter((x) => x.id !== record.id)];
   saveHistory(next);
+  if (record.creditsCost > 0) {
+    void import("@/lib/nc-receipts")
+      .then((m) =>
+        m.upsertNcReceipt({
+          id: record.id,
+          receiptId: record.receiptId,
+          kind: record.kind,
+          title: record.title,
+          creditsCost: record.creditsCost,
+          durationSec: record.durationSec,
+          quality: record.quality,
+          provider: record.provider,
+          createdAt: record.createdAt,
+        })
+      )
+      .catch(() => {});
+  }
   return record;
 }
 

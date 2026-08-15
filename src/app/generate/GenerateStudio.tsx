@@ -15,7 +15,9 @@ import clsx from "clsx";
 import { scrollToMediaViewer } from "@/lib/media-viewer-scroll";
 import {
   calculateGenerationCost,
+  CREDIT_RATES,
   EMOTION_MODES,
+  formatCredits,
   type EmotionMode,
   type StyleKey,
 } from "@/lib/credits";
@@ -73,6 +75,14 @@ const CinemaFrame = dynamic(
   () =>
     import("@/components/CinemaFrame").then((m) => ({
       default: m.CinemaFrame,
+    })),
+  { ssr: false }
+);
+
+const NcReceiptHistory = dynamic(
+  () =>
+    import("@/components/NcReceiptHistory").then((m) => ({
+      default: m.NcReceiptHistory,
     })),
   { ssr: false }
 );
@@ -356,6 +366,7 @@ export default function GenerateStudio() {
         balanceAfter: data.balanceAfter as number | undefined,
         receiptId: data.receiptId as string | undefined,
         label: tr("create_with_alnabiy"),
+        kind: generationKind,
       });
 
       const gid = (data.generationId || data.jobId) as string | undefined;
@@ -413,6 +424,7 @@ export default function GenerateStudio() {
               typeof status.balanceAfter === "number"
                 ? status.balanceAfter
                 : undefined,
+            kind: generationKind,
           });
         }
         resultUrl =
@@ -450,6 +462,7 @@ export default function GenerateStudio() {
           creditsCost: (data.creditsCost as number) ?? cost,
           provider: data.provider as string,
           quality,
+          receiptId: data.receiptId as string | undefined,
         });
       } else {
         const url = toPlayableUrl(resultUrl || (data.videoUrl as string));
@@ -468,6 +481,7 @@ export default function GenerateStudio() {
           creditsCost: (data.creditsCost as number) ?? cost,
           provider: data.provider as string,
           quality,
+          receiptId: data.receiptId as string | undefined,
         });
       }
     } catch (e) {
@@ -612,6 +626,40 @@ export default function GenerateStudio() {
               )}
             </div>
           )}
+
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-nabi-gold">
+              {tr("credit_calculator")}
+            </p>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between text-nabi-muted">
+                <span>{tr("calculator_type")}</span>
+                <span>
+                  {mediaKind === "image" ? tr("mode_image") : tr("mode_video")}
+                </span>
+              </div>
+              {mediaKind === "video" && (
+                <div className="flex justify-between text-nabi-muted">
+                  <span>{tr("duration_label")}</span>
+                  <span>{duration}s</span>
+                </div>
+              )}
+              <div className="flex justify-between text-nabi-muted">
+                <span>{tr("rate_label")}</span>
+                <span>
+                  {mediaKind === "image"
+                    ? `${CREDIT_RATES.image} NC`
+                    : `${CREDIT_RATES.prompt_to_video_per_min} / min`}
+                </span>
+              </div>
+              <div className="flex justify-between border-t border-amber-500/20 pt-2 font-bold text-nabi-gold">
+                <span>{tr("total_label")}</span>
+                <span>{formatCredits(cost)}</span>
+              </div>
+            </div>
+          </div>
+
+          <NcReceiptHistory variant="compact" />
 
           <InsufficientBalanceHint
             kind={generationKind}

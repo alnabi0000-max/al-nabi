@@ -25,6 +25,14 @@ const MediaLibrary = dynamic(
   }
 );
 
+const NcReceiptHistory = dynamic(
+  () =>
+    import("@/components/NcReceiptHistory").then((m) => ({
+      default: m.NcReceiptHistory,
+    })),
+  { ssr: false }
+);
+
 /**
  * Shaxsiy kabinet — balans + media kutubxona (Profile «Kabinet» tabi)
  */
@@ -141,6 +149,8 @@ export function ProfileKabinetPanel() {
           </dl>
         </ClientOnly>
       </section>
+
+      <NcReceiptHistory variant="full" />
 
       <MediaLibrary onStats={onStats} />
     </div>

@@ -93,6 +93,7 @@ interface MasterController extends MasterState {
     receiptId?: string;
     bonusGift?: number;
     label?: string;
+    kind?: string;
   }) => boolean;
   purchasePack: (pack: CoinPack) => void;
   setIdentityLocked: (v: boolean) => void;
@@ -615,6 +616,24 @@ export function MasterControllerProvider({
           label: opts.label || opts.kind,
           at: new Date().toISOString(),
         });
+        if (cost > 0) {
+          void import("@/lib/nc-receipts")
+            .then((m) =>
+              m.upsertNcReceipt({
+                id: data.receiptId as string | undefined,
+                receiptId: data.receiptId as string | undefined,
+                kind: opts.kind,
+                title: opts.label || opts.kind,
+                creditsCost: cost,
+                durationSec: opts.durationSec,
+                balanceAfter:
+                  typeof data.balanceAfter === "number"
+                    ? data.balanceAfter
+                    : balanceAfter,
+              })
+            )
+            .catch(() => {});
+        }
         setTimeout(() => setChargeReceipt(null), 4200);
         return true;
       } catch {
@@ -634,6 +653,7 @@ export function MasterControllerProvider({
       receiptId?: string;
       bonusGift?: number;
       label?: string;
+      kind?: string;
     }) => {
       if (!result.ok || result.code === "INSUFFICIENT") {
         setShowInsufficientModal(true);
@@ -651,6 +671,29 @@ export function MasterControllerProvider({
         try {
           localStorage.setItem(LS_COINS, String(result.balanceAfter));
         } catch {}
+      }
+      if (
+        typeof result.cost === "number" &&
+        result.cost > 0 &&
+        (result.receiptId || result.kind === "vault")
+      ) {
+        void import("@/lib/nc-receipts")
+          .then((m) =>
+            m.upsertNcReceipt({
+              id: result.receiptId,
+              receiptId: result.receiptId,
+              kind: (result.kind as
+                | "image"
+                | "prompt_to_video"
+                | "text_to_movie"
+                | "vault"
+                | "other") || "other",
+              title: result.label || "NC",
+              creditsCost: result.cost,
+              balanceAfter: result.balanceAfter,
+            })
+          )
+          .catch(() => {});
       }
       /* Charge celebration / "Rozimisiz?" modal — o‘chirilgan; silent debit */
       return true;

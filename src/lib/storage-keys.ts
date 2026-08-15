@@ -11,6 +11,7 @@ export const STORAGE = {
   locale: "alnabiy_locale",
   queue: "alnabiy_ai_queue",
   history: "alnabiy_generation_history",
+  receipts: "alnabiy_nc_receipts",
   session: "alnabiy_session",
 } as const;
 

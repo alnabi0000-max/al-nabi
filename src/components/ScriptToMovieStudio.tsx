@@ -12,6 +12,7 @@ import {
   type StyleKey,
 } from "@/lib/credits";
 import { InsufficientBalanceHint } from "@/components/InsufficientBalanceHint";
+import { NcReceiptHistory } from "@/components/NcReceiptHistory";
 import { pushHistory } from "@/lib/generation-history";
 import { ViralHooksPanel } from "@/components/ViralHooksPanel";
 import { MediaViewer } from "@/components/MediaViewer";
@@ -325,6 +326,7 @@ export function ScriptToMovieStudio() {
         balanceAfter: data.balanceAfter,
         receiptId: data.receiptId,
         label: tr("create_with_alnabiy"),
+        kind: "text_to_movie",
       });
 
       const nextScenes: Scene[] = data.analysis?.scenes || scenes;
@@ -355,6 +357,7 @@ export function ScriptToMovieStudio() {
         creditsCost: data.creditsCost || credits,
         provider: "script-pipeline",
         quality,
+        receiptId: data.receiptId as string | undefined,
       });
       setProgressPercent(100);
       setRenderStage("completed");
@@ -516,6 +519,8 @@ export function ScriptToMovieStudio() {
               </div>
             </div>
           </div>
+
+          <NcReceiptHistory variant="compact" />
 
           <InsufficientBalanceHint
             kind="text_to_movie"

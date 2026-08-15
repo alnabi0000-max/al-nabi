@@ -69,7 +69,9 @@ export function MediaActions({
           ok: true,
           cost: data.feeNc || 0,
           balanceAfter: data.balanceAfter,
+          receiptId: data.receiptId as string | undefined,
           label: data.message || "Cloud Vault",
+          kind: "vault",
         });
       }
       if (data.feeNc > 0) {
