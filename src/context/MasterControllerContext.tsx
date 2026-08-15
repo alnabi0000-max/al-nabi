@@ -672,9 +672,10 @@ export function MasterControllerProvider({
           localStorage.setItem(LS_COINS, String(result.balanceAfter));
         } catch {}
       }
+      const charged = result.cost;
       if (
-        typeof result.cost === "number" &&
-        result.cost > 0 &&
+        typeof charged === "number" &&
+        charged > 0 &&
         (result.receiptId || result.kind === "vault")
       ) {
         void import("@/lib/nc-receipts")
@@ -689,7 +690,7 @@ export function MasterControllerProvider({
                 | "vault"
                 | "other") || "other",
               title: result.label || "NC",
-              creditsCost: result.cost,
+              creditsCost: charged,
               balanceAfter: result.balanceAfter,
             })
           )
