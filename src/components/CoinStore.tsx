@@ -8,8 +8,10 @@ import {
   Crown,
   Film,
   Gem,
+  Image,
   Package,
   Sparkles,
+  WandSparkles,
   type LucideIcon,
 } from "lucide-react";
 import { useMaster } from "@/context/MasterControllerContext";
@@ -53,6 +55,45 @@ const PACK_ICONS: Record<string, LucideIcon> = {
 
 /** Highlighted official mid-tier */
 const RECOMMENDED_PACK_ID = "creator";
+
+type CapacitySpec = {
+  standardVideo: string;
+  ultraVideo: string;
+  imageOrAudio: string;
+};
+
+/**
+ * Purchase-page capacity estimates. They use the advertised display rates:
+ * 20 NC per 720p 5s video, 32 NC per 4K 5s video, and 2 NC per Flux HD
+ * image or 150-character ElevenLabs clip.
+ */
+const CAPACITY_SPECS: Record<string, CapacitySpec> = {
+  starter: {
+    standardVideo: "Up to 8.7 minutes of Standard Video (~105 clips of 5s)",
+    ultraVideo: "Up to 5.4 minutes of 4K Ultra Video (~65 clips)",
+    imageOrAudio: "Up to 1,050 HD Images / Voiceovers",
+  },
+  pro: {
+    standardVideo: "Up to 18.3 minutes of Standard Video (~220 clips of 5s)",
+    ultraVideo: "Up to 11.4 minutes of 4K Ultra Video (~137 clips)",
+    imageOrAudio: "Up to 2,200 HD Images / Voiceovers",
+  },
+  creator: {
+    standardVideo: "Up to 28.7 minutes of Standard Video (~345 clips of 5s)",
+    ultraVideo: "Up to 17.9 minutes of 4K Ultra Video (~215 clips)",
+    imageOrAudio: "Up to 3,450 HD Images / Voiceovers",
+  },
+  business: {
+    standardVideo: "Up to 40.0 minutes of Standard Video (~480 clips of 5s)",
+    ultraVideo: "Up to 25.0 minutes of 4K Ultra Video (~300 clips)",
+    imageOrAudio: "Up to 4,800 HD Images / Voiceovers",
+  },
+  studio: {
+    standardVideo: "Up to 52.0 minutes of Standard Video (~625 clips of 5s)",
+    ultraVideo: "Up to 32.5 minutes of 4K Ultra Video (~390 clips)",
+    imageOrAudio: "Up to 6,250 HD Images / Voiceovers",
+  },
+};
 
 /**
  * Official NC Store — fixed $20–$100 packages
@@ -180,9 +221,19 @@ export function CoinStore() {
       <p className="mb-2 text-center text-sm text-nabi-muted">
         {t("coin_store_subtitle")}
       </p>
-      <p className="mb-1 text-center text-xs text-nabi-muted">
-        {t("rate_image")} · {t("rate_video")} · {t("rate_movie")}
-      </p>
+      <div
+        className="mx-auto mb-3 max-w-3xl rounded-xl border border-nabi-neon/20 bg-nabi-card/60 px-4 py-3 text-center text-xs leading-relaxed text-nabi-muted"
+        title="Capacity estimates use 20 NC per 720p 5s video, 32 NC per 4K 5s video, and 2 NC per Flux HD image or 150-character ElevenLabs audio clip."
+      >
+        <p className="font-medium text-nabi-ink">
+          Plan with 20 NC / 720p 5s Standard Video · 32 NC / 4K 5s Ultra
+          Video · 2 NC / Flux HD Image or 150-character ElevenLabs Audio Clip
+        </p>
+        <p className="mt-1">
+          Your NC credits can be mixed and matched freely across Video, Image,
+          Audio, and Upscale.
+        </p>
+      </div>
       <p className="mb-8 text-center text-xs text-nabi-neon/80">
         {t("official_pricing_terms")}
       </p>
@@ -202,10 +253,10 @@ export function CoinStore() {
           const bonusPercent =
             pack.bonusPercent ??
             (pack.coins > 0 ? Math.round((pack.bonus / pack.coins) * 100) : 0);
-          const videoCapacity = pack.videoCapacity ?? yieldInfo.videoClips;
           const PackIcon = PACK_ICONS[pack.id] ?? Package;
           const isRecommended = pack.id === RECOMMENDED_PACK_ID;
           const busy = checkoutBusy === pack.id;
+          const capacitySpec = CAPACITY_SPECS[pack.id];
 
           return (
             <article
@@ -265,12 +316,34 @@ export function CoinStore() {
               )}
 
               <ul className="mt-5 flex flex-1 flex-col gap-3 border-t border-nabi-border/70 pt-4">
-                <FeatureRow
-                  icon={Film}
-                  label={t("pack_yield_videos", {
-                    n: videoCapacity.toLocaleString(),
-                  })}
-                />
+                {capacitySpec ? (
+                  <>
+                    <FeatureRow
+                      icon={Film}
+                      label={capacitySpec.standardVideo}
+                    />
+                    <FeatureRow
+                      icon={Clapperboard}
+                      label={capacitySpec.ultraVideo}
+                    />
+                    <FeatureRow
+                      icon={Image}
+                      label={capacitySpec.imageOrAudio}
+                    />
+                    <FeatureRow
+                      icon={WandSparkles}
+                      label="Full access to 4K/8K Upscale & AI Studio tools"
+                      accent
+                    />
+                  </>
+                ) : (
+                  <FeatureRow
+                    icon={Film}
+                    label={t("pack_yield_videos", {
+                      n: yieldInfo.videoClips.toLocaleString(),
+                    })}
+                  />
+                )}
                 {isRecommended && (
                   <FeatureRow
                     icon={Check}
