@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  Briefcase,
   Check,
   Clapperboard,
   Crown,
   Film,
   Gem,
-  Image as ImageIcon,
   Package,
   Sparkles,
   type LucideIcon,
@@ -28,7 +28,9 @@ type GeoPack = {
   currencySymbol: string;
   coins: number;
   bonus: number;
+  bonusPercent?: number;
   totalCoins: number;
+  videoCapacity?: number;
   tag: string;
   featured?: boolean;
   elite?: boolean;
@@ -44,16 +46,16 @@ type PricingState = {
 const PACK_ICONS: Record<string, LucideIcon> = {
   starter: Package,
   pro: Sparkles,
-  hollywood: Clapperboard,
-  director: Crown,
-  infinite: Gem,
+  creator: Clapperboard,
+  business: Briefcase,
+  studio: Gem,
 };
 
-/** Single highlighted plan — SnapGen-style “Premium” slot */
-const RECOMMENDED_PACK_ID = "director";
+/** Highlighted official mid-tier */
+const RECOMMENDED_PACK_ID = "creator";
 
 /**
- * Coin Store — narxlar faqat server geo-lock dan (boshqa tierlar yo'q)
+ * Official NC Store — fixed $20–$100 packages
  */
 export function CoinStore() {
   const { purchasePack, isOffline, alnabiyKey } = useMaster();
@@ -130,13 +132,13 @@ export function CoinStore() {
         return;
       }
 
-      // Demo: soft credit + celebration
       const asCoinPack: CoinPack = {
-        id: pack.id,
+        id: pack.id as CoinPack["id"],
         name: pack.name,
         priceUsd: pack.price,
         coins: pack.coins,
         bonus: pack.bonus,
+        bonusPercent: pack.bonusPercent ?? 0,
         tag: pack.tag,
         featured: pack.featured,
         elite: pack.elite,
@@ -182,10 +184,7 @@ export function CoinStore() {
         {t("rate_image")} · {t("rate_video")} · {t("rate_movie")}
       </p>
       <p className="mb-8 text-center text-xs text-nabi-neon/80">
-        {t("geo_pricing_terms")}
-        {pricing?.country && pricing.country !== "XX"
-          ? ` · ${t("geo_region_applied", { code: pricing.country })}`
-          : ` · ${t("geo_region_default")}`}
+        {t("official_pricing_terms")}
       </p>
 
       {error && (
@@ -197,13 +196,13 @@ export function CoinStore() {
       <div className="grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {packs.map((pack) => {
           const yieldInfo = packYield({
-            id: pack.id,
-            name: pack.name,
-            priceUsd: pack.price,
             coins: pack.coins,
             bonus: pack.bonus,
-            tag: pack.tag,
           });
+          const bonusPercent =
+            pack.bonusPercent ??
+            (pack.coins > 0 ? Math.round((pack.bonus / pack.coins) * 100) : 0);
+          const videoCapacity = pack.videoCapacity ?? yieldInfo.videoClips;
           const PackIcon = PACK_ICONS[pack.id] ?? Package;
           const isRecommended = pack.id === RECOMMENDED_PACK_ID;
           const busy = checkoutBusy === pack.id;
@@ -226,7 +225,6 @@ export function CoinStore() {
                 </span>
               )}
 
-              {/* Header: icon + name */}
               <div className="mb-4 flex items-center gap-2.5 pt-1">
                 <span
                   className={clsx(
@@ -245,40 +243,32 @@ export function CoinStore() {
                 </h3>
               </div>
 
-              {/* Price block */}
               <p className="text-3xl font-extrabold tracking-tight text-nabi-ink">
                 {pack.priceFormatted}
               </p>
               <p className="mt-1.5 text-lg font-bold tabular-nums text-nabi-gold">
                 {yieldInfo.total.toLocaleString()} {t("coins")}
               </p>
+              <p className="mt-1 text-xs text-nabi-muted">
+                {t("pack_base_nc", { n: pack.coins.toLocaleString() })}
+              </p>
 
-              {pack.bonus > 0 ? (
+              {bonusPercent > 0 ? (
                 <p className="mt-2 inline-flex w-fit items-center rounded-md bg-emerald-500/15 px-2 py-1 text-sm font-semibold text-emerald-400">
-                  {t("pack_bonus_tag", { n: pack.bonus.toLocaleString() })}
+                  {t("pack_bonus_percent", { percent: bonusPercent })}
+                  <span className="ml-1 font-medium opacity-80">
+                    ({t("pack_bonus_tag", { n: pack.bonus.toLocaleString() })})
+                  </span>
                 </p>
               ) : (
                 <div className="mt-2 h-7" aria-hidden />
               )}
 
-              {/* Feature rows */}
               <ul className="mt-5 flex flex-1 flex-col gap-3 border-t border-nabi-border/70 pt-4">
                 <FeatureRow
-                  icon={ImageIcon}
-                  label={t("pack_yield_images", {
-                    n: yieldInfo.images.toLocaleString(),
-                  })}
-                />
-                <FeatureRow
                   icon={Film}
-                  label={t("pack_yield_video", {
-                    n: yieldInfo.videoMinutes.toLocaleString(),
-                  })}
-                />
-                <FeatureRow
-                  icon={Clapperboard}
-                  label={t("pack_yield_movie", {
-                    n: yieldInfo.movieMinutes.toLocaleString(),
+                  label={t("pack_yield_videos", {
+                    n: videoCapacity.toLocaleString(),
                   })}
                 />
                 {isRecommended && (
@@ -288,9 +278,15 @@ export function CoinStore() {
                     accent
                   />
                 )}
+                {pack.elite && (
+                  <FeatureRow
+                    icon={Crown}
+                    label={t("pack_studio_perk")}
+                    accent
+                  />
+                )}
               </ul>
 
-              {/* Full-width Buy */}
               <button
                 type="button"
                 onClick={() => void buy(pack)}

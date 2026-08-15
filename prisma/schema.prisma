@@ -17,13 +17,16 @@ datasource db {
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
+/// Official NC package labels. Existing rows must be remapped before apply:
+/// HOLLYWOOD → CREATOR, DIRECTOR → BUSINESS, INFINITE → STUDIO
+/// (see prisma/sql/remap-plan-types.sql).
 enum PlanType {
   FREE
   STARTER
   PRO
-  HOLLYWOOD
-  DIRECTOR
-  INFINITE
+  CREATOR
+  BUSINESS
+  STUDIO
 }
 
 enum AccountStatus {

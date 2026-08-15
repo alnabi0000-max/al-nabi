@@ -6,7 +6,8 @@ import {
 import { resolveLocale } from "@/lib/i18n/messages";
 
 /**
- * GET — faqat foydalanuvchi hududi narxlari (boshqa tierlar yo'q)
+ * GET — official fixed NC packages ($20–$100).
+ * Geo headers stay for checkout fraud controls only.
  */
 export async function GET(req: NextRequest) {
   const country = detectCountryFromRequest(req);

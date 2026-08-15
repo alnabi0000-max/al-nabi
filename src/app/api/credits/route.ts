@@ -11,11 +11,12 @@ export async function GET() {
     formatted: formatCredits(DEMO_STARTING_CREDITS),
     rates: {
       image: CREDIT_RATES.image,
+      prompt_to_video: CREDIT_RATES.prompt_to_video_per_min,
       prompt_to_video_per_min: CREDIT_RATES.prompt_to_video_per_min,
       text_to_movie_per_min: CREDIT_RATES.text_to_movie_per_min,
     },
     rate:
-      "1 Image=1 · Video=30/min · Movie=40/min NC",
-    usdPerCoin: 0.05,
+      "1 Image=1 · Video=20 NC (standard) · Movie=40/min NC",
+    usdPerCoin: 0.01,
   });
 }

@@ -1,8 +1,8 @@
 /**
- * NC (Nabi Credits) — tasdiqlangan moliyaviy standart:
- * 1 AI Rasm = 1 Tanga (~$0.05)
- * 1 daqiqa Prompt-to-Video = 30 Tanga (~$1.50)
- * 1 daqiqa Script-to-Movie = 40 Tanga (~$2.00)
+ * NC (Nabi Credits) — official financial standard:
+ * 1 AI Image = 1 NC
+ * 1 standard Prompt-to-Video clip (8s) = 20 NC
+ * 1 minute Script-to-Movie = 40 NC
  */
 
 import { STORAGE, WATERMARK_TEXT } from "@/lib/storage-keys";
@@ -14,8 +14,21 @@ export const COIN_NAME = "NC" as const;
 /** Cloud Vault archive re-download maintenance fee */
 export const ARCHIVE_REDOWNLOAD_FEE_NC = 5;
 
-/** USD ekvivalent (ma'lumot uchun) */
-export const USD_PER_COIN = 0.05;
+/** USD equivalent for official packs ($20 → 2,000 base NC) */
+export const USD_PER_COIN = 0.01;
+
+/** Standard 8s prompt-to-video clip — marketing + billing base (before multipliers). */
+export const STANDARD_VIDEO_NC = 20;
+
+export const PACK_PRICE_IDS = [
+  "starter",
+  "pro",
+  "creator",
+  "business",
+  "studio",
+] as const;
+
+export type PackPriceId = (typeof PACK_PRICE_IDS)[number];
 
 export type StyleKey = "cinematic" | "cartoon" | "anime" | "realistic";
 
@@ -40,7 +53,7 @@ export const EMOTION_MODES: { id: EmotionMode; label: string }[] = [
 
 export const CREDIT_RATES = {
   image: 1,
-  prompt_to_video_per_min: 30,
+  prompt_to_video_per_min: STANDARD_VIDEO_NC,
   text_to_movie_per_min: 40,
 } as const;
 
@@ -269,30 +282,31 @@ export function formatCredits(n: number): string {
 }
 
 export interface CoinPack {
-  id: string;
+  id: PackPriceId;
   name: string;
   priceUsd: number;
   coins: number;
   bonus: number;
+  bonusPercent: number;
   tag: string;
   featured?: boolean;
   elite?: boolean;
 }
 
 /** Jami tangalar (asosiy + bonus) */
-export function packTotalCoins(pack: CoinPack): number {
+export function packTotalCoins(pack: Pick<CoinPack, "coins" | "bonus">): number {
   return pack.coins + pack.bonus;
 }
 
 /**
- * Paketdan taxminiy mahsulot hisobi
- * 1 rasm = 1 · P2V = 30/min · S2M = 40/min
+ * Package yield — 1 image = 1 NC · standard video = 20 NC · S2M = 40 NC/min
  */
-export function packYield(pack: CoinPack): {
+export function packYield(pack: Pick<CoinPack, "coins" | "bonus">): {
   total: number;
   images: number;
   videoMinutes: number;
   movieMinutes: number;
+  videoClips: number;
 } {
   const total = packTotalCoins(pack);
   return {
@@ -300,60 +314,73 @@ export function packYield(pack: CoinPack): {
     images: total,
     videoMinutes: Math.floor(total / CREDIT_RATES.prompt_to_video_per_min),
     movieMinutes: Math.floor(total / CREDIT_RATES.text_to_movie_per_min),
+    videoClips: Math.floor(total / STANDARD_VIDEO_NC),
   };
 }
 
 /**
- * Legacy pack metadata (coins/bonus).
- * Narxlar Strict Geo-Lock orqali `/api/pricing` dan keladi — bu yerda
- * priceUsd faqat fallback / demo; do'konda ko'rsatilmaydi.
+ * Official NC packages ($20–$100). Checkout and /api/pricing must use these
+ * exact USD amounts — geo-lock no longer changes the list price.
  */
 export const COIN_PACKS: CoinPack[] = [
   {
     id: "starter",
-    name: "Starter Hook",
-    priceUsd: 5,
-    coins: 100,
-    bonus: 0,
-    tag: "Starter",
+    name: "Starter Package",
+    priceUsd: 20,
+    coins: 2000,
+    bonus: 100,
+    bonusPercent: 5,
+    tag: "+5% Bonus",
   },
   {
     id: "pro",
-    name: "Pro Creator",
-    priceUsd: 25,
-    coins: 550,
-    bonus: 50,
-    tag: "+50 Bonus",
-    featured: true,
-  },
-  {
-    id: "hollywood",
-    name: "Hollywood Studio",
-    priceUsd: 50,
-    coins: 1200,
-    bonus: 200,
-    tag: "+200 Bonus",
-    featured: true,
-  },
-  {
-    id: "director",
-    name: "Director Choice",
-    priceUsd: 80,
-    coins: 2000,
+    name: "Pro Package",
+    priceUsd: 40,
+    coins: 4000,
     bonus: 400,
-    tag: "+400 Bonus",
+    bonusPercent: 10,
+    tag: "+10% Bonus",
     featured: true,
   },
   {
-    id: "infinite",
-    name: "Infinite Al-Nabi",
+    id: "creator",
+    name: "Creator Package",
+    priceUsd: 60,
+    coins: 6000,
+    bonus: 900,
+    bonusPercent: 15,
+    tag: "+15% Bonus",
+    featured: true,
+  },
+  {
+    id: "business",
+    name: "Business Package",
+    priceUsd: 80,
+    coins: 8000,
+    bonus: 1600,
+    bonusPercent: 20,
+    tag: "+20% Bonus",
+    featured: true,
+  },
+  {
+    id: "studio",
+    name: "Studio Package",
     priceUsd: 100,
-    coins: 2700,
-    bonus: 700,
-    tag: "+700 Bonus",
+    coins: 10000,
+    bonus: 2500,
+    bonusPercent: 25,
+    tag: "+25% Bonus",
     elite: true,
   },
 ];
+
+export function isPackPriceId(id: string): id is PackPriceId {
+  return (PACK_PRICE_IDS as readonly string[]).includes(id);
+}
+
+export function getOfficialPack(id: string): CoinPack | undefined {
+  return COIN_PACKS.find((pack) => pack.id === id);
+}
 
 export const REFERRAL_REWARD = 200;
 export const DEMO_STARTING_CREDITS = 200;

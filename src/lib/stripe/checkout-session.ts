@@ -11,10 +11,10 @@ import { resolveLocale } from "@/lib/i18n/messages";
 import { prisma } from "@/lib/prisma";
 import { resolveUserByKey } from "@/lib/assets";
 import { getLocalSessionUser } from "@/lib/auth/session";
-import { COIN_PACKS } from "@/lib/credits";
+import { COIN_PACKS, PACK_PRICE_IDS } from "@/lib/credits";
 
 const bodySchema = z.object({
-  packId: z.enum(["starter", "pro", "hollywood", "director", "infinite"]),
+  packId: z.enum(PACK_PRICE_IDS),
   locale: z.string().optional(),
   alnabiyKey: z.string().optional().nullable(),
   clientPrice: z.number().optional(),

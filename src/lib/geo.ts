@@ -1,45 +1,27 @@
 /**
- * Strict Geo-Lock Regional Pricing — SERVER ONLY
- * Boshqa tier narxlari hech qachon klientga chiqmasin.
+ * Official NC package pricing — SERVER ONLY.
+ * List prices are fixed USD ($20–$100). Geo-lock is used only for
+ * checkout fraud controls (billing-country match), never to change price.
  */
 
 import type { NextRequest } from "next/server";
+import {
+  COIN_PACKS,
+  STANDARD_VIDEO_NC,
+  isPackPriceId,
+  type PackPriceId,
+} from "@/lib/credits";
 
 export type GeoTier = "T1" | "T2" | "T3";
+export type { PackPriceId };
+export { isPackPriceId };
 
-export type PackPriceId =
-  | "starter"
-  | "pro"
-  | "hollywood"
-  | "director"
-  | "infinite";
-
-/** Faqat server ichida — eksport qilinmasin klientga */
-const TIER_PRICES: Record<GeoTier, Record<PackPriceId, number>> = {
-  /** O'zbekiston + MDH */
-  T3: {
-    starter: 5,
-    pro: 25,
-    hollywood: 50,
-    director: 80,
-    infinite: 100,
-  },
-  /** Qozog'iston, Turkiya, BAA, Sharqiy Yevropa */
-  T2: {
-    starter: 6,
-    pro: 28,
-    hollywood: 58,
-    director: 92.8,
-    infinite: 116,
-  },
-  /** AQSh, G'arbiy Yevropa, SA, Yaponiya */
-  T1: {
-    starter: 7.5,
-    pro: 34,
-    hollywood: 68,
-    director: 108.8,
-    infinite: 136,
-  },
+const OFFICIAL_PACK_PRICES: Record<PackPriceId, number> = {
+  starter: 20,
+  pro: 40,
+  creator: 60,
+  business: 80,
+  studio: 100,
 };
 
 /** Tier 3 — UZ + MDH (KZ bundan mustasno → T2) */
@@ -119,43 +101,40 @@ const TIER1_COUNTRIES = new Set([
 
 const PACK_META: Record<
   PackPriceId,
-  { name: string; coins: number; bonus: number; tag: string; featured?: boolean; elite?: boolean }
-> = {
-  starter: {
-    name: "Starter Hook",
-    coins: 100,
-    bonus: 0,
-    tag: "Starter",
-  },
-  pro: {
-    name: "Pro Creator",
-    coins: 550,
-    bonus: 50,
-    tag: "+50 Bonus",
-    featured: true,
-  },
-  hollywood: {
-    name: "Hollywood Studio",
-    coins: 1200,
-    bonus: 200,
-    tag: "+200 Bonus",
-    featured: true,
-  },
-  director: {
-    name: "Director Choice",
-    coins: 2000,
-    bonus: 400,
-    tag: "+400 Bonus",
-    featured: true,
-  },
-  infinite: {
-    name: "Infinite Alnabiy",
-    coins: 2700,
-    bonus: 700,
-    tag: "+700 Bonus",
-    elite: true,
-  },
-};
+  {
+    name: string;
+    coins: number;
+    bonus: number;
+    bonusPercent: number;
+    tag: string;
+    featured?: boolean;
+    elite?: boolean;
+  }
+> = Object.fromEntries(
+  COIN_PACKS.map((pack) => [
+    pack.id,
+    {
+      name: pack.name,
+      coins: pack.coins,
+      bonus: pack.bonus,
+      bonusPercent: pack.bonusPercent,
+      tag: pack.tag,
+      featured: pack.featured,
+      elite: pack.elite,
+    },
+  ])
+) as Record<
+  PackPriceId,
+  {
+    name: string;
+    coins: number;
+    bonus: number;
+    bonusPercent: number;
+    tag: string;
+    featured?: boolean;
+    elite?: boolean;
+  }
+>;
 
 export type PublicGeoPack = {
   id: PackPriceId;
@@ -167,7 +146,9 @@ export type PublicGeoPack = {
   currencySymbol: string;
   coins: number;
   bonus: number;
+  bonusPercent: number;
   totalCoins: number;
+  videoCapacity: number;
   tag: string;
   featured?: boolean;
   elite?: boolean;
@@ -256,12 +237,8 @@ export function isBillingCountryAllowed(
   return cardTier === tier;
 }
 
-export function getPackPriceUsd(tier: GeoTier, packId: PackPriceId): number {
-  return TIER_PRICES[tier][packId];
-}
-
-export function isPackPriceId(id: string): id is PackPriceId {
-  return id in PACK_META;
+export function getPackPriceUsd(_tier: GeoTier, packId: PackPriceId): number {
+  return OFFICIAL_PACK_PRICES[packId];
 }
 
 /** Locale → BCP47 + valyuta belgisi (ko'rsatish USD) */
@@ -343,15 +320,15 @@ export function buildSilentPricing(opts: {
 }): SilentPricingPayload {
   const country = normalizeCountry(opts.country);
   const tier = resolveGeoTier(country);
-  const prices = TIER_PRICES[tier];
   const { currency, currencySymbol } = localeToIntl(opts.locale);
 
   const packs: PublicGeoPack[] = (
     Object.keys(PACK_META) as PackPriceId[]
   ).map((id) => {
     const meta = PACK_META[id];
-    const price = prices[id];
+    const price = OFFICIAL_PACK_PRICES[id];
     const { formatted } = formatPriceForLocale(price, opts.locale);
+    const totalCoins = meta.coins + meta.bonus;
     return {
       id,
       name: meta.name,
@@ -361,7 +338,9 @@ export function buildSilentPricing(opts: {
       currencySymbol,
       coins: meta.coins,
       bonus: meta.bonus,
-      totalCoins: meta.coins + meta.bonus,
+      bonusPercent: meta.bonusPercent,
+      totalCoins,
+      videoCapacity: Math.floor(totalCoins / STANDARD_VIDEO_NC),
       tag: meta.tag,
       featured: meta.featured,
       elite: meta.elite,

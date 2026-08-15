@@ -1,7 +1,7 @@
 /**
  * Backend credit gate + Rollback
  * DB: User.coins | brauzer: alnabiy_coins
- * 1 rasm=1 · P2V=30/min · Script-Film=40/min
+ * 1 rasm=1 · P2V=20 NC / standard video · Script-Film=40/min
  */
 
 import {

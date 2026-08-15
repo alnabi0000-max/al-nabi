@@ -46,14 +46,14 @@ npm run dev
 | `src/components/MobileNav.tsx` | iPhone Bottom Nav (4 tugma) |
 | `src/context/MasterControllerContext.tsx` | Markaziy zanjir |
 
-## Coin Store paketlar
+## Rasmiy NC paketlar
 
-| Paket | Narx | Coins | Bonus |
-|-------|------|-------|-------|
-| Starter Hook | $5 | 1 000 | — |
-| Pro Creator | $25 | 5 500 | +500 |
-| Hollywood Studio | $50 | 12 000 | +1 000 |
-| Director Choice | $80 | 20 000 | +2 000 |
-| Infinite Alnabiy | $100 | 25 000 | +3 500 |
+| Paket | Narx | Asosiy NC | Bonus | Jami NC | Taxminiy videolar (20 NC) |
+|-------|------|-----------|-------|---------|---------------------------|
+| Starter Package | $20 | 2 000 | +5% (100) | 2 100 | 105 |
+| Pro Package | $40 | 4 000 | +10% (400) | 4 400 | 220 |
+| Creator Package | $60 | 6 000 | +15% (900) | 6 900 | 345 |
+| Business Package | $80 | 8 000 | +20% (1 600) | 9 600 | 480 |
+| Studio Package | $100 | 10 000 | +25% (2 500) | 12 500 | 625 |
 
-Balans interfeysida faqat **Alnabiy Coins** (dollar yo'q). Real narx faqat Coin Store kartochkalarida.
+Balans interfeysida faqat **NC** (dollar yo'q). Rasmiy narxlar Coin Store kartochkalarida.
