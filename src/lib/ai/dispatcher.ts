@@ -20,6 +20,7 @@ import {
   generateReplicateVideo,
   isReplicateConfigured,
 } from "@/lib/replicate";
+import { expandPromptForVideoGeneration } from "@/lib/ai/prompt-expander";
 import { whiteLabelEngine, whiteLabelModel } from "@/lib/models";
 
 export type DispatchResult = {
@@ -65,7 +66,7 @@ export async function dispatchVideo(
   opts: DispatchVideoInput
 ): Promise<DispatchResult> {
   const engine = (opts.engine || "auto") as VideoEngineId;
-  const prompt = composeDirectorPrompt(opts.prompt, {
+  const prompt = composeDirectorPrompt(expandPromptForVideoGeneration(opts.prompt), {
     cameraMove: opts.cameraMove,
     quality: opts.quality as RenderQuality | undefined,
     frameRate: opts.frameRate as FrameRate | undefined,
