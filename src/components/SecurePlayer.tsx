@@ -8,7 +8,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { Pause, Play } from "lucide-react";
+import { Maximize2, Minimize2, Pause, Play, Repeat } from "lucide-react";
 import { useMaster } from "@/context/MasterControllerContext";
 import { WATERMARK } from "@/lib/credits";
 import { shouldBypassLowDataMode } from "@/lib/security/client-mode";
@@ -54,6 +54,8 @@ export function SecurePlayer({
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
+  const [loop, setLoop] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
   const dataBlocked = useMemo(
     () => lowDataMode && !shouldBypassLowDataMode(),
@@ -228,6 +230,30 @@ export function SecurePlayer({
     }
   };
 
+  const toggleLoop = () => {
+    const video = videoRef.current;
+    const next = !loop;
+    setLoop(next);
+    if (video) video.loop = next;
+  };
+
+  const toggleFullscreen = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void el.requestFullscreen?.();
+    }
+  };
+
+  useEffect(() => {
+    const onFs = () =>
+      setFullscreen(document.fullscreenElement === wrapRef.current);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
   const onSeek = (e: ReactPointerEvent<HTMLDivElement>) => {
     const video = videoRef.current;
     if (!video || !duration) return;
@@ -285,7 +311,7 @@ export function SecurePlayer({
             src={src}
             playsInline
             muted={muted || autoPlay || mode === "thumb"}
-            loop={mode === "thumb"}
+            loop={mode === "thumb" || loop}
             preload="metadata"
             controls={false}
             controlsList="nodownload noremoteplayback noplaybackrate"
@@ -331,6 +357,28 @@ export function SecurePlayer({
                 <span className="min-w-[4.5rem] text-right text-[10px] tabular-nums text-white/80">
                   {formatTime(current)} / {formatTime(duration)}
                 </span>
+                <button
+                  type="button"
+                  onClick={toggleLoop}
+                  className={clsx(
+                    "inline-flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-sm transition",
+                    loop
+                      ? "bg-cyan-400/25 text-cyan-200"
+                      : "bg-white/15 text-white hover:bg-white/25"
+                  )}
+                  aria-label="Loop"
+                  aria-pressed={loop}
+                >
+                  <Repeat size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition hover:bg-white/25"
+                  aria-label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+                >
+                  {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                </button>
               </div>
             </div>
           )}

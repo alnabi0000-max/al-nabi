@@ -4,30 +4,45 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import {
-  ChevronDown,
-  Download,
   ImageIcon,
   Loader2,
+  MoveHorizontal,
   Sparkles,
   Video,
+  ZoomIn,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import clsx from "clsx";
 import { scrollToMediaViewer } from "@/lib/media-viewer-scroll";
 import {
   calculateGenerationCost,
-  CREDIT_RATES,
   EMOTION_MODES,
   formatCredits,
   type EmotionMode,
-  type StyleKey,
 } from "@/lib/credits";
 import { InsufficientBalanceHint } from "@/components/InsufficientBalanceHint";
 import { friendlyApiError, parseApiResponse } from "@/lib/api-errors";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
-import { pushHistory } from "@/lib/generation-history";
+import {
+  pushHistory,
+  removeHistoryItem,
+  type GenerationRecord,
+} from "@/lib/generation-history";
 import { scanHalol } from "@/lib/halol";
 import { useMaster } from "@/context/MasterControllerContext";
 import { shouldBypassLowDataMode } from "@/lib/security/client-mode";
+import {
+  AspectRatioPicker,
+  GlassCard,
+  StudioAccordion,
+  StylePresets,
+  styleFromPreset,
+  vintageHint,
+  type StylePresetId,
+} from "@/components/studio/studio-primitives";
+import { StudioDropzone } from "@/components/studio/StudioDropzone";
+import { StudioPreviewCanvas } from "@/components/studio/StudioPreviewCanvas";
+import { RecentGenerationsReel } from "@/components/studio/RecentGenerationsReel";
 import {
   IMAGE_MODEL_CARDS,
   VIDEO_MODEL_CARDS,
@@ -49,12 +64,6 @@ import { BgmPicker } from "@/components/BgmPicker";
 import type { BgmMode } from "@/lib/bgm/types";
 import { DEFAULT_BGM_SELECTION } from "@/lib/bgm/types";
 
-const MediaViewer = dynamic(
-  () =>
-    import("@/components/MediaViewer").then((m) => ({ default: m.MediaViewer })),
-  { ssr: false }
-);
-
 const MediaActions = dynamic(
   () =>
     import("@/components/MediaActions").then((m) => ({
@@ -67,14 +76,6 @@ const TemplatePicker = dynamic(
   () =>
     import("@/components/TemplatePicker").then((m) => ({
       default: m.TemplatePicker,
-    })),
-  { ssr: false }
-);
-
-const CinemaFrame = dynamic(
-  () =>
-    import("@/components/CinemaFrame").then((m) => ({
-      default: m.CinemaFrame,
     })),
   { ssr: false }
 );
@@ -118,7 +119,8 @@ export default function GenerateStudio() {
   const [bgmTrackId, setBgmTrackId] = useState<string | null>(
     DEFAULT_BGM_SELECTION.trackId
   );
-  const [style] = useState<StyleKey>("cinematic");
+  const [stylePreset, setStylePreset] = useState<StylePresetId>("cinematic");
+  const style = styleFromPreset(stylePreset);
   const [quality, setQuality] = useState<RenderQuality>("1080p");
   const [frameRate] = useState<FrameRate>(24);
   const [videoEngine, setVideoEngine] = useState<VideoEngineId>("kling-v2.5");
@@ -139,6 +141,7 @@ export default function GenerateStudio() {
   >("queued");
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [r2Key, setR2Key] = useState<string | null>(null);
+  const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const searchKey = searchParams.toString();
   const hydratedFromUrl = useRef(false);
@@ -287,7 +290,9 @@ export default function GenerateStudio() {
     try {
       const auth = await ensureAuthSession();
       const key = auth.alnabiyKey || alnabiyKey;
-      const finalPrompt = composeTemplatePrompt(prompt, templateBasePrompt);
+      const hint = vintageHint(stylePreset);
+      const prompted = hint ? `${prompt.trim()}. ${hint}` : prompt;
+      const finalPrompt = composeTemplatePrompt(prompted, templateBasePrompt);
       const res = await fetchWithTimeout(
         "/api/generate",
         {
@@ -297,6 +302,7 @@ export default function GenerateStudio() {
           body: JSON.stringify({
             prompt: finalPrompt,
             style,
+            imageUrl: sourceImageUrl || undefined,
             cameraMove,
             durationSec: mediaKind === "image" ? 1 : duration,
             aspect,
@@ -494,117 +500,187 @@ export default function GenerateStudio() {
 
   const hasOutput = Boolean(videoUrl || resultImage);
 
+  function loadRecord(record: GenerationRecord) {
+    setPrompt(record.prompt || record.title);
+    setGenerationId(record.id);
+    setProvider(record.provider || "");
+    if (record.kind === "image") {
+      setResultImage(record.mediaUrl || null);
+      setVideoUrl(null);
+      setMediaKind("image");
+    } else {
+      setVideoUrl(record.mediaUrl || null);
+      setResultImage(null);
+      setMediaKind("video");
+    }
+  }
+
+  function clearOutput() {
+    if (generationId) removeHistoryItem(generationId);
+    setVideoUrl(null);
+    setResultImage(null);
+    setGenerationId(null);
+    setR2Key(null);
+  }
+
+  function upscaleAndGenerate() {
+    if (quality === "4K" || quality === "8K") return;
+    setQuality("4K");
+    notify({ message: tr("studio_upscale_ready"), type: "info" });
+  }
+
+  const cameraChoices: Array<{ id: typeof cameraMove; label: string }> = [
+    { id: "static", label: "Static" },
+    { id: "pan_left", label: "Pan L" },
+    { id: "pan_right", label: "Pan R" },
+    { id: "zoom_in", label: "Zoom +" },
+    { id: "zoom_out", label: "Zoom −" },
+    { id: "tilt_up", label: "Tilt ↑" },
+    { id: "tilt_down", label: "Tilt ↓" },
+    { id: "orbit", label: "Orbit" },
+    { id: "slow_mo", label: "Slow-mo" },
+  ];
+
   return (
-    <div key={locale}>
+    <div key={locale} className="space-y-5 rounded-3xl bg-[#09090B] p-3 md:p-5">
       {isOffline && (
-        <div className="mb-6 rounded-xl border border-nabi-border px-4 py-2 text-sm text-nabi-muted">
+        <div className="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/50">
           {tr("offline")}
         </div>
       )}
 
-      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-        <section className="space-y-5">
-          <textarea
-            id="studio-prompt"
-            className="nabi-input min-h-[180px] resize-y text-base leading-relaxed"
-            placeholder={tr("prompt_placeholder")}
-            value={prompt}
-            maxLength={2000}
-            onChange={(e) => setPrompt(e.target.value)}
-            aria-label={tr("prompt_label")}
-          />
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setMediaKind("video")}
-              className={clsx(
-                "nabi-chip inline-flex items-center gap-1.5",
-                mediaKind === "video" && "nabi-chip-active"
-              )}
-            >
-              <Video size={12} />
-              Video
-            </button>
-            <button
-              type="button"
-              onClick={() => setMediaKind("image")}
-              className={clsx(
-                "nabi-chip inline-flex items-center gap-1.5",
-                mediaKind === "image" && "nabi-chip-active"
-              )}
-            >
-              <ImageIcon size={12} />
-              Image
-            </button>
-            {(["16:9", "9:16", "1:1"] as const).map((a) => (
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <section className="space-y-4">
+          <GlassCard className="space-y-4">
+            <div className="flex flex-wrap gap-2">
               <button
-                key={a}
                 type="button"
-                onClick={() => setAspect(a)}
-                className={clsx("nabi-chip", aspect === a && "nabi-chip-active")}
+                onClick={() => setMediaKind("video")}
+                className={clsx(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition",
+                  mediaKind === "video"
+                    ? "border-cyan-400/70 bg-cyan-400/10 text-white shadow-[0_0_16px_rgba(34,211,238,0.25)]"
+                    : "border-white/10 text-white/50 hover:border-white/25"
+                )}
               >
-                {a}
+                <Video size={12} />
+                Video
               </button>
-            ))}
-            {mediaKind === "video" &&
-              [5, 10, 15].map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setDuration(d)}
-                  className={clsx(
-                    "nabi-chip",
-                    duration === d && "nabi-chip-active"
-                  )}
-                >
-                  {d}s
-                </button>
-              ))}
-          </div>
+              <button
+                type="button"
+                onClick={() => setMediaKind("image")}
+                className={clsx(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition",
+                  mediaKind === "image"
+                    ? "border-cyan-400/70 bg-cyan-400/10 text-white shadow-[0_0_16px_rgba(34,211,238,0.25)]"
+                    : "border-white/10 text-white/50 hover:border-white/25"
+                )}
+              >
+                <ImageIcon size={12} />
+                Image
+              </button>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => setShowAdvanced((v) => !v)}
-            className="inline-flex items-center gap-1.5 text-xs text-nabi-muted transition hover:text-nabi-ink"
-            aria-expanded={showAdvanced}
-          >
-            <ChevronDown
-              size={14}
-              className={clsx(
-                "transition-transform",
-                showAdvanced && "rotate-180"
-              )}
+            <textarea
+              id="studio-prompt"
+              className="min-h-[160px] w-full resize-y rounded-xl border border-white/10 bg-black/40 px-3 py-3 text-base leading-relaxed text-white placeholder:text-white/30 focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+              placeholder={tr("prompt_placeholder")}
+              value={prompt}
+              maxLength={2000}
+              onChange={(e) => setPrompt(e.target.value)}
+              aria-label={tr("prompt_label")}
             />
-            {showAdvanced ? tr("studio_advanced_hide") : tr("studio_advanced")}
-          </button>
 
-          {showAdvanced && (
-            <div className="space-y-5 border-t border-nabi-border pt-4">
-              <TemplatePicker selectedId={templateId} onSelect={applyTemplate} />
+            <StylePresets
+              value={stylePreset}
+              onChange={setStylePreset}
+              labels={{
+                cinematic: tr("studio_style_cinematic"),
+                photorealistic: tr("studio_style_photoreal"),
+                anime: tr("studio_style_anime"),
+                vintage: tr("studio_style_vintage"),
+              }}
+            />
+
+            {mediaKind === "video" && (
+              <StudioDropzone
+                preview={sourceImageUrl}
+                onFile={(_f, dataUrl) => setSourceImageUrl(dataUrl)}
+                onClear={() => setSourceImageUrl(null)}
+                title={tr("drag_drop_zone")}
+                hint={tr("drag_drop_hint")}
+                tooLarge="Max 5MB"
+              />
+            )}
+
+            <AspectRatioPicker value={aspect} onChange={setAspect} />
+
+            {mediaKind === "video" && (
               <div className="flex flex-wrap gap-2">
-                {modelCards.map((card) => {
-                  const active = selectedEngine === card.id;
-                  return (
-                    <button
-                      key={card.id}
-                      type="button"
-                      onClick={() => {
-                        if (mediaKind === "image") {
-                          setImageEngine(card.id as ImageEngineId);
-                        } else {
-                          setVideoEngine(card.id as VideoEngineId);
-                        }
-                      }}
-                      className={clsx(
-                        "nabi-chip",
-                        active && "nabi-chip-active"
-                      )}
-                    >
-                      {card.label}
-                    </button>
-                  );
-                })}
+                {[5, 10, 15].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDuration(d)}
+                    className={clsx(
+                      "rounded-full border px-3 py-1 text-xs transition",
+                      duration === d
+                        ? "border-white/40 bg-white/10 text-white"
+                        : "border-white/10 text-white/45 hover:border-white/25"
+                    )}
+                  >
+                    {d}s
+                  </button>
+                ))}
+              </div>
+            )}
+          </GlassCard>
+
+          <StudioAccordion title={tr("camera_motion")}>
+            <div className="space-y-2">
+              <p className="flex items-center gap-1.5 text-[11px] text-white/40">
+                <MoveHorizontal size={12} />
+                <ZoomIn size={12} />
+                Pan · Zoom · Tilt
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {cameraChoices.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCameraMove(c.id)}
+                    className={clsx(
+                      "rounded-lg border px-2.5 py-1 text-[11px] transition",
+                      cameraMove === c.id
+                        ? "border-cyan-400/70 bg-cyan-400/10 text-white"
+                        : "border-white/10 text-white/50 hover:border-white/25"
+                    )}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </StudioAccordion>
+
+          <StudioAccordion title={tr("studio_audio_tts")}>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {EMOTION_MODES.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setEmotionMode(m.id)}
+                    className={clsx(
+                      "rounded-full border px-2.5 py-1 text-[11px] transition",
+                      emotionMode === m.id
+                        ? "border-fuchsia-400/60 bg-fuchsia-500/10 text-white"
+                        : "border-white/10 text-white/45 hover:border-white/25"
+                    )}
+                  >
+                    {tr(`emotion_${m.id}`)}
+                  </button>
+                ))}
               </div>
               {mediaKind === "video" && (
                 <BgmPicker
@@ -624,42 +700,41 @@ export default function GenerateStudio() {
                   }}
                 />
               )}
+              <p className="text-[11px] text-white/35">{tr("studio_tts_hint")}</p>
             </div>
-          )}
+          </StudioAccordion>
 
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-nabi-gold">
-              {tr("credit_calculator")}
-            </p>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between text-nabi-muted">
-                <span>{tr("calculator_type")}</span>
-                <span>
-                  {mediaKind === "image" ? tr("mode_image") : tr("mode_video")}
-                </span>
-              </div>
-              {mediaKind === "video" && (
-                <div className="flex justify-between text-nabi-muted">
-                  <span>{tr("duration_label")}</span>
-                  <span>{duration}s</span>
-                </div>
-              )}
-              <div className="flex justify-between text-nabi-muted">
-                <span>{tr("rate_label")}</span>
-                <span>
-                  {mediaKind === "image"
-                    ? `${CREDIT_RATES.image} NC`
-                    : `${CREDIT_RATES.prompt_to_video_per_min} / min`}
-                </span>
-              </div>
-              <div className="flex justify-between border-t border-amber-500/20 pt-2 font-bold text-nabi-gold">
-                <span>{tr("total_label")}</span>
-                <span>{formatCredits(cost)}</span>
+          <StudioAccordion title={tr("studio_advanced")} defaultOpen={showAdvanced}>
+            <div className="space-y-4">
+              <TemplatePicker selectedId={templateId} onSelect={applyTemplate} />
+              <div className="flex flex-wrap gap-2">
+                {modelCards.map((card) => {
+                  const active = selectedEngine === card.id;
+                  return (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => {
+                        if (mediaKind === "image") {
+                          setImageEngine(card.id as ImageEngineId);
+                        } else {
+                          setVideoEngine(card.id as VideoEngineId);
+                        }
+                      }}
+                      className={clsx(
+                        "rounded-full border px-3 py-1.5 text-xs transition",
+                        active
+                          ? "border-white/40 bg-white/10 text-white"
+                          : "border-white/10 text-white/50 hover:border-white/25"
+                      )}
+                    >
+                      {card.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          </div>
-
-          <NcReceiptHistory variant="compact" />
+          </StudioAccordion>
 
           <InsufficientBalanceHint
             kind={generationKind}
@@ -685,66 +760,73 @@ export default function GenerateStudio() {
             tr={tr}
           />
 
-          <div className="flex items-center justify-end gap-3">
-            <span className="text-sm tabular-nums text-nabi-muted">
-              {cost.toLocaleString()} NC
+          <motion.button
+            type="button"
+            onClick={generate}
+            disabled={loading || !prompt.trim() || isOffline || coins < cost}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-amber-400 px-5 py-3.5 text-sm font-semibold text-black shadow-[0_0_28px_rgba(34,211,238,0.28)] transition disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {loading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Sparkles size={16} />
+            )}
+            {mediaKind === "image" ? tr("studio_create") : tr("studio_generate_video")}
+            <span className="rounded-full bg-black/25 px-2.5 py-0.5 font-mono text-xs tabular-nums">
+              {formatCredits(cost)}
             </span>
-            <button
-              type="button"
-              onClick={generate}
-              disabled={loading || !prompt.trim() || isOffline || coins < cost}
-              className="nabi-btn-primary min-w-[9rem]"
-            >
-              {loading ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Sparkles size={16} />
-              )}
-              {tr("studio_create")}
-            </button>
-          </div>
+          </motion.button>
 
           {error && <p className="text-sm text-rose-400">{error}</p>}
+          {provider && hasOutput && (
+            <p className="text-[11px] text-white/35">
+              {provider} · {tr(`emotion_${emotionMode}`)}
+            </p>
+          )}
+
+          <NcReceiptHistory variant="compact" />
         </section>
 
         <aside className="space-y-4 lg:sticky lg:top-24">
-          <CinemaFrame emptyLabel={tr("studio_canvas_empty")}>
-            {hasOutput || loading ? (
-              <MediaViewer
-                loading={loading}
-                imageUrl={resultImage}
-                videoUrl={videoUrl}
-                progressPercent={progressPercent}
-                renderStage={renderStage}
-                generationId={generationId}
-                r2Key={r2Key}
-                mediaTitle={prompt.slice(0, 60)}
-                showActions={false}
-                providerLine={
-                  provider
-                    ? `${provider} · ${tr(`emotion_${emotionMode}`)}`
-                    : undefined
-                }
-                className="!h-full !rounded-none !border-0"
-              />
-            ) : null}
-          </CinemaFrame>
-
-          {hasOutput && (
-            <div className="flex items-center gap-3">
-              <Download size={14} className="text-nabi-muted" />
-              <MediaActions
-                mediaUrl={videoUrl || resultImage}
-                generationId={generationId}
-                r2Key={r2Key}
-                kind={resultImage ? "image" : "video"}
-                title={prompt.slice(0, 60) || "Al-Nabi"}
-                archiveFee={false}
-              />
-            </div>
-          )}
+          <StudioPreviewCanvas
+            loading={loading}
+            imageUrl={resultImage}
+            videoUrl={videoUrl}
+            progressPercent={progressPercent}
+            renderStage={renderStage}
+            emptyLabel={tr("studio_canvas_empty")}
+            aspect={aspect}
+            onUpscale={upscaleAndGenerate}
+            onDelete={clearOutput}
+            upscaleDisabled={quality === "4K" || quality === "8K" || !hasOutput}
+            labels={{
+              upscale: tr("studio_upscale"),
+              delete: tr("media_delete"),
+            }}
+            actions={
+              hasOutput ? (
+                <MediaActions
+                  mediaUrl={videoUrl || resultImage}
+                  generationId={generationId}
+                  r2Key={r2Key}
+                  kind={resultImage ? "image" : "video"}
+                  title={prompt.slice(0, 60) || "Al-Nabi"}
+                  archiveFee={false}
+                  variant="icons"
+                />
+              ) : null
+            }
+          />
         </aside>
       </div>
+
+      <RecentGenerationsReel
+        title={tr("studio_recent")}
+        activeId={generationId}
+        onSelect={loadRecord}
+      />
     </div>
   );
 }

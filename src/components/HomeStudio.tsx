@@ -10,9 +10,9 @@ import { useMaster } from "@/context/MasterControllerContext";
 const GenerateStudio = dynamic(() => import("@/app/generate/GenerateStudio"), {
   ssr: false,
   loading: () => (
-    <div className="mx-auto max-w-6xl animate-pulse space-y-6 py-8">
-      <div className="h-10 w-40 rounded-full bg-nabi-elevated" />
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+    <div className="mx-auto max-w-[1680px] animate-pulse space-y-6 py-8">
+      <div className="h-10 w-40 rounded-full bg-white/10" />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <div className="h-64 rounded-2xl bg-nabi-card" />
         <div className="aspect-video rounded-2xl bg-nabi-card" />
       </div>
@@ -49,16 +49,16 @@ function HomeStudioInner() {
   const film = searchParams.get("mode") === "film";
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
-      <div className="inline-flex rounded-full border border-nabi-border bg-nabi-card p-1">
+    <div className="mx-auto max-w-[1680px] space-y-6">
+      <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1 backdrop-blur-xl">
         <Link
           href={studioHref("video", searchParams)}
           scroll={false}
           className={clsx(
             "rounded-full px-4 py-1.5 text-sm transition",
             !film
-              ? "bg-nabi-elevated text-nabi-ink"
-              : "text-nabi-muted hover:text-nabi-ink"
+              ? "bg-white/10 text-white"
+              : "text-white/45 hover:text-white"
           )}
         >
           {tr("mode_prompt")}
@@ -69,8 +69,8 @@ function HomeStudioInner() {
           className={clsx(
             "rounded-full px-4 py-1.5 text-sm transition",
             film
-              ? "bg-nabi-elevated text-nabi-ink"
-              : "text-nabi-muted hover:text-nabi-ink"
+              ? "bg-white/10 text-white"
+              : "text-white/45 hover:text-white"
           )}
         >
           {tr("mode_script_film")}

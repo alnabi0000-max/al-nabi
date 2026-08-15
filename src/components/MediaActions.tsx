@@ -20,6 +20,7 @@ type Props = {
    * Set false for fresh generate preview downloads.
    */
   archiveFee?: boolean;
+  variant?: "default" | "icons";
 };
 
 /**
@@ -34,6 +35,7 @@ export function MediaActions({
   className,
   disabled,
   archiveFee = true,
+  variant = "default",
 }: Props) {
   const { tr, alnabiyKey, notify, applyServerCharge } = useMaster();
   const { t } = useLanguage();
@@ -192,23 +194,28 @@ export function MediaActions({
   }
 
   const inactive = disabled || !mediaUrl;
+  const icon = variant === "icons";
 
   return (
-    <div className={clsx("flex flex-wrap gap-2", className)}>
+    <div className={clsx(icon ? "flex items-center gap-1" : "flex flex-wrap gap-2", className)}>
       <button
         type="button"
         onClick={() => void onDownload()}
         disabled={inactive || busy === "dl"}
-        className="nabi-btn-primary !text-xs"
+        className={
+          icon
+            ? "inline-flex h-8 w-8 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white disabled:opacity-30"
+            : "nabi-btn-primary !text-xs"
+        }
         title={
           archiveFee && generationId
             ? `Cloud Vault · first free, then ${ARCHIVE_REDOWNLOAD_FEE_NC} NC`
-            : undefined
+            : t.common.download
         }
       >
         <Download size={14} />
-        {t.common.download}
-        {archiveFee && generationId ? (
+        {!icon && t.common.download}
+        {!icon && archiveFee && generationId ? (
           <span className="ml-1 opacity-70">· {t.common.vault}</span>
         ) : null}
       </button>
@@ -216,21 +223,28 @@ export function MediaActions({
         type="button"
         onClick={() => void onShare()}
         disabled={inactive || busy === "share"}
-        className="nabi-btn-ghost !text-xs"
+        className={
+          icon
+            ? "inline-flex h-8 w-8 items-center justify-center rounded-full text-white/80 transition hover:bg-white/15 hover:text-white disabled:opacity-30"
+            : "nabi-btn-ghost !text-xs"
+        }
+        title={t.common.share}
       >
         {copied ? <Check size={14} /> : <Share2 size={14} />}
-        {t.common.share}
+        {!icon && t.common.share}
       </button>
-      <button
-        type="button"
-        onClick={() => void onCopySigned()}
-        disabled={inactive || busy === "sign"}
-        className="nabi-btn-ghost !text-xs"
-        title={tr("signed_url_hint")}
-      >
-        <Link2 size={14} />
-        {tr("get_signed_url")}
-      </button>
+      {!icon && (
+        <button
+          type="button"
+          onClick={() => void onCopySigned()}
+          disabled={inactive || busy === "sign"}
+          className="nabi-btn-ghost !text-xs"
+          title={tr("signed_url_hint")}
+        >
+          <Link2 size={14} />
+          {tr("get_signed_url")}
+        </button>
+      )}
     </div>
   );
 }
