@@ -26,6 +26,11 @@ type Props = {
     upscale: string;
     delete: string;
   };
+  seekRequest?: { token: number; time: number } | null;
+  onTimeChange?: (current: number, duration: number) => void;
+  controlledPlaying?: boolean;
+  onPlayingChange?: (playing: boolean) => void;
+  creditBreakdown?: string | null;
 };
 
 const ASPECT_CLASS = {
@@ -47,6 +52,11 @@ export function StudioPreviewCanvas({
   onDelete,
   upscaleDisabled,
   labels,
+  seekRequest,
+  onTimeChange,
+  controlledPlaying,
+  onPlayingChange,
+  creditBreakdown,
 }: Props) {
   const hasOutput = Boolean(imageUrl || videoUrl);
 
@@ -87,6 +97,10 @@ export function StudioPreviewCanvas({
             autoPlay
             muted
             className="!aspect-auto h-full rounded-none"
+            seekRequest={seekRequest}
+            onTimeChange={onTimeChange}
+            controlledPlaying={controlledPlaying}
+            onPlayingChange={onPlayingChange}
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
@@ -115,6 +129,11 @@ export function StudioPreviewCanvas({
           </div>
         )}
       </div>
+      {creditBreakdown ? (
+        <p className="mt-2 px-1 font-mono text-[10px] tabular-nums text-white/45">
+          {creditBreakdown}
+        </p>
+      ) : null}
     </div>
   );
 }

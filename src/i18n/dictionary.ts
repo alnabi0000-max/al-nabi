@@ -15,6 +15,7 @@ export type Dictionary = {
   nav: {
     home: string;
     studio: string;
+    translator: string;
     cabinet: string;
     dashboard: string;
     generate: string;
@@ -123,6 +124,7 @@ const en: Dictionary = {
   nav: {
     home: "Home",
     studio: "Studio",
+    translator: "Translator",
     cabinet: "Cabinet",
     dashboard: "Dashboard",
     generate: "AI Generate",
@@ -235,6 +237,7 @@ const uz: Dictionary = {
   nav: {
     home: "Bosh sahifa",
     studio: "Studio",
+    translator: "Tarjimon",
     cabinet: "Kabinet",
     dashboard: "Kabinet",
     generate: "AI Generatsiya",
@@ -348,6 +351,7 @@ const ru: Dictionary = {
   nav: {
     home: "Главная",
     studio: "Студия",
+    translator: "Переводчик",
     cabinet: "Кабинет",
     dashboard: "Кабинет",
     generate: "AI Генерация",

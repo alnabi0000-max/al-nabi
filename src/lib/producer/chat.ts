@@ -108,6 +108,7 @@ const ALLOWED_NAV_PATHS = new Set([
   "/store",
   "/balance",
   "/profile",
+  "/translator",
   "/terms",
   "/privacy",
   "/refund-policy",
@@ -412,6 +413,7 @@ function defaultNavLabel(href: string, lang: PromptLang): string {
     "/store": ["Do‘kon", "Store", "Магазин"],
     "/dashboard": ["Kabinet", "Cabinet", "Кабинет"],
     "/producer": ["Producer Chat", "Producer Chat", "Producer Chat"],
+    "/translator": ["Ovoz tarjima", "Voice Translate", "Голосовой перевод"],
   };
   if (href.includes("templates=1")) {
     return uz ? "Shablonlar" : ru ? "Шаблоны" : "Templates";

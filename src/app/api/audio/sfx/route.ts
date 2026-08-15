@@ -1,10 +1,7 @@
 import { NextRequest } from "next/server";
+import fs from "fs/promises";
 import path from "path";
 import { z } from "zod";
-import { synthesizeSpeech, isElevenLabsConfigured } from "@/lib/ai/elevenlabs";
-import { syncWordsToFrames } from "@/lib/director";
-import { resolveLocale } from "@/lib/i18n/messages";
-import { ALNABIY_ENGINES, sanitizePublicPayload } from "@/lib/models";
 import { apiError, apiJson } from "@/lib/api/json-response";
 import { sanitizeGenerationError } from "@/lib/generation/public-error";
 import { guardSensitiveRequest } from "@/lib/security/request-guard";
@@ -13,27 +10,22 @@ import {
   isSoftAuthEnabled,
 } from "@/lib/auth/ensure-request-user";
 import { chargeCredits, rollbackCredits } from "@/lib/credit-gate";
-import {
-  calculateTtsClipCost,
-  estimateSpeechDurationSec,
-} from "@/lib/credits";
+import { AUDIO_CREDIT_RATES } from "@/lib/credits";
 import { scanHalol } from "@/lib/halol";
+import { isElevenLabsConfigured } from "@/lib/ai/elevenlabs";
+import { synthesizeFoleyClip } from "@/lib/producer/foley";
+import { ALNABIY_ENGINES, sanitizePublicPayload } from "@/lib/models";
 
 const schema = z.object({
-  text: z.string().min(1).max(5000),
-  emotion: z
-    .enum(["neutral", "joy", "drama", "epic", "calm", "inspiring"])
-    .default("neutral"),
-  voiceId: z.string().optional(),
-  locale: z.string().optional(),
-  visualPrompt: z.string().optional(),
-  withDirector: z.boolean().default(true),
+  prompt: z.string().min(2).max(400),
+  durationSec: z.number().min(0.4).max(8).optional().default(1.6),
+  startSec: z.number().min(0).max(30).optional().default(0),
   clientBalance: z.number().optional(),
 });
 
 /**
- * Al-Nabi Voice synthesis (server-side only) + optional Smart Director plan.
- * Real ElevenLabs clips charge NC; mock/dev audio is never billed.
+ * Studio SFX / Foley clip via Al-Nabi Audio Engine (ElevenLabs sound-generation).
+ * Procedural mock fallback is never billed.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -52,32 +44,25 @@ export async function POST(req: NextRequest) {
     }
 
     const body = schema.parse(await req.json());
-    if (scanHalol(body.text).blocked) {
+    if (scanHalol(body.prompt).blocked) {
       return apiError("Forbidden content", {
         status: 400,
         code: "FORBIDDEN",
       });
     }
 
-    const locale = resolveLocale(
-      body.locale,
-      req.headers.get("x-alnabiy-locale"),
-      req.cookies.get("alnabiy_locale")?.value
-    );
-
     const billable = isElevenLabsConfigured();
-    const cost = billable
-      ? calculateTtsClipCost(estimateSpeechDurationSec(body.text))
-      : 0;
+    const cost = billable ? AUDIO_CREDIT_RATES.sfxPerClip : 0;
     const charge =
       cost > 0
         ? await chargeCredits({
             kind: "image",
             durationSec: 1,
             fixedCost: cost,
-            alnabiyKey: req.headers.get("x-alnabiy-key") || ensured.user.alnabiyKey,
+            alnabiyKey:
+              req.headers.get("x-alnabiy-key") || ensured.user.alnabiyKey,
             clientBalance: body.clientBalance ?? ensured.user.coins,
-            reason: "charge:audio_tts",
+            reason: "charge:audio_sfx",
             noBonus: true,
           })
         : null;
@@ -97,77 +82,79 @@ export async function POST(req: NextRequest) {
     }
 
     const storage = process.env.STORAGE_DIR || "./storage";
-    const outPath = path.join(storage, "audio", `tts_${Date.now()}.mp3`);
-
-    let audio;
+    const outDir = path.join(storage, "audio");
+    const id = `sfx_${Date.now().toString(36)}`;
+    let clip;
     try {
-      audio = await synthesizeSpeech({
-        text: body.text,
-        outPath,
-        emotion: body.emotion,
-        voiceId: body.voiceId,
+      clip = await synthesizeFoleyClip({
+        cue: {
+          id,
+          label: body.prompt.slice(0, 48),
+          description: body.prompt,
+          startMs: Math.round(body.startSec * 1000),
+          durationMs: Math.round(body.durationSec * 1000),
+        },
+        outDir,
       });
     } catch (e) {
       if (charge?.ok) {
         await rollbackCredits({
           amount: charge.cost,
-          alnabiyKey: req.headers.get("x-alnabiy-key") || ensured.user.alnabiyKey,
+          alnabiyKey:
+            req.headers.get("x-alnabiy-key") || ensured.user.alnabiyKey,
           userId: charge.userId,
           receiptId: charge.receiptId,
           clientBalance: charge.balanceAfter,
-          reason: "rollback:audio_tts",
+          reason: "rollback:audio_sfx",
         });
       }
       throw e;
     }
 
-    if (audio.mock && charge?.ok) {
+    if (clip.mock && charge?.ok) {
       await rollbackCredits({
         amount: charge.cost,
         alnabiyKey: req.headers.get("x-alnabiy-key") || ensured.user.alnabiyKey,
         userId: charge.userId,
         receiptId: charge.receiptId,
         clientBalance: charge.balanceAfter,
-        reason: "rollback:audio_tts_mock",
+        reason: "rollback:audio_sfx_mock",
       });
     }
 
-    const billed = Boolean(charge?.ok && !audio.mock);
-    const director = body.withDirector
-      ? syncWordsToFrames({
-          words: audio.words,
-          visualPrompt: body.visualPrompt || body.text,
-          fps: 24,
-          engine: "hybrid",
-          fallbackDurationMs: audio.durationMs,
-        })
-      : null;
+    const billed = Boolean(charge?.ok && !clip.mock);
+    const fileName = path.basename(clip.audioPath);
+    let audioBase64: string | undefined;
+    try {
+      const buf = await fs.readFile(clip.audioPath);
+      if (buf.length > 40) audioBase64 = buf.toString("base64");
+    } catch {
+      /* file URL still works */
+    }
 
     return apiJson(
       sanitizePublicPayload({
         ok: true,
         success: true,
-        locale,
         creditsCost: billed ? charge?.cost ?? 0 : 0,
         balanceAfter: billed ? charge?.balanceAfter : ensured.user.coins,
         receiptId: billed ? charge?.receiptId : undefined,
         audio: {
-          url: `/api/media/audio/${path.basename(audio.audioPath)}`,
-          durationMs: audio.durationMs,
-          words: audio.words,
-          model: ALNABIY_ENGINES.voice,
-          mock: audio.mock,
-          preparedText: audio.preparedText,
-          audioBase64: audio.mock ? undefined : audio.audioBase64,
+          url: `/api/media/audio/${fileName}`,
+          durationMs: clip.durationMs,
+          startMs: clip.startMs,
+          mock: clip.mock,
+          label: clip.label,
+          audioBase64,
         },
-        director,
+        engine: ALNABIY_ENGINES.voice,
         watermark: "Al-Nabi Preview",
       })
     );
   } catch (e) {
-    return apiError(sanitizeGenerationError(e, "Voice synthesis failed"), {
+    return apiError(sanitizeGenerationError(e, "SFX synthesis failed"), {
       status: 400,
-      code: "AUDIO_FAILED",
+      code: "SFX_FAILED",
     });
   }
 }

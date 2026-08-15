@@ -30,6 +30,11 @@ export interface ChargeRequest {
   noBonus?: boolean;
   /** Official model / quality pricing */
   costOpts?: CostOpts;
+  /**
+   * Bypass kind/duration formula (TTS / SFX clip charges only).
+   * Video and image generation must keep using computeCost().
+   */
+  fixedCost?: number;
 }
 
 export interface ChargeResult {
@@ -67,7 +72,10 @@ export async function chargeCredits(
   req: ChargeRequest
 ): Promise<ChargeResult> {
   const durationSec = req.durationSec ?? 60;
-  const cost = computeCost(req.kind, durationSec, req.costOpts);
+  const cost =
+    typeof req.fixedCost === "number" && Number.isFinite(req.fixedCost)
+      ? Math.max(1, Math.round(req.fixedCost))
+      : computeCost(req.kind, durationSec, req.costOpts);
   const receiptId = `RCPT-${Date.now().toString(36).toUpperCase()}-${Math.random()
     .toString(36)
     .slice(2, 6)

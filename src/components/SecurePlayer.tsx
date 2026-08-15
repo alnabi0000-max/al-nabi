@@ -24,6 +24,13 @@ interface Props {
   className?: string;
   /** Thumb: play while hovered / focused */
   hoverPlay?: boolean;
+  /** External timeline seek — applied when token changes. */
+  seekRequest?: { token: number; time: number } | null;
+  /** Report decoded time so the studio timeline can stay in sync. */
+  onTimeChange?: (current: number, duration: number) => void;
+  /** Optional play/pause driven by the timeline transport. */
+  controlledPlaying?: boolean;
+  onPlayingChange?: (playing: boolean) => void;
 }
 
 function formatTime(sec: number) {
@@ -44,6 +51,10 @@ export function SecurePlayer({
   mode = "full",
   className,
   hoverPlay = false,
+  seekRequest = null,
+  onTimeChange,
+  controlledPlaying,
+  onPlayingChange,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -155,6 +166,7 @@ export function SecurePlayer({
       const v = videoRef.current;
       if (v && !v.paused && !v.ended) {
         setCurrent(v.currentTime);
+        onTimeChange?.(v.currentTime, v.duration || duration);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -163,7 +175,7 @@ export function SecurePlayer({
       alive = false;
       cancelAnimationFrame(rafRef.current);
     };
-  }, [src, dataBlocked, drawFrame, syncCanvasSize]);
+  }, [src, dataBlocked, drawFrame, syncCanvasSize, onTimeChange, duration]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -188,9 +200,18 @@ export function SecurePlayer({
     const video = videoRef.current;
     if (!video) return;
     const onMeta = () => setDuration(video.duration || 0);
-    const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
-    const onTime = () => setCurrent(video.currentTime);
+    const onPlay = () => {
+      setPlaying(true);
+      onPlayingChange?.(true);
+    };
+    const onPause = () => {
+      setPlaying(false);
+      onPlayingChange?.(false);
+    };
+    const onTime = () => {
+      setCurrent(video.currentTime);
+      onTimeChange?.(video.currentTime, video.duration || duration);
+    };
     video.addEventListener("loadedmetadata", onMeta);
     video.addEventListener("play", onPlay);
     video.addEventListener("pause", onPause);
@@ -201,7 +222,7 @@ export function SecurePlayer({
       video.removeEventListener("pause", onPause);
       video.removeEventListener("timeupdate", onTime);
     };
-  }, [src]);
+  }, [src, onTimeChange, duration]);
 
   useEffect(() => {
     const onCapture = (e: Event) => {
@@ -223,12 +244,36 @@ export function SecurePlayer({
     const video = videoRef.current;
     if (!video || captureLock.current) return;
     if (video.paused) {
-      void video.play().then(() => setPlaying(true)).catch(() => {});
+      void video.play().then(() => {
+        setPlaying(true);
+        onPlayingChange?.(true);
+      }).catch(() => {});
     } else {
       video.pause();
       setPlaying(false);
+      onPlayingChange?.(false);
     }
   };
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !src || dataBlocked) return;
+    if (typeof controlledPlaying !== "boolean") return;
+    if (controlledPlaying && video.paused) {
+      void video.play().then(() => setPlaying(true)).catch(() => {});
+    } else if (!controlledPlaying && !video.paused) {
+      video.pause();
+      setPlaying(false);
+    }
+  }, [controlledPlaying, src, dataBlocked]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !seekRequest) return;
+    if (!Number.isFinite(seekRequest.time)) return;
+    video.currentTime = Math.max(0, seekRequest.time);
+    setCurrent(video.currentTime);
+  }, [seekRequest]);
 
   const toggleLoop = () => {
     const video = videoRef.current;
@@ -261,6 +306,7 @@ export function SecurePlayer({
     const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
     video.currentTime = ratio * duration;
     setCurrent(video.currentTime);
+    onTimeChange?.(video.currentTime, duration);
   };
 
   const onThumbEnter = () => {

@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Clapperboard, User, ChevronsLeft, ChevronsRight } from "lucide-react";
+import {
+  Clapperboard,
+  Languages,
+  User,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 import clsx from "clsx";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -49,6 +55,7 @@ export function Sidebar() {
 
   const links = [
     { href: "/", label: t.nav.studio, icon: Clapperboard },
+    { href: "/translator", label: t.nav.translator, icon: Languages },
     { href: "/profile", label: t.nav.cabinet, icon: User },
   ];
 

@@ -1,17 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import {
-  ImageIcon,
-  Loader2,
-  MoveHorizontal,
-  Sparkles,
-  Video,
-  ZoomIn,
-} from "lucide-react";
-import { motion } from "framer-motion";
+import { ImageIcon, MoveHorizontal, Video, ZoomIn } from "lucide-react";
 import clsx from "clsx";
 import { scrollToMediaViewer } from "@/lib/media-viewer-scroll";
 import {
@@ -43,6 +35,25 @@ import {
 import { StudioDropzone } from "@/components/studio/StudioDropzone";
 import { StudioPreviewCanvas } from "@/components/studio/StudioPreviewCanvas";
 import { RecentGenerationsReel } from "@/components/studio/RecentGenerationsReel";
+import { QuickCameraButtons } from "@/components/studio/QuickCameraButtons";
+import { ProModeToggle } from "@/components/studio/ProModeToggle";
+import { ProModePanel } from "@/components/studio/ProModePanel";
+import { StudioGenerateCta } from "@/components/studio/StudioGenerateCta";
+import { StudioTimeline } from "@/components/studio/timeline";
+import { decodeWaveformPeaks } from "@/components/studio/timeline/decode-waveform";
+import type { TimelineClip } from "@/lib/studio/timeline";
+import {
+  composeProAwarePrompt,
+  DEFAULT_LIGHTING,
+  DRAFT_PREVIEW_SEC,
+  EMPTY_KEYFRAMES,
+  EMPTY_NEGATIVE_CANVAS,
+  readStoredProMode,
+  writeStoredProMode,
+  type LightingJoystickValue,
+  type NegativeCanvasValue,
+  type StudioKeyframePair,
+} from "@/lib/studio/pro-controls";
 import {
   IMAGE_MODEL_CARDS,
   VIDEO_MODEL_CARDS,
@@ -60,7 +71,6 @@ import {
 } from "@/lib/templates/resolve";
 import type { StudioTemplate } from "@/lib/templates/types";
 import type { CameraMovement } from "@/lib/types";
-import { BgmPicker } from "@/components/BgmPicker";
 import type { BgmMode } from "@/lib/bgm/types";
 import { DEFAULT_BGM_SELECTION } from "@/lib/bgm/types";
 
@@ -148,6 +158,25 @@ export default function GenerateStudio() {
   const [showAdvanced, setShowAdvanced] = useState(
     () => searchParams.get("templates") === "1"
   );
+  const [proMode, setProMode] = useState(false);
+  const [lighting, setLighting] =
+    useState<LightingJoystickValue>(DEFAULT_LIGHTING);
+  const [keyframes, setKeyframes] =
+    useState<StudioKeyframePair>(EMPTY_KEYFRAMES);
+  const [negativeCanvas, setNegativeCanvas] =
+    useState<NegativeCanvasValue>(EMPTY_NEGATIVE_CANVAS);
+  const [draftMode, setDraftMode] = useState(false);
+  const [playheadSec, setPlayheadSec] = useState(0);
+  const [timelinePlaying, setTimelinePlaying] = useState(false);
+  const [seekRequest, setSeekRequest] = useState<{
+    token: number;
+    time: number;
+  } | null>(null);
+  const [audioNc, setAudioNc] = useState(0);
+
+  useEffect(() => {
+    setProMode(readStoredProMode());
+  }, []);
 
   useEffect(() => {
     if (hydratedFromUrl.current) return;
@@ -228,16 +257,21 @@ export default function GenerateStudio() {
   const generationKind =
     mediaKind === "image" ? "image" : ("prompt_to_video" as const);
 
+  const requestDuration =
+    mediaKind === "video" && proMode && draftMode
+      ? DRAFT_PREVIEW_SEC
+      : duration;
+
   const cost = useMemo(
     () =>
-      calculateGenerationCost(generationKind, duration, {
+      calculateGenerationCost(generationKind, requestDuration, {
         engine: mediaKind === "image" ? imageEngine : videoEngine,
         quality,
         frameRate: mediaKind === "video" ? frameRate : undefined,
       }),
     [
       generationKind,
-      duration,
+      requestDuration,
       mediaKind,
       imageEngine,
       videoEngine,
@@ -246,10 +280,177 @@ export default function GenerateStudio() {
     ]
   );
 
+  const sessionCost = mediaKind === "video" ? cost + audioNc : cost;
+
+  const seekTimeline = useCallback((sec: number) => {
+    setPlayheadSec(sec);
+    setSeekRequest((prev) => ({
+      token: (prev?.token ?? 0) + 1,
+      time: sec,
+    }));
+  }, []);
+
+  function setProModePersisted(enabled: boolean) {
+    setProMode(enabled);
+    writeStoredProMode(enabled);
+  }
+
   function showApiError(e: unknown) {
     const message = friendlyApiError(e, tr);
     setError(message);
     notify({ message, type: "error", title: tr("error_generic") });
+  }
+
+  function toPlayableAudio(
+    url: string | undefined,
+    base64: string | undefined,
+    sessionKey: string | null
+  ): string | null {
+    if (base64) return `data:audio/mpeg;base64,${base64}`;
+    if (!url) return null;
+    if (!url.startsWith("/api/media/") || !sessionKey || url.includes("key=")) {
+      return url;
+    }
+    const join = url.includes("?") ? "&" : "?";
+    return `${url}${join}key=${encodeURIComponent(sessionKey)}`;
+  }
+
+  async function generateVoiceClip(
+    clip: TimelineClip
+  ): Promise<TimelineClip | null> {
+    if (!clip.prompt.trim()) return null;
+    if (scanHalol(clip.prompt).blocked) {
+      handleViolation();
+      return null;
+    }
+    try {
+      const auth = await ensureAuthSession();
+      const key = auth.alnabiyKey || alnabiyKey;
+      const res = await fetchWithTimeout(
+        "/api/audio/synthesize",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-alnabiy-key": key || "",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            text: clip.prompt,
+            emotion: emotionMode,
+            withDirector: false,
+            clientBalance: coins,
+          }),
+        },
+        45_000
+      );
+      const data = await parseApiResponse<Record<string, unknown>>(res);
+      if (res.status === 402 || data.code === "INSUFFICIENT") {
+        applyServerCharge({ ok: false, code: "INSUFFICIENT" });
+        return null;
+      }
+      if (!res.ok || data.ok === false) {
+        throw new Error(String(data.error || tr("generate_failed")));
+      }
+      if (typeof data.creditsCost === "number" && data.creditsCost > 0) {
+        applyServerCharge({
+          ok: true,
+          cost: data.creditsCost as number,
+          balanceAfter: data.balanceAfter as number | undefined,
+          receiptId: data.receiptId as string | undefined,
+          label: tr("studio_tts_generate"),
+        });
+      }
+      const audio = (data.audio || {}) as {
+        url?: string;
+        audioBase64?: string;
+        durationMs?: number;
+      };
+      const audioUrl = toPlayableAudio(audio.url, audio.audioBase64, key);
+      if (!audioUrl) return null;
+      const durationSec = Math.max(
+        0.4,
+        (audio.durationMs || 0) / 1000 || clip.durationSec
+      );
+      const waveform = await decodeWaveformPeaks(audioUrl);
+      notify({
+        message: tr("studio_tts_generate"),
+        type: "success",
+      });
+      return { ...clip, audioUrl, durationSec, waveform, generating: false };
+    } catch (e) {
+      showApiError(e);
+      return null;
+    }
+  }
+
+  async function generateSfxClip(
+    clip: TimelineClip
+  ): Promise<TimelineClip | null> {
+    if (!clip.prompt.trim()) return null;
+    if (scanHalol(clip.prompt).blocked) {
+      handleViolation();
+      return null;
+    }
+    try {
+      const auth = await ensureAuthSession();
+      const key = auth.alnabiyKey || alnabiyKey;
+      const res = await fetchWithTimeout(
+        "/api/audio/sfx",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-alnabiy-key": key || "",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            prompt: clip.prompt,
+            durationSec: Math.min(4, clip.durationSec || 1.6),
+            startSec: clip.startSec,
+            clientBalance: coins,
+          }),
+        },
+        45_000
+      );
+      const data = await parseApiResponse<Record<string, unknown>>(res);
+      if (res.status === 402 || data.code === "INSUFFICIENT") {
+        applyServerCharge({ ok: false, code: "INSUFFICIENT" });
+        return null;
+      }
+      if (!res.ok || data.ok === false) {
+        throw new Error(String(data.error || tr("generate_failed")));
+      }
+      if (typeof data.creditsCost === "number" && data.creditsCost > 0) {
+        applyServerCharge({
+          ok: true,
+          cost: data.creditsCost as number,
+          balanceAfter: data.balanceAfter as number | undefined,
+          receiptId: data.receiptId as string | undefined,
+          label: tr("studio_sfx_generate"),
+        });
+      }
+      const audio = (data.audio || {}) as {
+        url?: string;
+        audioBase64?: string;
+        durationMs?: number;
+      };
+      const audioUrl = toPlayableAudio(audio.url, audio.audioBase64, key);
+      if (!audioUrl) return null;
+      const durationSec = Math.max(
+        0.4,
+        (audio.durationMs || 0) / 1000 || clip.durationSec
+      );
+      const waveform = await decodeWaveformPeaks(audioUrl);
+      notify({
+        message: tr("studio_sfx_generate"),
+        type: "success",
+      });
+      return { ...clip, audioUrl, durationSec, waveform, generating: false };
+    } catch (e) {
+      showApiError(e);
+      return null;
+    }
   }
 
   function applyTemplate(template: StudioTemplate) {
@@ -292,7 +493,16 @@ export default function GenerateStudio() {
       const key = auth.alnabiyKey || alnabiyKey;
       const hint = vintageHint(stylePreset);
       const prompted = hint ? `${prompt.trim()}. ${hint}` : prompt;
-      const finalPrompt = composeTemplatePrompt(prompted, templateBasePrompt);
+      const templated = composeTemplatePrompt(prompted, templateBasePrompt);
+      const finalPrompt = composeProAwarePrompt({
+        prompt: templated,
+        proMode,
+        lighting,
+        hasEndKeyframe: Boolean(proMode && keyframes.endUrl),
+        negativeStrokeCount: proMode ? negativeCanvas.strokeCount : 0,
+      });
+      const referenceImage =
+        (proMode && keyframes.startUrl) || sourceImageUrl || undefined;
       const res = await fetchWithTimeout(
         "/api/generate",
         {
@@ -302,9 +512,9 @@ export default function GenerateStudio() {
           body: JSON.stringify({
             prompt: finalPrompt,
             style,
-            imageUrl: sourceImageUrl || undefined,
+            imageUrl: referenceImage,
             cameraMove,
-            durationSec: mediaKind === "image" ? 1 : duration,
+            durationSec: mediaKind === "image" ? 1 : requestDuration,
             aspect,
             quality,
             frameRate,
@@ -482,7 +692,7 @@ export default function GenerateStudio() {
           title: prompt.slice(0, 80),
           prompt,
           mediaUrl: url,
-          durationSec: duration,
+          durationSec: requestDuration,
           emotionMode,
           creditsCost: (data.creditsCost as number) ?? cost,
           provider: data.provider as string,
@@ -591,17 +801,6 @@ export default function GenerateStudio() {
               aria-label={tr("prompt_label")}
             />
 
-            <StylePresets
-              value={stylePreset}
-              onChange={setStylePreset}
-              labels={{
-                cinematic: tr("studio_style_cinematic"),
-                photorealistic: tr("studio_style_photoreal"),
-                anime: tr("studio_style_anime"),
-                vintage: tr("studio_style_vintage"),
-              }}
-            />
-
             {mediaKind === "video" && (
               <StudioDropzone
                 preview={sourceImageUrl}
@@ -616,25 +815,48 @@ export default function GenerateStudio() {
             <AspectRatioPicker value={aspect} onChange={setAspect} />
 
             {mediaKind === "video" && (
-              <div className="flex flex-wrap gap-2">
-                {[5, 10, 15].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDuration(d)}
-                    className={clsx(
-                      "rounded-full border px-3 py-1 text-xs transition",
-                      duration === d
-                        ? "border-white/40 bg-white/10 text-white"
-                        : "border-white/10 text-white/45 hover:border-white/25"
-                    )}
-                  >
-                    {d}s
-                  </button>
-                ))}
-              </div>
+              <QuickCameraButtons
+                value={cameraMove}
+                onChange={setCameraMove}
+              />
             )}
+
+            <ProModeToggle
+              enabled={proMode}
+              onChange={setProModePersisted}
+              label={tr("studio_pro_mode")}
+            />
           </GlassCard>
+
+          <ProModePanel
+            open={proMode}
+            showVideoTools={mediaKind === "video"}
+            lighting={lighting}
+            onLightingChange={setLighting}
+            keyframes={keyframes}
+            onKeyframesChange={setKeyframes}
+            canvas={negativeCanvas}
+            onCanvasChange={setNegativeCanvas}
+            canvasBackground={
+              keyframes.startUrl || sourceImageUrl || resultImage
+            }
+            draftMode={draftMode}
+            onDraftModeChange={setDraftMode}
+            copy={{
+              lightingTitle: tr("studio_pro_lighting"),
+              lightingHint: tr("studio_pro_lighting_hint"),
+              keyframeTitle: tr("studio_pro_keyframes"),
+              keyframeStart: tr("studio_pro_keyframe_start"),
+              keyframeEnd: tr("studio_pro_keyframe_end"),
+              keyframeHint: tr("studio_pro_keyframe_hint"),
+              tooLarge: "Max 5MB",
+              canvasTitle: tr("studio_pro_canvas"),
+              canvasHint: tr("studio_pro_canvas_hint"),
+              canvasClear: tr("studio_pro_canvas_clear"),
+              draftTitle: tr("studio_pro_draft"),
+              draftHint: tr("studio_pro_draft_hint"),
+            }}
+          />
 
           <StudioAccordion title={tr("camera_motion")}>
             <div className="space-y-2">
@@ -682,30 +904,41 @@ export default function GenerateStudio() {
                   </button>
                 ))}
               </div>
-              {mediaKind === "video" && (
-                <BgmPicker
-                  mode={bgmMode}
-                  trackId={bgmTrackId}
-                  onModeChange={setBgmMode}
-                  onTrackChange={setBgmTrackId}
-                  disabled={loading}
-                  labels={{
-                    title: tr("bgm_title"),
-                    ai: tr("bgm_ai"),
-                    manual: tr("bgm_manual"),
-                    off: tr("bgm_off"),
-                    aiHint: tr("bgm_ai_hint"),
-                    empty: tr("bgm_empty"),
-                    loading: tr("bgm_loading"),
-                  }}
-                />
-              )}
               <p className="text-[11px] text-white/35">{tr("studio_tts_hint")}</p>
             </div>
           </StudioAccordion>
 
           <StudioAccordion title={tr("studio_advanced")} defaultOpen={showAdvanced}>
             <div className="space-y-4">
+              <StylePresets
+                value={stylePreset}
+                onChange={setStylePreset}
+                labels={{
+                  cinematic: tr("studio_style_cinematic"),
+                  photorealistic: tr("studio_style_photoreal"),
+                  anime: tr("studio_style_anime"),
+                  vintage: tr("studio_style_vintage"),
+                }}
+              />
+              {mediaKind === "video" && (
+                <div className="flex flex-wrap gap-2">
+                  {[5, 10, 15].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDuration(d)}
+                      className={clsx(
+                        "rounded-full border px-3 py-1 text-xs transition",
+                        duration === d
+                          ? "border-white/40 bg-white/10 text-white"
+                          : "border-white/10 text-white/45 hover:border-white/25"
+                      )}
+                    >
+                      {d}s
+                    </button>
+                  ))}
+                </div>
+              )}
               <TemplatePicker selectedId={templateId} onSelect={applyTemplate} />
               <div className="flex flex-wrap gap-2">
                 {modelCards.map((card) => {
@@ -740,7 +973,7 @@ export default function GenerateStudio() {
             kind={generationKind}
             cost={cost}
             coins={coins}
-            durationSec={duration}
+            durationSec={requestDuration}
             costOpts={{
               engine: selectedEngine,
               quality,
@@ -760,24 +993,23 @@ export default function GenerateStudio() {
             tr={tr}
           />
 
-          <motion.button
-            type="button"
-            onClick={generate}
+          <StudioGenerateCta
+            loading={loading}
             disabled={loading || !prompt.trim() || isOffline || coins < cost}
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-amber-400 px-5 py-3.5 text-sm font-semibold text-black shadow-[0_0_28px_rgba(34,211,238,0.28)] transition disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {loading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Sparkles size={16} />
-            )}
-            {mediaKind === "image" ? tr("studio_create") : tr("studio_generate_video")}
-            <span className="rounded-full bg-black/25 px-2.5 py-0.5 font-mono text-xs tabular-nums">
-              {formatCredits(cost)}
-            </span>
-          </motion.button>
+            label={
+              mediaKind === "image"
+                ? tr("studio_create")
+                : draftMode && proMode
+                  ? tr("studio_generate_draft")
+                  : tr("studio_generate_video")
+            }
+            costLabel={
+              mediaKind === "video" && audioNc > 0
+                ? `${formatCredits(cost)} + ${audioNc} NC`
+                : formatCredits(cost)
+            }
+            onClick={generate}
+          />
 
           {error && <p className="text-sm text-rose-400">{error}</p>}
           {provider && hasOutput && (
@@ -801,6 +1033,18 @@ export default function GenerateStudio() {
             onUpscale={upscaleAndGenerate}
             onDelete={clearOutput}
             upscaleDisabled={quality === "4K" || quality === "8K" || !hasOutput}
+            seekRequest={seekRequest}
+            onTimeChange={(t) => setPlayheadSec(t)}
+            controlledPlaying={videoUrl ? timelinePlaying : undefined}
+            onPlayingChange={setTimelinePlaying}
+            creditBreakdown={
+              mediaKind === "video"
+                ? tr("studio_preview_nc")
+                    .replace("{video}", String(cost))
+                    .replace("{audio}", String(audioNc))
+                    .replace("{total}", String(sessionCost))
+                : null
+            }
             labels={{
               upscale: tr("studio_upscale"),
               delete: tr("media_delete"),
@@ -819,6 +1063,47 @@ export default function GenerateStudio() {
               ) : null
             }
           />
+          {mediaKind === "video" && (
+            <StudioTimeline
+              durationSec={duration}
+              onDurationChange={setDuration}
+              playheadSec={playheadSec}
+              onSeek={setPlayheadSec}
+              onScrub={seekTimeline}
+              playing={timelinePlaying}
+              onPlayingChange={setTimelinePlaying}
+              bgmMode={bgmMode}
+              bgmTrackId={bgmTrackId}
+              onBgmModeChange={setBgmMode}
+              onBgmTrackChange={setBgmTrackId}
+              emotionMode={emotionMode}
+              disabled={loading}
+              externalClock={Boolean(videoUrl)}
+              onAudioCostChange={setAudioNc}
+              onGenerateVoice={generateVoiceClip}
+              onGenerateSfx={generateSfxClip}
+              copy={{
+                title: tr("studio_timeline"),
+                hint: tr("studio_timeline_hint"),
+                frames: tr("studio_frames"),
+                mute: tr("studio_mute"),
+                unmute: tr("studio_unmute"),
+                included: tr("studio_bgm_included"),
+                voicePlaceholder: tr("studio_tts_placeholder"),
+                sfxPlaceholder: tr("studio_sfx_placeholder"),
+                generateVoice: tr("studio_tts_generate"),
+                generateSfx: tr("studio_sfx_generate"),
+                audioNc: tr("studio_audio_nc"),
+                bgmTitle: tr("bgm_title"),
+                bgmAi: tr("bgm_ai"),
+                bgmManual: tr("bgm_manual"),
+                bgmOff: tr("bgm_off"),
+                bgmAiHint: tr("bgm_ai_hint"),
+                bgmEmpty: tr("bgm_empty"),
+                bgmLoading: tr("bgm_loading"),
+              }}
+            />
+          )}
         </aside>
       </div>
 

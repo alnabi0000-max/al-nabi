@@ -44,6 +44,56 @@ export const CREDIT_RATES = {
   text_to_movie_per_min: 40,
 } as const;
 
+/**
+ * Additive audio-clip NC (never folded into P2V/S2M minute rates).
+ * Ambient BGM stays included in the video charge — local FFmpeg only.
+ */
+export const AUDIO_CREDIT_RATES = {
+  ttsPerEightSec: 2,
+  sfxPerClip: 1,
+} as const;
+
+export type AudioClipKind = "voice" | "sfx" | "bgm";
+
+export type AudioCostClip = {
+  kind: AudioClipKind;
+  muted: boolean;
+  /** Voice has narration, SFX has a prompt, BGM is on (not "off"). */
+  hasContent: boolean;
+  durationSec?: number;
+};
+
+/** ~150 wpm spoken estimate, capped for a single studio clip. */
+export function estimateSpeechDurationSec(text: string): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  if (words === 0) return 0;
+  return Math.max(1, Math.min(30, Math.round((words / 2.5) * 10) / 10));
+}
+
+export function calculateTtsClipCost(durationSec: number): number {
+  if (!(durationSec > 0)) return 0;
+  const blocks = Math.max(1, Math.ceil(durationSec / 8));
+  return blocks * AUDIO_CREDIT_RATES.ttsPerEightSec;
+}
+
+export function calculateSfxClipCost(active: boolean): number {
+  return active ? AUDIO_CREDIT_RATES.sfxPerClip : 0;
+}
+
+/** Sum NC for unmuted audio clips with content. BGM is always 0. */
+export function calculateActiveAudioCost(clips: AudioCostClip[]): number {
+  let total = 0;
+  for (const clip of clips) {
+    if (clip.muted || !clip.hasContent || clip.kind === "bgm") continue;
+    if (clip.kind === "sfx") {
+      total += AUDIO_CREDIT_RATES.sfxPerClip;
+      continue;
+    }
+    total += calculateTtsClipCost(clip.durationSec ?? 1);
+  }
+  return total;
+}
+
 export const CREDITS_PER_MINUTE = CREDIT_RATES.prompt_to_video_per_min;
 
 /**

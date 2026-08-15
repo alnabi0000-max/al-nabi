@@ -77,7 +77,7 @@ function formatVector(vector: Vector3): string {
   return `(${vector.x}, ${vector.y}, ${vector.z})`;
 }
 
-function formatCameraLightingPrompt(input: PreparedPrompt): string {
+export function formatCameraLightingPrompt(input: PreparedPrompt): string {
   const { prompt, cameraLighting } = input;
   if (!cameraLighting) return prompt;
 
