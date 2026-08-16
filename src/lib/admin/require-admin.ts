@@ -19,7 +19,7 @@ export { isAdminRole } from "@/lib/admin/roles";
 /** Studio home — unauthorized `/admin` visitors are sent here. */
 export const ADMIN_DENIED_REDIRECT = "/";
 
-async function hasValidAdminGateCookie(
+export async function hasValidAdminGateCookie(
   request?: NextRequest
 ): Promise<boolean> {
   try {

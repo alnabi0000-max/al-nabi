@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -9,15 +9,7 @@ import { useMaster } from "@/context/MasterControllerContext";
 
 const GenerateStudio = dynamic(() => import("@/app/generate/GenerateStudio"), {
   ssr: false,
-  loading: () => (
-    <div className="mx-auto max-w-[1680px] animate-pulse space-y-6 py-8">
-      <div className="h-10 w-40 rounded-full bg-white/10" />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <div className="h-64 rounded-2xl bg-nabi-card" />
-        <div className="aspect-video rounded-2xl bg-nabi-card" />
-      </div>
-    </div>
-  ),
+  loading: () => <StudioSkeleton film={false} />,
 });
 
 const ScriptToMovieStudio = dynamic(
@@ -27,13 +19,28 @@ const ScriptToMovieStudio = dynamic(
     })),
   {
     ssr: false,
-    loading: () => (
+    loading: () => <StudioSkeleton film />,
+  }
+);
+
+function StudioSkeleton({ film }: { film: boolean }) {
+  if (film) {
+    return (
       <div className="mx-auto max-w-5xl animate-pulse space-y-4 py-8">
         <div className="h-64 rounded-2xl bg-nabi-card" />
       </div>
-    ),
+    );
   }
-);
+  return (
+    <div className="mx-auto max-w-[1680px] animate-pulse space-y-6 py-8">
+      <div className="h-10 w-40 rounded-full bg-white/10" />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="h-64 rounded-2xl bg-nabi-card" />
+        <div className="aspect-video rounded-2xl bg-nabi-card" />
+      </div>
+    </div>
+  );
+}
 
 function studioHref(mode: "video" | "film", current: URLSearchParams) {
   const q = new URLSearchParams(current.toString());
@@ -47,6 +54,11 @@ function HomeStudioInner() {
   const searchParams = useSearchParams();
   const { tr } = useMaster();
   const film = searchParams.get("mode") === "film";
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="mx-auto max-w-[1680px] space-y-6">
@@ -54,6 +66,7 @@ function HomeStudioInner() {
         <Link
           href={studioHref("video", searchParams)}
           scroll={false}
+          suppressHydrationWarning
           className={clsx(
             "rounded-full px-4 py-1.5 text-sm transition",
             !film
@@ -66,6 +79,7 @@ function HomeStudioInner() {
         <Link
           href={studioHref("film", searchParams)}
           scroll={false}
+          suppressHydrationWarning
           className={clsx(
             "rounded-full px-4 py-1.5 text-sm transition",
             film
@@ -76,7 +90,15 @@ function HomeStudioInner() {
           {tr("mode_script_film")}
         </Link>
       </div>
-      {film ? <ScriptToMovieStudio /> : <GenerateStudio />}
+      {mounted ? (
+        film ? (
+          <ScriptToMovieStudio />
+        ) : (
+          <GenerateStudio />
+        )
+      ) : (
+        <StudioSkeleton film={film} />
+      )}
     </div>
   );
 }

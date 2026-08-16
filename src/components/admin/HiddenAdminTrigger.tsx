@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { KeyRound, Loader2, X } from "lucide-react";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useLanguage } from "@/context/LanguageContext";
@@ -15,12 +15,18 @@ function isAdminHotkey(e: KeyboardEvent): boolean {
   return e.ctrlKey || e.metaKey;
 }
 
+function isAdminPath(pathname: string): boolean {
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
+
 /**
  * Global Ctrl+Alt+A (Cmd+Option+A) listener. No visible chrome until the
- * combination is pressed.
+ * combination is pressed. A second press while the gate is open closes the
+ * panel without asking for the passcode.
  */
 export function HiddenAdminTrigger() {
   const router = useRouter();
+  const pathname = usePathname();
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [passcode, setPasscode] = useState("");
@@ -28,25 +34,97 @@ export function HiddenAdminTrigger() {
   const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const openRef = useRef(false);
+  const busyRef = useRef(false);
+  const handlingRef = useRef(false);
+
+  openRef.current = open;
+  busyRef.current = busy;
 
   const close = useCallback(() => {
-    if (busy) return;
+    if (busyRef.current) return;
     setOpen(false);
     setPasscode("");
     setError(null);
-  }, [busy]);
+  }, []);
+
+  const lockPanel = useCallback(async () => {
+    setBusy(true);
+    try {
+      await fetchWithTimeout(
+        "/api/admin/gate",
+        { method: "POST", credentials: "include", cache: "no-store" },
+        10_000
+      );
+    } catch {
+      /* still leave the surface */
+    } finally {
+      setBusy(false);
+      setOpen(false);
+      setPasscode("");
+      setError(null);
+      router.replace("/");
+      router.refresh();
+    }
+  }, [router]);
+
+  const handleHotkey = useCallback(async () => {
+    if (handlingRef.current || busyRef.current) return;
+    if (openRef.current) {
+      close();
+      return;
+    }
+
+    if (isAdminPath(pathname)) {
+      handlingRef.current = true;
+      try {
+        await lockPanel();
+      } finally {
+        handlingRef.current = false;
+      }
+      return;
+    }
+
+    handlingRef.current = true;
+    let unlocked = false;
+    try {
+      const res = await fetchWithTimeout(
+        "/api/admin/gate",
+        { credentials: "include", cache: "no-store" },
+        8_000
+      );
+      const json = (await res.json()) as { unlocked?: boolean };
+      unlocked = json.unlocked === true;
+    } catch {
+      unlocked = false;
+    } finally {
+      handlingRef.current = false;
+    }
+
+    if (unlocked) {
+      handlingRef.current = true;
+      try {
+        await lockPanel();
+      } finally {
+        handlingRef.current = false;
+      }
+      return;
+    }
+
+    setOpen(true);
+    setError(null);
+  }, [close, lockPanel, pathname]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!isAdminHotkey(e)) return;
       e.preventDefault();
       e.stopPropagation();
-      setOpen(true);
-      setError(null);
+      void handleHotkey();
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, []);
+  }, [handleHotkey]);
 
   useDialogFocus(panelRef, open, close);
 

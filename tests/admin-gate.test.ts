@@ -26,8 +26,9 @@ describe("hidden admin UI paths", () => {
 });
 
 describe("admin API session policy", () => {
-  it("keeps unlock anonymous and passcode session-gated", () => {
+  it("keeps unlock and gate anonymous and passcode session-gated", () => {
     expect(requiresSessionToken("/api/admin/unlock")).toBe(false);
+    expect(requiresSessionToken("/api/admin/gate")).toBe(false);
     expect(requiresSessionToken("/api/admin/passcode")).toBe(true);
     expect(requiresSessionToken("/api/admin/analytics")).toBe(true);
   });
