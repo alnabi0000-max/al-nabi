@@ -60,7 +60,7 @@ export function TemplateFastUseDrawer({ template, open, onClose }: Props) {
       <button
         type="button"
         aria-label={tr("close")}
-        className="absolute inset-0 bg-black/70"
+        className="glass-scrim absolute inset-0"
         onClick={onClose}
       />
       <aside
@@ -69,7 +69,7 @@ export function TemplateFastUseDrawer({ template, open, onClose }: Props) {
         aria-modal="true"
         aria-labelledby="tpl-drawer-title"
         tabIndex={-1}
-        className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-nabi-border bg-nabi-surface shadow-2xl outline-none"
+        className="glass-drawer relative z-10 flex h-full w-full max-w-md flex-col border-l outline-none"
       >
         <div className="flex items-start justify-between gap-3 border-b border-nabi-border px-5 py-4">
           <div className="min-w-0">
@@ -104,7 +104,7 @@ export function TemplateFastUseDrawer({ template, open, onClose }: Props) {
             />
           </div>
 
-          <div className="rounded-xl border border-white/8 bg-nabi-card p-3">
+          <div className="glass-card rounded-xl p-3">
             <p className="text-[10px] font-medium uppercase tracking-wider text-nabi-muted">
               Prompt structure
             </p>
@@ -136,7 +136,7 @@ export function TemplateFastUseDrawer({ template, open, onClose }: Props) {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder={template.subject_placeholder}
-              className="w-full rounded-xl border border-nabi-border bg-nabi-input px-3 py-2.5 text-sm text-nabi-ink outline-none transition placeholder:text-nabi-muted focus:border-nabi-neon/40"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none backdrop-blur-xl placeholder:text-white/40 focus:border-violet-400/50"
               autoFocus
             />
             <p className="mt-2 text-[11px] leading-relaxed text-nabi-muted">

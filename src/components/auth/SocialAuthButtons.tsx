@@ -84,7 +84,7 @@ export function SocialAuthButtons({
         onClick={() => oauth("apple")}
         disabled={busy !== null}
         aria-busy={busy === "apple"}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-900 disabled:opacity-50"
+        className="glass-card flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
       >
         {busy === "apple" ? (
           <Loader2 size={16} className="animate-spin" />

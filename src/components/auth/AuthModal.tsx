@@ -179,7 +179,7 @@ export function AuthModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/80 p-4 backdrop-blur-md sm:items-center"
+      className="glass-scrim fixed inset-0 z-[80] flex items-end justify-center p-4 sm:items-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) closeAuth();
       }}
@@ -190,7 +190,7 @@ export function AuthModal() {
         aria-modal="true"
         aria-label={tr("auth_modal_title")}
         tabIndex={-1}
-        className="nabi-glass relative w-full max-w-md overflow-hidden rounded-3xl p-6 shadow-neon outline-none backdrop-blur-2xl"
+        className="glass-modal relative w-full max-w-md overflow-hidden p-6 outline-none"
       >
         <div
           aria-hidden
@@ -235,7 +235,7 @@ export function AuthModal() {
           <div
             role="tablist"
             aria-label={tr("auth_modal_title")}
-            className="relative mb-5 grid grid-cols-2 gap-1 rounded-2xl border border-nabi-border bg-black/25 p-1"
+            className="glass-card relative mb-5 grid grid-cols-2 gap-1 rounded-2xl p-1"
           >
             {(
               [
@@ -271,7 +271,7 @@ export function AuthModal() {
             <>
               <SocialAuthButtons />
               <div className="relative text-center text-[10px] uppercase tracking-[0.2em] text-nabi-muted">
-                <span className="relative z-10 bg-nabi-surface px-3">
+                <span className="relative z-10 bg-[#080b14]/70 px-3">
                   {tr("auth_or")}
                 </span>
                 <div className="absolute inset-x-0 top-1/2 h-px bg-nabi-border" />
@@ -330,7 +330,7 @@ export function AuthModal() {
               </p>
 
               {showPassword ? (
-                <div className="space-y-3 rounded-2xl border border-nabi-border bg-black/20 p-3">
+                <div className="glass-card space-y-3 rounded-2xl p-3">
                   <label htmlFor="auth-password" className="sr-only">
                     {tr("password_placeholder")}
                   </label>

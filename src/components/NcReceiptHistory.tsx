@@ -150,7 +150,7 @@ export function NcReceiptHistory({
     <section
       id="nc-receipts"
       className={clsx(
-        "rounded-xl border border-amber-500/25 bg-nabi-surface/80",
+        "glass-card rounded-xl border-amber-500/25",
         compact ? "p-3" : "p-4",
         className
       )}

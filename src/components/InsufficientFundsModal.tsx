@@ -17,7 +17,7 @@ export function InsufficientFundsModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
+      className="glass-scrim fixed inset-0 z-[90] flex items-center justify-center p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) close();
       }}
@@ -28,7 +28,7 @@ export function InsufficientFundsModal() {
         aria-modal="true"
         aria-labelledby="insufficient-funds-title"
         tabIndex={-1}
-        className="insufficient-neon relative w-full max-w-md rounded-2xl border-2 border-rose-500/70 bg-nabi-surface p-6 shadow-[0_0_40px_rgba(244,63,94,0.55)] outline-none"
+        className="glass-modal insufficient-neon relative w-full max-w-md border-rose-500/50 p-6 shadow-[0_0_40px_rgba(244,63,94,0.28)] outline-none"
       >
         <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-b from-rose-500/10 to-transparent" />
         <p className="relative text-center text-xs uppercase tracking-[0.25em] text-rose-400">

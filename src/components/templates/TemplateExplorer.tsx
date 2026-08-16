@@ -100,7 +100,7 @@ export function TemplateExplorer() {
               setVisible(PAGE_SIZE);
             }}
             placeholder={t.common.search}
-            className="w-full rounded-full border border-nabi-border bg-nabi-card py-2 pl-9 pr-3 text-sm text-nabi-ink outline-none placeholder:text-nabi-muted focus:border-nabi-neon/40"
+            className="w-full rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-3 text-sm text-white outline-none backdrop-blur-xl placeholder:text-white/40 focus:border-violet-400/50"
           />
         </label>
       </div>

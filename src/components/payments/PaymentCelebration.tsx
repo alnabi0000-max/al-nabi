@@ -17,7 +17,7 @@ export function PaymentCelebration() {
   if (!celebration) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[95] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div className="glass-scrim pointer-events-none fixed inset-0 z-[95] flex items-center justify-center">
       <div className="chest-3d relative text-center">
         <div className="chest-lid text-7xl" aria-hidden>
           🎁

@@ -48,7 +48,7 @@ export function StudioProfileMenu() {
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label={`${t.nav.profile}: ${label}`}
-        className="flex items-center gap-2 rounded-full border border-nabi-border bg-nabi-card py-1 pl-1 pr-2.5 transition hover:border-nabi-neon/35 hover:bg-nabi-elevated"
+        className="glass-card flex items-center gap-2 rounded-full py-1 pl-1 pr-2.5"
       >
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-nabi-elevated to-nabi-muted text-[11px] font-semibold text-nabi-bg">
           {mounted ? initials : "··"}
@@ -65,7 +65,7 @@ export function StudioProfileMenu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-nabi-border bg-nabi-surface shadow-2xl shadow-black/50"
+          className="glass-modal absolute right-0 z-50 mt-2 w-56 overflow-hidden"
         >
           <div className="border-b border-nabi-border px-3 py-3">
             <p className="truncate text-sm font-medium text-nabi-ink">{label}</p>

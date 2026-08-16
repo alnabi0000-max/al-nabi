@@ -255,7 +255,7 @@ export function TopUpModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[88] flex items-end justify-center bg-black/80 p-4 backdrop-blur-md sm:items-center"
+      className="glass-scrim fixed inset-0 z-[88] flex items-end justify-center p-4 sm:items-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) closeTopUp();
       }}
@@ -266,7 +266,7 @@ export function TopUpModal() {
         aria-modal="true"
         aria-label={tr("topup_title")}
         tabIndex={-1}
-        className="nabi-glass relative max-h-[92dvh] w-full max-w-5xl overflow-y-auto rounded-3xl p-6 shadow-neon outline-none backdrop-blur-2xl"
+        className="glass-modal relative max-h-[92dvh] w-full max-w-5xl overflow-y-auto p-6 outline-none"
       >
         <div
           aria-hidden
@@ -328,7 +328,7 @@ export function TopUpModal() {
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="h-52 animate-pulse rounded-2xl bg-nabi-elevated"
+                className="glass-card h-52 animate-pulse rounded-2xl"
               />
             ))}
           </div>

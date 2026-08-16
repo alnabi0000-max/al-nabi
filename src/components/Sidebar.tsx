@@ -63,8 +63,8 @@ export function Sidebar() {
     <aside
       data-collapsed={collapsed ? "1" : "0"}
       className={clsx(
-        "fixed left-3 top-3 z-40 hidden h-[calc(100dvh-1.5rem)] flex-col rounded-2xl border border-nabi-border",
-        "bg-nabi-bg/95 transition-[width] duration-300 md:flex",
+        "glass-drawer fixed left-3 top-3 z-40 hidden h-[calc(100dvh-1.5rem)] flex-col rounded-2xl border",
+        "transition-[width] duration-300 md:flex",
         collapsed ? "w-[4.25rem]" : "w-56 lg:w-60"
       )}
     >

@@ -35,7 +35,7 @@ export function LanguageDropdown() {
         aria-expanded={open}
         aria-controls={menuId}
         aria-haspopup="listbox"
-        className="flex items-center gap-1.5 rounded-full border border-nabi-border bg-nabi-card px-3 py-1.5 text-xs text-nabi-ink transition hover:border-[var(--accent)]/40"
+        className="glass-card flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-nabi-ink"
       >
         <Languages size={14} className="text-nabi-muted" />
         {isMounted ? current?.native || "…" : "…"}
@@ -53,7 +53,7 @@ export function LanguageDropdown() {
             id={menuId}
             role="listbox"
             aria-label={t.header.language}
-            className="absolute right-0 z-50 mt-2 max-h-72 w-52 overflow-y-auto rounded-xl border border-nabi-border bg-nabi-surface p-1 shadow-xl"
+            className="glass-modal absolute right-0 z-50 mt-2 max-h-72 w-52 overflow-y-auto p-1"
           >
             {locales.map((l) => (
               <button

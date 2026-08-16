@@ -40,7 +40,7 @@ function ChartTooltip({
   if (!active || !payload?.length) return null;
   const value = payload[0]?.value ?? 0;
   return (
-    <div className="rounded-lg border border-nabi-border bg-nabi-surface px-3 py-2 text-xs shadow-glass">
+    <div className="glass-modal px-3 py-2 text-xs">
       <p className="text-nabi-muted">{label}</p>
       <p className="mt-1 font-semibold tabular-nums text-nabi-ink">
         {valuePrefix === "$"

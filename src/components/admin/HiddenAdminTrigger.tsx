@@ -173,7 +173,7 @@ export function HiddenAdminTrigger() {
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-end justify-center bg-black/80 p-4 backdrop-blur-md sm:items-center"
+      className="glass-scrim fixed inset-0 z-[90] flex items-end justify-center p-4 sm:items-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) close();
       }}
@@ -184,7 +184,7 @@ export function HiddenAdminTrigger() {
         aria-modal="true"
         aria-labelledby="admin-gate-title"
         tabIndex={-1}
-        className="nabi-glass relative w-full max-w-md overflow-hidden rounded-3xl p-6 shadow-neon outline-none backdrop-blur-2xl"
+        className="glass-modal relative w-full max-w-md overflow-hidden p-6 outline-none"
       >
         <div
           aria-hidden

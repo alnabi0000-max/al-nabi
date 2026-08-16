@@ -29,12 +29,12 @@ export function CyberShield() {
     <>
       {showHalolModal && !showBanScreen && (
         <div
-          className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90 p-4 backdrop-blur-md"
+          className="glass-scrim fixed inset-0 z-[1000] flex items-center justify-center p-4"
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="halol-warning-title"
         >
-          <div className="w-full max-w-md rounded-2xl border border-nabi-border bg-nabi-card p-6">
+          <div className="glass-modal w-full max-w-md p-6">
             <p
               id="halol-warning-title"
               className="mb-2 text-[10px] font-bold uppercase tracking-widest text-amber-400/90"

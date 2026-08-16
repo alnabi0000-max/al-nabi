@@ -25,7 +25,7 @@ export function StripeEmbeddedCheckout({
   );
 
   return (
-    <div className="min-h-[28rem] overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+    <div className="glass-card min-h-[28rem] overflow-hidden rounded-2xl">
       <EmbeddedCheckoutProvider
         stripe={stripePromise}
         options={{

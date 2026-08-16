@@ -92,12 +92,12 @@ export function NcPackGrid({
           <article
             key={pack.id}
             className={clsx(
-              "relative flex flex-col rounded-2xl border-2 p-5 transition-all duration-300 nabi-glass backdrop-blur-xl",
+              "glass-card relative flex flex-col rounded-2xl p-5",
               isRecommended
-                ? "border-nabi-gold bg-gradient-to-b from-amber-500/15 via-nabi-card to-nabi-card shadow-gold scale-[1.02] z-[1]"
+                ? "z-[1] scale-[1.02] border-cyan-500/40 shadow-[0_0_28px_rgba(34,211,238,0.16)]"
                 : pack.elite
-                  ? "border-nabi-neon/45 bg-gradient-to-b from-nabi-neon/10 to-nabi-card"
-                  : "border-nabi-border hover:border-nabi-gold/35"
+                  ? "border-violet-500/35 shadow-[0_0_22px_rgba(139,92,246,0.14)]"
+                  : ""
             )}
           >
             {isRecommended && (
@@ -114,7 +114,7 @@ export function NcPackGrid({
                     ? "border-nabi-gold/50 bg-amber-500/15 text-nabi-gold"
                     : pack.elite
                       ? "border-nabi-neon/40 bg-nabi-neon/15 text-nabi-neon"
-                      : "border-nabi-border bg-nabi-card text-nabi-neon"
+                      : "border-white/10 bg-white/[0.04] text-nabi-neon"
                 )}
               >
                 <PackIcon className="h-5 w-5" aria-hidden />

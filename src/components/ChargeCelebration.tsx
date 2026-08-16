@@ -8,7 +8,7 @@ export function ChargeCelebration() {
   if (!chargeReceipt) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[85] flex items-start justify-center bg-black/60 pt-10 backdrop-blur-sm">
+    <div className="glass-scrim pointer-events-none fixed inset-0 z-[85] flex items-start justify-center pt-10">
       <div className="receipt-slide w-full max-w-sm px-4">
         <div className="mb-6 flex justify-center">
           <div className="chest-3d relative text-center">
@@ -24,7 +24,7 @@ export function ChargeCelebration() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-amber-500/40 bg-nabi-surface/95 p-4 font-mono text-xs text-amber-100 shadow-[0_0_28px_rgba(245,200,66,0.25)]">
+        <div className="glass-modal border-amber-500/40 p-4 font-mono text-xs text-amber-100">
           <div className="mb-2 flex items-center justify-between border-b border-amber-500/30 pb-2">
             <span className="font-bold text-nabi-gold">
               {tr("digital_receipt")}

@@ -36,13 +36,13 @@ export function AppToast() {
     >
       <div
         className={clsx(
-          "pointer-events-auto flex max-w-md items-start gap-3 rounded-2xl border px-4 py-3 shadow-2xl transition-opacity duration-200",
+          "glass-modal pointer-events-auto flex max-w-md items-start gap-3 px-4 py-3 transition-opacity duration-200",
           appToast.type === "success" &&
-            "border-emerald-500/40 bg-nabi-surface/95 text-emerald-500",
+            "border-emerald-500/40 text-emerald-400",
           appToast.type === "info" &&
-            "border-nabi-neon/40 bg-nabi-surface/95 text-nabi-neon",
+            "border-nabi-neon/40 text-nabi-neon",
           appToast.type === "error" &&
-            "border-rose-500/50 bg-nabi-surface/95 text-rose-500"
+            "border-rose-500/50 text-rose-400"
         )}
       >
         <Icon size={18} className="mt-0.5 shrink-0" />

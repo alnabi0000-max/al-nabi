@@ -24,7 +24,7 @@ export const ProducerChatFloat = memo(function ProducerChatFloat() {
       <button
         type="button"
         aria-label={t.chat.close}
-        className="absolute inset-0 bg-black/60"
+        className="glass-scrim absolute inset-0"
         onClick={closeChat}
       />
       <div
@@ -34,7 +34,7 @@ export const ProducerChatFloat = memo(function ProducerChatFloat() {
         aria-modal="true"
         aria-label={t.header.producerChat}
         tabIndex={-1}
-        className="producer-chat-float relative z-10 flex h-[100dvh] max-h-[100dvh] w-full max-w-md flex-col overflow-hidden border-l border-nabi-border bg-nabi-surface shadow-[-24px_0_80px_rgba(0,0,0,0.55)] outline-none sm:max-w-[420px]"
+        className="glass-drawer producer-chat-float relative z-10 flex h-[100dvh] max-h-[100dvh] w-full max-w-md flex-col overflow-hidden border-l outline-none sm:max-w-[420px]"
       >
         <ProducerChat compact onClose={closeChat} />
       </div>

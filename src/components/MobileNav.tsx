@@ -18,7 +18,7 @@ export function MobileNav() {
   return (
     <nav
       aria-label={t.nav.navigation}
-      className="fixed bottom-3 left-3 right-3 z-50 flex w-auto overflow-hidden rounded-2xl border border-nabi-border bg-nabi-bg/95 pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="glass-modal fixed bottom-3 left-3 right-3 z-50 flex w-auto overflow-hidden pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       {links.map(({ href, label, icon: Icon }) => {
         const active =

@@ -82,7 +82,7 @@ export function AppShellChrome({ children }: { children: React.ReactNode }) {
       {chromeReady ? <AppToast /> : null}
       {chromeReady ? <Sidebar /> : null}
       <MainShell>
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-violet-400/25 bg-[#0b0e17]/85 px-4 py-2.5 backdrop-blur-xl md:px-8">
+        <header className="glass-drawer sticky top-0 z-30 flex items-center justify-between gap-3 border-b px-4 py-2.5 md:px-8">
           <p className="text-sm font-medium tracking-tight text-nabi-ink md:hidden">
             Al-Nabi
           </p>

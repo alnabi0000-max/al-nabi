@@ -36,7 +36,7 @@ export function CreditsBadge() {
       type="button"
       onClick={() => openTopUp()}
       className={clsx(
-        "flex items-center gap-2 rounded-full border bg-nabi-card px-3 py-1.5 text-sm tabular-nums text-nabi-ink transition",
+        "glass-card flex items-center gap-2 rounded-full px-3 py-1.5 text-sm tabular-nums text-nabi-ink",
         pulse
           ? "border-emerald-400/70 shadow-[0_0_18px_rgba(52,211,153,0.45)]"
           : "border-nabi-border hover:border-nabi-neon/40"

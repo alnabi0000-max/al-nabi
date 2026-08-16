@@ -104,7 +104,7 @@ export function ProfileKabinetPanel() {
         />
       </section>
 
-      <section className="rounded-2xl border border-nabi-border bg-nabi-surface p-4 md:p-5">
+      <section className="glass-card rounded-2xl p-4 md:p-5">
         <h3 className="mb-3 text-sm font-semibold text-nabi-muted">
           {t("dashboard_profile_card")}
         </h3>

@@ -144,7 +144,7 @@ const QuickActionBar = memo(function QuickActionBar({
 }) {
   if (!actions.length) return null;
   return (
-    <div className="pc-quick-bar shrink-0 border-t border-nabi-border bg-nabi-surface/85 px-3 py-2 backdrop-blur-md sm:px-4">
+    <div className="pc-quick-bar shrink-0 border-t border-white/10 bg-[#080b14]/60 px-3 py-2 backdrop-blur-xl sm:px-4">
       <div className="flex max-h-[4.75rem] flex-wrap gap-2 overflow-y-auto overscroll-contain pr-0.5">
       {actions.map((a) => {
         const label = labelForQuickAction(a, t);
@@ -228,7 +228,7 @@ const ChatComposer = memo(function ChatComposer({
   }, [draft, onSend]);
 
   return (
-    <div className="pc-composer shrink-0 border-t border-nabi-border bg-nabi-surface px-3 pt-3 backdrop-blur-md">
+    <div className="pc-composer shrink-0 border-t border-white/10 bg-[#080b14]/60 px-3 pt-3 backdrop-blur-xl">
       {(imageUrl || linkNote) && (
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-nabi-muted">
           {imageUrl && (
@@ -283,7 +283,7 @@ const ChatComposer = memo(function ChatComposer({
           onChange={onChange}
           rows={2}
           placeholder={t.chat.placeholder}
-          className="min-h-[44px] min-w-0 flex-1 resize-none rounded-xl border border-nabi-border bg-nabi-input px-3 py-2 text-sm text-nabi-ink outline-none placeholder:text-nabi-muted focus:border-nabi-neon/40"
+          className="min-h-[44px] min-w-0 flex-1 resize-none rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none placeholder:text-white/40 focus:border-violet-400/50"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -340,7 +340,7 @@ const SessionPanel = memo(function SessionPanel({
 }) {
   return (
     <>
-      <div className="rounded-2xl border border-nabi-border bg-nabi-card p-4">
+      <div className="glass-card rounded-2xl p-4">
         <p className="text-[10px] uppercase tracking-wider text-nabi-muted">
           {t.chat.session}
         </p>
@@ -394,7 +394,7 @@ const SessionPanel = memo(function SessionPanel({
           <audio ref={audioRef} src={previewUrl} controls className="mt-3 w-full" />
         )}
       </div>
-      <div className="rounded-2xl border border-nabi-border bg-nabi-card p-4">
+      <div className="glass-card rounded-2xl p-4">
         <p className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-nabi-muted">
           <Clapperboard size={12} />
           {t.chat.output}
@@ -767,10 +767,10 @@ export function ProducerChat({
           "flex min-h-0 flex-col overflow-hidden",
           compact
             ? "flex-1"
-            : "min-h-[min(70vh,720px)] max-h-[calc(100dvh-10rem)] rounded-2xl border border-nabi-border bg-nabi-surface/40"
+            : "glass-modal min-h-[min(70vh,720px)] max-h-[calc(100dvh-10rem)]"
         )}
       >
-        <header className="flex items-center justify-between gap-3 border-b border-nabi-border bg-nabi-surface/90 px-4 py-3 backdrop-blur-md">
+        <header className="flex items-center justify-between gap-3 border-b border-white/10 bg-[#080b14]/60 px-4 py-3 backdrop-blur-xl">
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-[0.2em] text-nabi-muted">
               {t.chat.engine}

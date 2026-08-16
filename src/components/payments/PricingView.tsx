@@ -63,7 +63,7 @@ export function PricingView({
           ? t("coin_store_subtitle")
           : t("pricing_subtitle")}
       </p>
-      <div className="mx-auto mb-3 max-w-3xl rounded-xl border border-nabi-neon/20 bg-nabi-card/60 px-4 py-3 text-center text-xs leading-relaxed text-nabi-muted">
+      <div className="glass-card mx-auto mb-3 max-w-3xl rounded-xl px-4 py-3 text-center text-xs leading-relaxed text-nabi-muted">
         <p className="inline-flex items-center justify-center gap-1.5 font-medium text-nabi-ink">
           <Wallet size={14} aria-hidden />
           {tr("topup_wallets")}
