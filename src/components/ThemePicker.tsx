@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Check, Palette } from "lucide-react";
 import clsx from "clsx";
 import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useIsMounted } from "@/hooks/useIsMounted";
 
 /**
@@ -11,8 +12,10 @@ import { useIsMounted } from "@/hooks/useIsMounted";
  */
 export function ThemePicker() {
   const { theme, themes, setTheme } = useTheme();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const isMounted = useIsMounted();
+  const menuId = useId();
   const current = themes.find((t) => t.id === theme) || themes[0]!;
 
   useEffect(() => {
@@ -29,8 +32,10 @@ export function ThemePicker() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Tema"
+        aria-label={t.header.theme}
         aria-expanded={open}
+        aria-controls={menuId}
+        aria-haspopup="listbox"
         title={current.label}
         className="flex items-center gap-1.5 rounded-full border border-nabi-border bg-nabi-card px-2.5 py-1.5 text-xs text-nabi-ink transition hover:border-nabi-neon/50"
       >
@@ -57,12 +62,13 @@ export function ThemePicker() {
             onClick={() => setOpen(false)}
           />
           <div
+            id={menuId}
             role="listbox"
-            aria-label="Tema"
+            aria-label={t.header.theme}
             className="absolute right-0 z-50 mt-2 w-[15.5rem] rounded-xl border border-nabi-border bg-nabi-surface p-2 shadow-xl"
           >
             <p className="mb-2 px-1 text-[10px] uppercase tracking-wider text-nabi-muted">
-              Tema
+              {t.header.theme}
             </p>
             <div className="grid grid-cols-5 gap-1.5">
               {themes.map((t) => {

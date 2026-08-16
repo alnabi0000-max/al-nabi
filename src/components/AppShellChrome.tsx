@@ -6,6 +6,7 @@ import { MainShell } from "@/components/MainShell";
 import { ProducerChatTrigger } from "@/components/ProducerChatTrigger";
 import { CreditsBadge } from "@/components/CreditsBadge";
 import { ChatQueryOpener } from "@/components/ChatQueryOpener";
+import { useMaster } from "@/context/MasterControllerContext";
 
 const Sidebar = dynamic(
   () => import("@/components/Sidebar").then((m) => ({ default: m.Sidebar })),
@@ -64,6 +65,7 @@ const ClientHeavyChrome = dynamic(
 /** Client chrome — defer non-critical chrome until after first paint. */
 export function AppShellChrome({ children }: { children: React.ReactNode }) {
   const [chromeReady, setChromeReady] = useState(false);
+  const { tr } = useMaster();
 
   useEffect(() => {
     let idleId: number | undefined;
@@ -78,6 +80,12 @@ export function AppShellChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <a
+        href="#main-content"
+        className="sr-only fixed left-4 top-4 z-[10000] rounded-lg bg-nabi-ink px-4 py-2 text-sm font-medium text-nabi-bg focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-nabi-neon"
+      >
+        {tr("skip_to_content")}
+      </a>
       {chromeReady ? <AppToast /> : null}
       {chromeReady ? <Sidebar /> : null}
       <MainShell>
@@ -94,7 +102,11 @@ export function AppShellChrome({ children }: { children: React.ReactNode }) {
             {chromeReady ? <StudioProfileMenu /> : null}
           </div>
         </header>
-        <main className="relative px-4 py-8 pb-24 md:px-8 md:py-10">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="relative px-4 py-8 pb-24 outline-none md:px-8 md:py-10"
+        >
           {children}
         </main>
         {chromeReady ? <SiteFooter /> : null}

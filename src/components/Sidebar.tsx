@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Clapperboard,
-  Languages,
   User,
   ChevronsLeft,
   ChevronsRight,
@@ -55,7 +54,6 @@ export function Sidebar() {
 
   const links = [
     { href: "/", label: t.nav.studio, icon: Clapperboard },
-    { href: "/translator", label: t.nav.translator, icon: Languages },
     { href: "/profile", label: t.nav.cabinet, icon: User },
   ];
 
@@ -92,7 +90,10 @@ export function Sidebar() {
         </button>
       </div>
 
-      <nav className="relative flex flex-1 flex-col gap-1 overflow-y-auto px-2 pb-3">
+      <nav
+        aria-label={t.nav.navigation}
+        className="relative flex flex-1 flex-col gap-1 overflow-y-auto px-2 pb-3"
+      >
         {links.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/"
@@ -103,6 +104,7 @@ export function Sidebar() {
               key={href}
               href={href}
               title={label}
+              aria-current={active ? "page" : undefined}
               onMouseEnter={() => collapsed && setTip(label)}
               onMouseLeave={() => setTip(null)}
               className={clsx(

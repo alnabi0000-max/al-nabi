@@ -75,12 +75,6 @@ function HomeStudioInner() {
         >
           {tr("mode_script_film")}
         </Link>
-        <Link
-          href="/translator"
-          className="rounded-full px-4 py-1.5 text-sm text-white/45 transition hover:text-white"
-        >
-          {tr("mode_translator")}
-        </Link>
       </div>
       {film ? <ScriptToMovieStudio /> : <GenerateStudio />}
     </div>

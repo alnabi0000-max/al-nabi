@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Al-Nabi</title>
+  <desc id="desc">Al-Nabi AI video and image studio</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#070913"/>
+      <stop offset="0.58" stop-color="#10122b"/>
+      <stop offset="1" stop-color="#24124a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#a855f7"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <circle cx="1010" cy="118" r="230" fill="#5b21b6" opacity=".2" filter="url(#glow)"/>
+  <circle cx="950" cy="530" r="250" fill="#0891b2" opacity=".16" filter="url(#glow)"/>
+  <path d="M686 523C822 346 908 265 1177 122" fill="none" stroke="url(#accent)" stroke-linecap="round" stroke-width="34" opacity=".75"/>
+  <path d="M716 584C876 435 1023 330 1212 290" fill="none" stroke="#8b5cf6" stroke-linecap="round" stroke-width="12" opacity=".5"/>
+  <g fill="none" stroke="#e9d5ff" stroke-opacity=".72">
+    <path d="M794 402l88-122 101 31 88-122" stroke-width="4"/>
+    <circle cx="794" cy="402" r="14" stroke-width="4"/>
+    <circle cx="882" cy="280" r="14" stroke-width="4"/>
+    <circle cx="983" cy="311" r="14" stroke-width="4"/>
+    <circle cx="1071" cy="189" r="14" stroke-width="4"/>
+  </g>
+  <g fill="#67e8f9" opacity=".85">
+    <rect x="777" y="160" width="12" height="12" rx="3"/>
+    <rect x="1078" y="432" width="14" height="14" rx="3"/>
+    <rect x="1115" y="487" width="8" height="8" rx="2"/>
+    <rect x="960" y="76" width="10" height="10" rx="2"/>
+  </g>
+  <text x="90" y="252" fill="#f8fafc" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="700" letter-spacing="-2">Al-Nabi</text>
+  <text x="95" y="310" fill="#a5b4fc" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="500">AI video &amp; image studio</text>
+  <rect x="94" y="357" width="212" height="6" rx="3" fill="url(#accent)"/>
+</svg>

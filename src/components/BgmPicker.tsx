@@ -40,18 +40,15 @@ export function BgmPicker({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [tracks, setTracks] = useState<BgmTrackMeta[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (mode !== "manual") {
-      audioRef.current?.pause();
-      setPlayingId(null);
-      return;
-    }
     let cancelled = false;
     setLoading(true);
     void fetch("/api/music/tracks")
       .then(async (res) => {
+        if (!res.ok) throw new Error("Unable to load music catalog");
         const data = (await res.json()) as { tracks?: BgmTrackMeta[] };
         if (!cancelled) setTracks(Array.isArray(data.tracks) ? data.tracks : []);
       })
@@ -59,12 +56,27 @@ export function BgmPicker({
         if (!cancelled) setTracks([]);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setLoaded(true);
+        }
       });
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    if (mode === "manual") return;
+    audioRef.current?.pause();
+    setPlayingId(null);
   }, [mode]);
+
+  useEffect(() => {
+    if (!loaded || tracks.length > 0) return;
+    if (mode !== "off") onModeChange("off");
+    if (trackId) onTrackChange(null);
+  }, [loaded, mode, onModeChange, onTrackChange, trackId, tracks.length]);
 
   useEffect(() => {
     return () => {
@@ -93,18 +105,20 @@ export function BgmPicker({
     );
   }
 
+  // Do not advertise background music until licensed tracks are deployed.
+  if (!loaded || tracks.length === 0) return null;
+
   return (
     <div className={clsx("space-y-2", className)}>
       <p className="text-xs font-medium uppercase tracking-wider text-nabi-muted">
         {labels.title}
       </p>
-      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label={labels.title}>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={labels.title}>
         {MODES.map((m) => (
           <button
             key={m}
             type="button"
-            role="tab"
-            aria-selected={mode === m}
+            aria-pressed={mode === m}
             disabled={disabled}
             onClick={() => onModeChange(m)}
             className={clsx(
@@ -133,11 +147,6 @@ export function BgmPicker({
             <p className="flex items-center gap-2 px-1 py-2 text-xs text-nabi-muted">
               <Loader2 size={12} className="animate-spin" />
               {labels.loading || "…"}
-            </p>
-          )}
-          {!loading && tracks.length === 0 && (
-            <p className="px-1 py-2 text-xs text-nabi-muted">
-              {labels.empty || "No tracks yet"}
             </p>
           )}
           {!loading &&
