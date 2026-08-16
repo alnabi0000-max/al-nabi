@@ -28,10 +28,10 @@ const LanguageDropdown = dynamic(
   { ssr: false }
 );
 
-const ThemePicker = dynamic(
+const ThemeToggleButton = dynamic(
   () =>
-    import("@/components/ThemePicker").then((m) => ({
-      default: m.ThemePicker,
+    import("@/components/ui/ThemeToggleButton").then((m) => ({
+      default: m.ThemeToggleButton,
     })),
   { ssr: false }
 );
@@ -97,7 +97,7 @@ export function AppShellChrome({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <ChatQueryOpener />
             <ProducerChatTrigger />
-            {chromeReady ? <ThemePicker /> : null}
+            {chromeReady ? <ThemeToggleButton /> : null}
             {chromeReady ? <LanguageDropdown /> : null}
             <CreditsBadge />
             {chromeReady ? <StudioProfileMenu /> : null}
