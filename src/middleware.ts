@@ -13,6 +13,11 @@ import {
 import { inspectAccessToken } from "@/lib/auth/jwt";
 import { requiresSessionToken } from "@/lib/auth/protected-routes";
 import { isPlaceholderEnvValue } from "@/lib/env";
+import { isAdminUiPath } from "@/lib/admin/gate-path";
+import {
+  ADMIN_GATE_COOKIE,
+  verifyAdminGateToken,
+} from "@/lib/admin/gate-token";
 
 /**
  * WAF + rate limit + fail-closed session gate + Supabase session refresh
@@ -74,6 +79,13 @@ function hasSupabaseAuthCookie(request: NextRequest): boolean {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (isAdminUiPath(pathname)) {
+    const gate = request.cookies.get(ADMIN_GATE_COOKIE)?.value;
+    if (!(await verifyAdminGateToken(gate))) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
 
   const ua = request.headers.get("user-agent");
   if (

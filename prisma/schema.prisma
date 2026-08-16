@@ -281,6 +281,17 @@ model Session {
   @@map("sessions")
 }
 
+/// Singleton row: hashed master passcode for the hidden `/admin` gate.
+model AdminSettings {
+  id           String   @id
+  passcodeHash String   @map("passcode_hash")
+  tokenVersion Int      @default(1) @map("token_version")
+  updatedById  String?  @map("updated_by_id") @db.Uuid
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_settings")
+}
+
 model SceneAsset {
   id             String     @id @default(cuid())
   generationId   String     @map("generation_id")

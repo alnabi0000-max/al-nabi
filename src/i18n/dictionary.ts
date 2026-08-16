@@ -146,6 +146,25 @@ export type Dictionary = {
     emptyChart: string;
     loadError: string;
     modelsLink: string;
+    gateEyebrow: string;
+    gateTitle: string;
+    gateSubtitle: string;
+    gatePlaceholder: string;
+    gateSubmit: string;
+    gateBusy: string;
+    gateInvalid: string;
+    gateRateLimited: string;
+    settingsEyebrow: string;
+    settingsTitle: string;
+    settingsSubtitle: string;
+    passcodeSection: string;
+    currentPasscode: string;
+    newPasscode: string;
+    confirmPasscode: string;
+    passcodeHint: string;
+    passcodeSaved: string;
+    passcodeMismatch: string;
+    passcodeTooShort: string;
   };
 };
 
@@ -295,6 +314,27 @@ const en: Dictionary = {
     emptyChart: "No sales in this window.",
     loadError: "Could not load analytics",
     modelsLink: "Model updater",
+    gateEyebrow: "Restricted",
+    gateTitle: "Admin Master Passcode",
+    gateSubtitle: "Enter the master access passcode to continue.",
+    gatePlaceholder: "Master passcode",
+    gateSubmit: "Unlock",
+    gateBusy: "Verifying…",
+    gateInvalid: "Invalid passcode",
+    gateRateLimited: "Too many attempts. Try again later.",
+    settingsEyebrow: "Admin",
+    settingsTitle: "Security & Settings",
+    settingsSubtitle:
+      "Change the master access passcode used to open this panel.",
+    passcodeSection: "Master access passcode",
+    currentPasscode: "Current passcode",
+    newPasscode: "New passcode",
+    confirmPasscode: "Confirm new passcode",
+    passcodeHint:
+      "At least 10 characters. Changing it signs out other admin sessions.",
+    passcodeSaved: "Passcode updated",
+    passcodeMismatch: "New passcode and confirmation do not match",
+    passcodeTooShort: "Passcode must be at least 10 characters",
   },
 };
 
@@ -445,6 +485,27 @@ const uz: Dictionary = {
     emptyChart: "Bu davrda savdo yo‘q.",
     loadError: "Analitikani yuklab bo‘lmadi",
     modelsLink: "Model yangilash",
+    gateEyebrow: "Cheklangan",
+    gateTitle: "Admin Master Passcode",
+    gateSubtitle: "Davom etish uchun master kirish parolini kiriting.",
+    gatePlaceholder: "Master parol",
+    gateSubmit: "Ochish",
+    gateBusy: "Tekshirilmoqda…",
+    gateInvalid: "Noto‘g‘ri parol",
+    gateRateLimited: "Urinishlar ko‘p. Keyinroq qayta urinib ko‘ring.",
+    settingsEyebrow: "Admin",
+    settingsTitle: "Xavfsizlik va Sozlamalar",
+    settingsSubtitle:
+      "Ushbu panelni ochish uchun ishlatiladigan master kirish parolini o‘zgartiring.",
+    passcodeSection: "Master kirish paroli",
+    currentPasscode: "Joriy parol",
+    newPasscode: "Yangi parol",
+    confirmPasscode: "Yangi parolni tasdiqlang",
+    passcodeHint:
+      "Kamida 10 belgi. O‘zgartirish boshqa admin sessiyalarini yopadi.",
+    passcodeSaved: "Parol yangilandi",
+    passcodeMismatch: "Yangi parol va tasdiq mos kelmadi",
+    passcodeTooShort: "Parol kamida 10 belgidan iborat bo‘lishi kerak",
   },
 };
 
@@ -595,6 +656,27 @@ const ru: Dictionary = {
     emptyChart: "В этом периоде нет продаж.",
     loadError: "Не удалось загрузить аналитику",
     modelsLink: "Обновление моделей",
+    gateEyebrow: "Ограничено",
+    gateTitle: "Admin Master Passcode",
+    gateSubtitle: "Введите мастер-пароль доступа, чтобы продолжить.",
+    gatePlaceholder: "Мастер-пароль",
+    gateSubmit: "Открыть",
+    gateBusy: "Проверка…",
+    gateInvalid: "Неверный пароль",
+    gateRateLimited: "Слишком много попыток. Попробуйте позже.",
+    settingsEyebrow: "Админ",
+    settingsTitle: "Безопасность и настройки",
+    settingsSubtitle:
+      "Смените мастер-пароль, которым открывается эта панель.",
+    passcodeSection: "Мастер-пароль доступа",
+    currentPasscode: "Текущий пароль",
+    newPasscode: "Новый пароль",
+    confirmPasscode: "Подтвердите новый пароль",
+    passcodeHint:
+      "Не менее 10 символов. Смена пароля завершает другие админ-сессии.",
+    passcodeSaved: "Пароль обновлён",
+    passcodeMismatch: "Новый пароль и подтверждение не совпадают",
+    passcodeTooShort: "Пароль должен содержать не менее 10 символов",
   },
 };
 

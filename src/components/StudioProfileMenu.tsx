@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, LogOut, Shield, User } from "lucide-react";
+import { ChevronDown, LogOut, User } from "lucide-react";
 import { useMaster } from "@/context/MasterControllerContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { formatCredits } from "@/lib/credits";
@@ -11,7 +11,7 @@ import { formatCredits } from "@/lib/credits";
  * Header: NC balance + profile dropdown.
  */
 export function StudioProfileMenu() {
-  const { coins, email, role, signOut } = useMaster();
+  const { coins, email, signOut } = useMaster();
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -86,17 +86,6 @@ export function StudioProfileMenu() {
               <User size={15} />
               {t.nav.profile}
             </Link>
-            {role === "ADMIN" ? (
-              <Link
-                href="/admin"
-                role="menuitem"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-nabi-ink transition hover:bg-nabi-elevated hover:text-nabi-ink"
-              >
-                <Shield size={15} />
-                {t.nav.admin}
-              </Link>
-            ) : null}
             <button
               type="button"
               role="menuitem"

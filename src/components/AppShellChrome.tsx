@@ -7,6 +7,7 @@ import { ProducerChatTrigger } from "@/components/ProducerChatTrigger";
 import { CreditsBadge } from "@/components/CreditsBadge";
 import { ChatQueryOpener } from "@/components/ChatQueryOpener";
 import { useMaster } from "@/context/MasterControllerContext";
+import { HiddenAdminTrigger } from "@/components/admin/HiddenAdminTrigger";
 
 const Sidebar = dynamic(
   () => import("@/components/Sidebar").then((m) => ({ default: m.Sidebar })),
@@ -113,6 +114,7 @@ export function AppShellChrome({ children }: { children: React.ReactNode }) {
       </MainShell>
       {chromeReady ? <MobileNav /> : null}
       {chromeReady ? <ClientHeavyChrome /> : null}
+      <HiddenAdminTrigger />
     </>
   );
 }

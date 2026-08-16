@@ -45,7 +45,10 @@ const SECRET_GUARDED_PREFIXES = ["/api/admin/", "/api/cron/"] as const;
  * Admin financial analytics is gated by Prisma `User.role === ADMIN` on a
  * live session — not by `ADMIN_API_SECRET`. Middleware must require a JWT.
  */
-const SESSION_ROLE_ADMIN_API = new Set(["/api/admin/analytics"]);
+const SESSION_ROLE_ADMIN_API = new Set([
+  "/api/admin/analytics",
+  "/api/admin/passcode",
+]);
 
 export function isApiPath(pathname: string): boolean {
   return pathname === "/api" || pathname.startsWith("/api/");

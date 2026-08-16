@@ -33,6 +33,8 @@ describe("admin role gate", () => {
 describe("admin analytics API surface", () => {
   it("requires a session instead of ADMIN_API_SECRET", () => {
     expect(requiresSessionToken("/api/admin/analytics")).toBe(true);
+    expect(requiresSessionToken("/api/admin/passcode")).toBe(true);
+    expect(requiresSessionToken("/api/admin/unlock")).toBe(false);
     expect(requiresSessionToken("/api/admin/models")).toBe(false);
     expect(requiresSessionToken("/api/admin/system")).toBe(false);
   });

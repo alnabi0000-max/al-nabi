@@ -62,6 +62,7 @@ function memoryLimit(
 
 let apiLimiter: Ratelimit | null = null;
 let genLimiter: Ratelimit | null = null;
+let unlockLimiter: Ratelimit | null = null;
 
 function getApiLimiter(): Ratelimit | null {
   if (!isUpstashConfigured()) return null;
@@ -87,6 +88,19 @@ function getGenLimiter(): Ratelimit | null {
     });
   }
   return genLimiter;
+}
+
+function getUnlockLimiter(): Ratelimit | null {
+  if (!isUpstashConfigured()) return null;
+  if (!unlockLimiter) {
+    unlockLimiter = new Ratelimit({
+      redis: Redis.fromEnv(),
+      limiter: Ratelimit.slidingWindow(5, "15 m"),
+      prefix: "alnabiy:admin-unlock",
+      analytics: true,
+    });
+  }
+  return unlockLimiter;
 }
 
 export function clientIp(req: {
@@ -156,6 +170,35 @@ export async function rateLimitSensitive(
     return isProductionRuntime()
       ? unavailableLimit()
       : memoryLimit(`gen:${identifier}`, 20, 60_000);
+  }
+}
+
+/**
+ * Hidden admin unlock — 5 attempts / 15 minutes / IP.
+ */
+export async function rateLimitUnlock(
+  identifier: string
+): Promise<RateLimitResult> {
+  try {
+    const limiter = getUnlockLimiter();
+    if (!limiter) {
+      return isProductionRuntime()
+        ? unavailableLimit()
+        : memoryLimit(`unlock:${identifier}`, 5, 15 * 60_000);
+    }
+    const res = await limiter.limit(identifier);
+    return {
+      success: res.success,
+      limit: res.limit,
+      remaining: res.remaining,
+      reset: res.reset,
+      source: "upstash",
+    };
+  } catch (error) {
+    console.error("[Alnabiy] Upstash admin-unlock rate limit failed", error);
+    return isProductionRuntime()
+      ? unavailableLimit()
+      : memoryLimit(`unlock:${identifier}`, 5, 15 * 60_000);
   }
 }
 

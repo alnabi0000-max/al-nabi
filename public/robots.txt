@@ -4,6 +4,7 @@ Allow: /terms
 Allow: /privacy
 Allow: /refund-policy
 Disallow: /api/
+Disallow: /admin
 Disallow: /dashboard
 Disallow: /profile
 Disallow: /auth/
