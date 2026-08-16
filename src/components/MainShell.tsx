@@ -27,8 +27,8 @@ export function MainShell({ children }: { children: ReactNode }) {
     <div
       className={
         collapsed
-          ? "min-h-dvh transition-[margin] duration-300 md:ml-[5.5rem]"
-          : "min-h-dvh transition-[margin] duration-300 md:ml-[15.5rem] lg:ml-[16.5rem]"
+          ? "relative z-10 min-h-dvh transition-[margin] duration-300 md:ml-[5.5rem]"
+          : "relative z-10 min-h-dvh transition-[margin] duration-300 md:ml-[15.5rem] lg:ml-[16.5rem]"
       }
     >
       {children}

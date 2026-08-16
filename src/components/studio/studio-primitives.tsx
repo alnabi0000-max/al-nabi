@@ -7,7 +7,7 @@ import clsx from "clsx";
 import type { StyleKey } from "@/lib/credits";
 
 export const CINEMA_GLASS =
-  "rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl";
+  "rounded-2xl border border-white/10 bg-nabi-card backdrop-blur-xl";
 
 export type StylePresetId = "cinematic" | "photorealistic" | "anime" | "vintage";
 

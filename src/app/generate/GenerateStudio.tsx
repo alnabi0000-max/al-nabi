@@ -791,7 +791,7 @@ export default function GenerateStudio() {
 
             <textarea
               id="studio-prompt"
-              className="min-h-[160px] w-full resize-y rounded-xl border border-white/10 bg-black/40 px-3 py-3 text-base leading-relaxed text-white placeholder:text-white/30 focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+              className="min-h-[160px] w-full resize-y rounded-xl border border-white/10 bg-black/50 px-3 py-3 text-base leading-relaxed text-white placeholder:text-white/30 focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
               placeholder={tr("prompt_placeholder")}
               value={prompt}
               maxLength={2000}

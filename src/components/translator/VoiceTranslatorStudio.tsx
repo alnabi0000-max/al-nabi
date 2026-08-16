@@ -242,7 +242,7 @@ function LanguageSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as TranslatorLanguageId)}
-        className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm normal-case text-white focus:border-cyan-400/50 focus:outline-none"
+        className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm normal-case text-white focus:border-cyan-400/50 focus:outline-none"
       >
         {TRANSLATOR_LANGUAGES.map((lang) => (
           <option key={lang.id} value={lang.id}>

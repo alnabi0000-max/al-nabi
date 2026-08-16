@@ -6,6 +6,8 @@ import { AuthProviders } from "@/components/auth/AuthProviders";
 import { ProducerChatProvider } from "@/context/ProducerChatContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { CosmicThemeProvider } from "@/context/CosmicThemeContext";
+import { CosmicBackground } from "@/components/ui/CosmicBackground";
 import { AppShellChrome } from "@/components/AppShellChrome";
 import {
   THEME_STORAGE_KEY,
@@ -82,15 +84,18 @@ export default function RootLayout({
       <body>
         <MasterControllerProvider>
           <ThemeProvider>
-            <LanguageProvider>
-              <AuthProviders>
-                <SecurityProvider>
-                  <ProducerChatProvider>
-                    <AppShellChrome>{children}</AppShellChrome>
-                  </ProducerChatProvider>
-                </SecurityProvider>
-              </AuthProviders>
-            </LanguageProvider>
+            <CosmicThemeProvider>
+              <CosmicBackground />
+              <LanguageProvider>
+                <AuthProviders>
+                  <SecurityProvider>
+                    <ProducerChatProvider>
+                      <AppShellChrome>{children}</AppShellChrome>
+                    </ProducerChatProvider>
+                  </SecurityProvider>
+                </AuthProviders>
+              </LanguageProvider>
+            </CosmicThemeProvider>
           </ThemeProvider>
         </MasterControllerProvider>
       </body>
