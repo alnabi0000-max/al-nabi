@@ -407,7 +407,7 @@ export function StudioTimeline({
             disabled={disabled || voiceBusy}
             maxLength={500}
             rows={2}
-            className="w-full resize-none rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-xs text-white placeholder:text-white/30 focus:border-fuchsia-400/40 focus:outline-none"
+            className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white placeholder:text-white/30 focus:border-fuchsia-400/40 focus:outline-none"
           />
           <button
             type="button"
@@ -430,7 +430,7 @@ export function StudioTimeline({
             disabled={disabled || sfxBusy}
             maxLength={240}
             rows={2}
-            className="w-full resize-none rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-xs text-white placeholder:text-white/30 focus:border-amber-400/40 focus:outline-none"
+            className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white placeholder:text-white/30 focus:border-amber-400/40 focus:outline-none"
           />
           <button
             type="button"

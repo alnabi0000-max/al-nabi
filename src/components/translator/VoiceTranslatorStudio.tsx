@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Languages } from "lucide-react";
 import clsx from "clsx";
 import { useMaster } from "@/context/MasterControllerContext";
-import { GlassCard } from "@/components/studio/studio-primitives";
+import {
+  CINEMA_GLASS,
+  GlassCard,
+} from "@/components/studio/studio-primitives";
 import { MediaFileDrop } from "@/components/translator/MediaFileDrop";
 import {
   TRANSLATOR_AUDIO_MAX_BYTES,
@@ -65,7 +68,7 @@ export function VoiceTranslatorStudio() {
     draft.sourceLanguage !== draft.targetLanguage;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 rounded-3xl bg-[#09090B] p-3 md:p-5">
+    <div className="mx-auto max-w-5xl space-y-5 bg-transparent">
       <header className="space-y-2">
         <p className="inline-flex items-center gap-2 text-xs uppercase tracking-wider text-white/45">
           <Languages size={14} />
@@ -84,7 +87,7 @@ export function VoiceTranslatorStudio() {
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <GlassCard className="space-y-4">
+        <GlassCard className={`${CINEMA_GLASS} space-y-4 p-4 md:p-5`}>
           <MediaFileDrop
             kind="video"
             accept="video/mp4,video/webm,video/quicktime,video/*"
@@ -129,7 +132,7 @@ export function VoiceTranslatorStudio() {
           />
         </GlassCard>
 
-        <GlassCard className="space-y-4">
+        <GlassCard className={`${CINEMA_GLASS} space-y-4 p-4 md:p-5`}>
           <LanguageSelect
             label={tr("translator_source_lang")}
             value={sourceLanguage}
@@ -179,7 +182,7 @@ export function VoiceTranslatorStudio() {
         </GlassCard>
       </div>
 
-      <GlassCard className="space-y-3">
+      <GlassCard className={`${CINEMA_GLASS} space-y-3 p-4 md:p-5`}>
         <h2 className="text-sm font-semibold uppercase tracking-wider text-white/70">
           {tr("translator_summary")}
         </h2>
@@ -242,7 +245,7 @@ function LanguageSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as TranslatorLanguageId)}
-        className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm normal-case text-white focus:border-cyan-400/50 focus:outline-none"
+        className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm normal-case text-white focus:border-cyan-400/50 focus:outline-none"
       >
         {TRANSLATOR_LANGUAGES.map((lang) => (
           <option key={lang.id} value={lang.id}>

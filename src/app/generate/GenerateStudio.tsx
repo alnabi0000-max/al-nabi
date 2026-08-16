@@ -750,7 +750,7 @@ export default function GenerateStudio() {
   ];
 
   return (
-    <div key={locale} className="space-y-5 rounded-3xl bg-[#09090B] p-3 md:p-5">
+    <div key={locale} className="space-y-5 bg-transparent">
       {isOffline && (
         <div className="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/50">
           {tr("offline")}
@@ -791,7 +791,7 @@ export default function GenerateStudio() {
 
             <textarea
               id="studio-prompt"
-              className="min-h-[160px] w-full resize-y rounded-xl border border-white/10 bg-black/50 px-3 py-3 text-base leading-relaxed text-white placeholder:text-white/30 focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+              className="min-h-[160px] w-full resize-y rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-base leading-relaxed text-white placeholder:text-white/30 focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
               placeholder={tr("prompt_placeholder")}
               value={prompt}
               maxLength={2000}

@@ -7,7 +7,7 @@ import clsx from "clsx";
 import type { StyleKey } from "@/lib/credits";
 
 export const CINEMA_GLASS =
-  "rounded-2xl border border-violet-400/30 bg-[#0b0e17]/85 backdrop-blur-xl shadow-[0_0_24px_rgba(139,92,246,0.14),0_0_16px_rgba(56,189,248,0.08)]";
+  "rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-none";
 
 export type StylePresetId = "cinematic" | "photorealistic" | "anime" | "vintage";
 
@@ -42,7 +42,7 @@ export function GlassCard({
   className?: string;
 }) {
   return (
-    <div className={clsx(CINEMA_GLASS, "p-4 md:p-5", className)}>{children}</div>
+    <div className={clsx("bg-transparent", className)}>{children}</div>
   );
 }
 
