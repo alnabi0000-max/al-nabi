@@ -10,7 +10,6 @@ export type Dictionary = {
     brand: string;
     producerChat: string;
     language: string;
-    theme: string;
     balance: string;
   };
   nav: {
@@ -243,7 +242,6 @@ const en: Dictionary = {
     brand: "Al-Nabi",
     producerChat: "Chat",
     language: "Language",
-    theme: "Theme",
     balance: "Balance",
   },
   nav: {
@@ -484,7 +482,6 @@ const uz: Dictionary = {
     brand: "Al-Nabi",
     producerChat: "Chat",
     language: "Til",
-    theme: "Mavzu",
     balance: "Balans",
   },
   nav: {
@@ -726,7 +723,6 @@ const ru: Dictionary = {
     brand: "Al-Nabi",
     producerChat: "Чат",
     language: "Язык",
-    theme: "Тема",
     balance: "Баланс",
   },
   nav: {

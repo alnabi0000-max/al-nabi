@@ -7,8 +7,8 @@ const config: Config = {
       colors: {
         nabi: {
           bg: "var(--nabi-bg)",
-          card: "color-mix(in srgb, var(--nabi-bg) 82%, var(--nabi-card))",
-          elevated: "color-mix(in srgb, var(--nabi-bg) 88%, var(--nabi-elevated))",
+          card: "var(--nabi-card)",
+          elevated: "var(--nabi-elevated)",
           border: "var(--nabi-border)",
           neon: "var(--nabi-neon)",
           gold: "var(--nabi-gold)",
@@ -16,7 +16,7 @@ const config: Config = {
           ink: "var(--text-primary)",
           on: "var(--btn-on-accent)",
           surface: "var(--bg-elevated-solid)",
-          input: "color-mix(in srgb, var(--nabi-bg) 85%, var(--input-bg))",
+          input: "var(--input-bg)",
         },
       },
       backgroundImage: {

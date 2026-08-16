@@ -5,15 +5,8 @@ import { SecurityProvider } from "@/components/SecurityProvider";
 import { AuthProviders } from "@/components/auth/AuthProviders";
 import { ProducerChatProvider } from "@/context/ProducerChatContext";
 import { LanguageProvider } from "@/context/LanguageContext";
-import { ThemeProvider } from "@/context/ThemeContext";
-import { CosmicThemeProvider } from "@/context/CosmicThemeContext";
 import { CosmicBackground } from "@/components/ui/CosmicBackground";
 import { AppShellChrome } from "@/components/AppShellChrome";
-import {
-  THEME_STORAGE_KEY,
-  THEME_IDS,
-  DEFAULT_THEME,
-} from "@/lib/theme/themes";
 
 const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://alnabiy.app";
 const SITE_TITLE = "Al-Nabi — AI Video & Image Generation Platform";
@@ -61,7 +54,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#090A0F",
+  themeColor: "#070214",
   width: "device-width",
   initialScale: 1,
 };
@@ -71,32 +64,22 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  /* Static default — kept static (not per-request dynamic) so the whole site
-   * stays prerenderable/cacheable. MasterControllerProvider already corrects
-   * <html lang/dir> client-side once the stored locale preference loads. */
-  const themeBoot = `(function(){try{var k=${JSON.stringify(THEME_STORAGE_KEY)};var d=${JSON.stringify(DEFAULT_THEME)};var a=${JSON.stringify(THEME_IDS)};var t=localStorage.getItem(k)||d;if(a.indexOf(t)<0)t=d;document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme",${JSON.stringify(DEFAULT_THEME)});}})();`;
-
+  /* Locale stays static here so the site remains prerenderable. MasterControllerProvider
+   * corrects <html lang/dir> client-side once the stored locale preference loads. */
   return (
-    <html lang="uz" data-theme={DEFAULT_THEME} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
-      </head>
+    <html lang="uz" suppressHydrationWarning>
       <body>
         <MasterControllerProvider>
-          <ThemeProvider>
-            <CosmicThemeProvider>
-              <CosmicBackground />
-              <LanguageProvider>
-                <AuthProviders>
-                  <SecurityProvider>
-                    <ProducerChatProvider>
-                      <AppShellChrome>{children}</AppShellChrome>
-                    </ProducerChatProvider>
-                  </SecurityProvider>
-                </AuthProviders>
-              </LanguageProvider>
-            </CosmicThemeProvider>
-          </ThemeProvider>
+          <CosmicBackground />
+          <LanguageProvider>
+            <AuthProviders>
+              <SecurityProvider>
+                <ProducerChatProvider>
+                  <AppShellChrome>{children}</AppShellChrome>
+                </ProducerChatProvider>
+              </SecurityProvider>
+            </AuthProviders>
+          </LanguageProvider>
         </MasterControllerProvider>
       </body>
     </html>

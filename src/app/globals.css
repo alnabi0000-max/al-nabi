@@ -3,286 +3,46 @@
 @tailwind utilities;
 
 /*
- * Color themes via CSS custom properties (data-theme on <html>).
- * Layout/structure stays identical — only colors change.
+ * Locked Deep Space Nebula tokens. No data-theme switcher.
  */
-:root,
-html[data-theme="binafsha"] {
+:root {
   color-scheme: dark;
-  --nabi-bg: #0a0a0f;
-  --nabi-card: rgba(255, 255, 255, 0.05);
-  --nabi-elevated: rgba(255, 255, 255, 0.08);
-  --bg-elevated-solid: #12121a;
-  --nabi-border: rgba(255, 255, 255, 0.1);
+  --nabi-bg: #0b0e17;
+  --nabi-card: rgba(11, 14, 23, 0.85);
+  --nabi-elevated: rgba(16, 20, 32, 0.9);
+  --bg-elevated-solid: #101420;
+  --nabi-border: rgba(139, 92, 246, 0.32);
   --nabi-neon: #8b5cf6;
-  --nabi-gold: #ec4899;
+  --nabi-gold: #38bdf8;
   --nabi-muted: #94a3b8;
-  --text-primary: #e8eaf0;
+  --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
   --accent: #8b5cf6;
-  --accent-2: #ec4899;
+  --accent-2: #38bdf8;
   --accent-from: #8b5cf6;
-  --accent-via: #a855f7;
-  --accent-to: #ec4899;
+  --accent-via: #7c3aed;
+  --accent-to: #38bdf8;
   --btn-on-accent: #ffffff;
-  --input-bg: rgba(0, 0, 0, 0.4);
-  --glass-bg: rgba(255, 255, 255, 0.06);
+  --input-bg: rgba(11, 14, 23, 0.85);
+  --glass-bg: rgba(11, 14, 23, 0.85);
   --cinema-bg: var(--nabi-bg);
   --cinema-ink: var(--text-primary);
   --cinema-muted: var(--nabi-muted);
-  --glow-1: rgba(139, 92, 246, 0.28);
-  --glow-2: rgba(236, 72, 153, 0.18);
-  --glow-3: rgba(168, 85, 247, 0.12);
+  --glow-1: rgba(139, 92, 246, 0.32);
+  --glow-2: rgba(56, 189, 248, 0.18);
+  --glow-3: rgba(192, 132, 252, 0.14);
   --shadow-neon: 0 0 28px rgba(139, 92, 246, 0.35);
-  --shadow-gold: 0 0 22px rgba(236, 72, 153, 0.35);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.45);
-  --shadow-ring: 0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 0 40px rgba(139, 92, 246, 0.25);
-}
-
-html[data-theme="oltin"] {
-  color-scheme: dark;
-  --nabi-bg: #141210;
-  --nabi-card: rgba(240, 180, 41, 0.06);
-  --nabi-elevated: rgba(240, 180, 41, 0.1);
-  --bg-elevated-solid: #1c1814;
-  --nabi-border: rgba(240, 180, 41, 0.18);
-  --nabi-neon: #f0b429;
-  --nabi-gold: #d97706;
-  --nabi-muted: #a89b7c;
-  --text-primary: #f5f0e6;
-  --text-secondary: #a89b7c;
-  --accent: #f0b429;
-  --accent-2: #d97706;
-  --accent-from: #f0b429;
-  --accent-via: #eab308;
-  --accent-to: #d97706;
-  --btn-on-accent: #1a1408;
-  --input-bg: rgba(0, 0, 0, 0.45);
-  --glass-bg: rgba(240, 180, 41, 0.08);
-  --glow-1: rgba(240, 180, 41, 0.22);
-  --glow-2: rgba(217, 119, 6, 0.16);
-  --glow-3: rgba(240, 180, 41, 0.1);
-  --shadow-neon: 0 0 28px rgba(240, 180, 41, 0.35);
-  --shadow-gold: 0 0 22px rgba(217, 119, 6, 0.35);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-ring: 0 0 0 1px rgba(240, 180, 41, 0.15),
-    0 0 40px rgba(240, 180, 41, 0.22);
-}
-
-html[data-theme="krem"] {
-  color-scheme: light;
-  --nabi-bg: #fdf6e3;
-  --nabi-card: rgba(61, 48, 22, 0.06);
-  --nabi-elevated: rgba(61, 48, 22, 0.1);
-  --bg-elevated-solid: #fffaf0;
-  --nabi-border: rgba(61, 48, 22, 0.16);
-  --nabi-neon: #e8a622;
-  --nabi-gold: #c4891a;
-  --nabi-muted: #6b5a3a;
-  --text-primary: #3d3016;
-  --text-secondary: #6b5a3a;
-  --accent: #e8a622;
-  --accent-2: #c4891a;
-  --accent-from: #e8a622;
-  --accent-via: #d4a017;
-  --accent-to: #b8860b;
-  --btn-on-accent: #1a1408;
-  --input-bg: rgba(255, 255, 255, 0.75);
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glow-1: rgba(232, 166, 34, 0.2);
-  --glow-2: rgba(61, 48, 22, 0.08);
-  --glow-3: rgba(232, 166, 34, 0.1);
-  --shadow-neon: 0 0 24px rgba(232, 166, 34, 0.3);
-  --shadow-gold: 0 0 18px rgba(196, 137, 26, 0.25);
-  --shadow-glass: 0 8px 28px rgba(61, 48, 22, 0.12);
-  --shadow-ring: 0 0 0 1px rgba(61, 48, 22, 0.12),
-    0 0 32px rgba(232, 166, 34, 0.2);
-}
-
-html[data-theme="zumrad"] {
-  color-scheme: dark;
-  --nabi-bg: #0d1f1a;
-  --nabi-card: rgba(45, 212, 191, 0.06);
-  --nabi-elevated: rgba(45, 212, 191, 0.1);
-  --bg-elevated-solid: #122822;
-  --nabi-border: rgba(45, 212, 191, 0.18);
-  --nabi-neon: #2dd4bf;
-  --nabi-gold: #14b8a6;
-  --nabi-muted: #7ba89c;
-  --text-primary: #e6f7f3;
-  --text-secondary: #7ba89c;
-  --accent: #2dd4bf;
-  --accent-2: #14b8a6;
-  --accent-from: #2dd4bf;
-  --accent-via: #2dd4bf;
-  --accent-to: #0d9488;
-  --btn-on-accent: #042f2e;
-  --input-bg: rgba(0, 0, 0, 0.4);
-  --glass-bg: rgba(45, 212, 191, 0.08);
-  --glow-1: rgba(45, 212, 191, 0.22);
-  --glow-2: rgba(20, 184, 166, 0.14);
-  --glow-3: rgba(45, 212, 191, 0.1);
-  --shadow-neon: 0 0 28px rgba(45, 212, 191, 0.35);
-  --shadow-gold: 0 0 22px rgba(20, 184, 166, 0.3);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.45);
-  --shadow-ring: 0 0 0 1px rgba(45, 212, 191, 0.15),
-    0 0 40px rgba(45, 212, 191, 0.22);
-}
-
-html[data-theme="kecha"] {
-  color-scheme: dark;
-  --nabi-bg: #0f0a2e;
-  --nabi-card: rgba(124, 58, 237, 0.08);
-  --nabi-elevated: rgba(124, 58, 237, 0.12);
-  --bg-elevated-solid: #16103a;
-  --nabi-border: rgba(167, 139, 250, 0.2);
-  --nabi-neon: #7c3aed;
-  --nabi-gold: #a78bfa;
-  --nabi-muted: #9b93c9;
-  --text-primary: #ebe7ff;
-  --text-secondary: #9b93c9;
-  --accent: #7c3aed;
-  --accent-2: #a78bfa;
-  --accent-from: #7c3aed;
-  --accent-via: #8b5cf6;
-  --accent-to: #a78bfa;
-  --btn-on-accent: #ffffff;
-  --input-bg: rgba(0, 0, 0, 0.4);
-  --glass-bg: rgba(124, 58, 237, 0.1);
-  --glow-1: rgba(124, 58, 237, 0.3);
-  --glow-2: rgba(167, 139, 250, 0.18);
-  --glow-3: rgba(124, 58, 237, 0.12);
-  --shadow-neon: 0 0 28px rgba(124, 58, 237, 0.4);
-  --shadow-gold: 0 0 22px rgba(167, 139, 250, 0.3);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-ring: 0 0 0 1px rgba(167, 139, 250, 0.18),
-    0 0 40px rgba(124, 58, 237, 0.28);
-}
-
-html[data-theme="qizil"] {
-  color-scheme: dark;
-  --nabi-bg: #1a0505;
-  --nabi-card: rgba(255, 77, 77, 0.07);
-  --nabi-elevated: rgba(255, 77, 77, 0.12);
-  --bg-elevated-solid: #241010;
-  --nabi-border: rgba(255, 77, 77, 0.22);
-  --nabi-neon: #ff4d4d;
-  --nabi-gold: #ff8080;
-  --nabi-muted: #b88a8a;
-  --text-primary: #ffe8e8;
-  --text-secondary: #b88a8a;
-  --accent: #ff4d4d;
-  --accent-2: #ff8080;
-  --accent-from: #ff4d4d;
-  --accent-via: #ef4444;
-  --accent-to: #dc2626;
-  --btn-on-accent: #ffffff;
-  --input-bg: rgba(0, 0, 0, 0.45);
-  --glass-bg: rgba(255, 77, 77, 0.08);
-  --glow-1: rgba(255, 77, 77, 0.25);
-  --glow-2: rgba(220, 38, 38, 0.16);
-  --glow-3: rgba(255, 77, 77, 0.1);
-  --shadow-neon: 0 0 28px rgba(255, 77, 77, 0.35);
-  --shadow-gold: 0 0 22px rgba(255, 128, 128, 0.3);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-ring: 0 0 0 1px rgba(255, 77, 77, 0.18),
-    0 0 40px rgba(255, 77, 77, 0.25);
-}
-
-html[data-theme="yorug"] {
-  color-scheme: light;
-  --nabi-bg: #fafafa;
-  --nabi-card: rgba(0, 0, 0, 0.04);
-  --nabi-elevated: rgba(0, 0, 0, 0.07);
-  --bg-elevated-solid: #ffffff;
-  --nabi-border: rgba(0, 0, 0, 0.12);
-  --nabi-neon: #171717;
-  --nabi-gold: #404040;
-  --nabi-muted: #525252;
-  --text-primary: #171717;
-  --text-secondary: #525252;
-  --accent: #171717;
-  --accent-2: #404040;
-  --accent-from: #171717;
-  --accent-via: #262626;
-  --accent-to: #404040;
-  --btn-on-accent: #fafafa;
-  --input-bg: rgba(255, 255, 255, 0.9);
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glow-1: rgba(0, 0, 0, 0.06);
-  --glow-2: rgba(0, 0, 0, 0.04);
-  --glow-3: rgba(0, 0, 0, 0.03);
-  --shadow-neon: 0 0 20px rgba(0, 0, 0, 0.12);
-  --shadow-gold: 0 0 16px rgba(0, 0, 0, 0.1);
-  --shadow-glass: 0 8px 28px rgba(0, 0, 0, 0.08);
-  --shadow-ring: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 0 28px rgba(0, 0, 0, 0.08);
-}
-
-html[data-theme="kobalt"] {
-  color-scheme: dark;
-  --nabi-bg: #0a1420;
-  --nabi-card: rgba(56, 139, 253, 0.07);
-  --nabi-elevated: rgba(56, 139, 253, 0.12);
-  --bg-elevated-solid: #0f1c2c;
-  --nabi-border: rgba(56, 139, 253, 0.22);
-  --nabi-neon: #388bfd;
-  --nabi-gold: #58a6ff;
-  --nabi-muted: #8b9cb3;
-  --text-primary: #e6edf3;
-  --text-secondary: #8b9cb3;
-  --accent: #388bfd;
-  --accent-2: #58a6ff;
-  --accent-from: #388bfd;
-  --accent-via: #3b82f6;
-  --accent-to: #1d4ed8;
-  --btn-on-accent: #ffffff;
-  --input-bg: rgba(0, 0, 0, 0.4);
-  --glass-bg: rgba(56, 139, 253, 0.08);
-  --glow-1: rgba(56, 139, 253, 0.25);
-  --glow-2: rgba(88, 166, 255, 0.14);
-  --glow-3: rgba(56, 139, 253, 0.1);
-  --shadow-neon: 0 0 28px rgba(56, 139, 253, 0.35);
-  --shadow-gold: 0 0 22px rgba(56, 139, 253, 0.3);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.45);
-  --shadow-ring: 0 0 0 1px rgba(56, 139, 253, 0.18),
-    0 0 40px rgba(56, 139, 253, 0.25);
-}
-
-html[data-theme="pushti"] {
-  color-scheme: dark;
-  --nabi-bg: #1a1a2e;
-  --nabi-card: rgba(244, 114, 182, 0.07);
-  --nabi-elevated: rgba(244, 114, 182, 0.12);
-  --bg-elevated-solid: #22223a;
-  --nabi-border: rgba(244, 114, 182, 0.2);
-  --nabi-neon: #f472b6;
-  --nabi-gold: #e879a9;
-  --nabi-muted: #b8a0b0;
-  --text-primary: #fce7f3;
-  --text-secondary: #b8a0b0;
-  --accent: #f472b6;
-  --accent-2: #e879a9;
-  --accent-from: #f472b6;
-  --accent-via: #ec4899;
-  --accent-to: #db2777;
-  --btn-on-accent: #ffffff;
-  --input-bg: rgba(0, 0, 0, 0.4);
-  --glass-bg: rgba(244, 114, 182, 0.08);
-  --glow-1: rgba(244, 114, 182, 0.25);
-  --glow-2: rgba(236, 72, 153, 0.16);
-  --glow-3: rgba(244, 114, 182, 0.1);
-  --shadow-neon: 0 0 28px rgba(244, 114, 182, 0.35);
-  --shadow-gold: 0 0 22px rgba(232, 121, 169, 0.3);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.45);
-  --shadow-ring: 0 0 0 1px rgba(244, 114, 182, 0.18),
-    0 0 40px rgba(244, 114, 182, 0.25);
+  --shadow-gold: 0 0 22px rgba(56, 189, 248, 0.28);
+  --shadow-glass:
+    0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(139, 92, 246, 0.14);
+  --shadow-ring: 0 0 0 1px rgba(139, 92, 246, 0.35),
+    0 0 40px rgba(56, 189, 248, 0.16);
 }
 
 html,
 body {
   min-height: 100%;
-  background-color: #05060a;
+  background-color: #070214;
   color: var(--cinema-ink);
 }
 
@@ -295,15 +55,18 @@ body {
 @layer components {
   .nabi-glass {
     border: 1px solid var(--nabi-border);
-    background: color-mix(in srgb, var(--nabi-bg) 80%, var(--glass-bg));
+    background: var(--glass-bg);
     box-shadow: var(--shadow-glass);
+    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(24px);
   }
 
   .nabi-card {
-    @apply rounded-2xl p-5;
+    @apply rounded-2xl p-5 backdrop-blur-xl;
     border: 1px solid var(--nabi-border);
-    background: color-mix(in srgb, var(--nabi-bg) 82%, var(--nabi-card));
+    background: var(--nabi-card);
     color: var(--text-primary);
+    box-shadow: var(--shadow-glass);
   }
 
   .nabi-stat-card {
@@ -323,9 +86,9 @@ body {
   }
 
   .nabi-btn-ghost {
-    @apply nabi-btn;
+    @apply nabi-btn backdrop-blur-xl;
     border: 1px solid var(--nabi-border);
-    background: color-mix(in srgb, var(--nabi-bg) 82%, var(--nabi-card));
+    background: var(--nabi-card);
     color: var(--nabi-muted);
   }
   .nabi-btn-ghost:hover {
@@ -334,10 +97,10 @@ body {
   }
 
   .nabi-input {
-    @apply w-full rounded-2xl px-4 py-3 text-sm outline-none
+    @apply w-full rounded-2xl px-4 py-3 text-sm outline-none backdrop-blur-xl
       transition-[border-color,box-shadow] duration-200;
     border: 1px solid var(--nabi-border);
-    background: color-mix(in srgb, var(--nabi-bg) 85%, var(--input-bg));
+    background: var(--input-bg);
     color: var(--text-primary);
   }
   .nabi-input::placeholder {
@@ -345,15 +108,15 @@ body {
     opacity: 0.7;
   }
   .nabi-input:focus {
-    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-    box-shadow: none;
+    border-color: color-mix(in srgb, var(--accent) 65%, transparent);
+    box-shadow: var(--shadow-ring);
   }
 
   .nabi-hero-prompt {
-    @apply relative overflow-hidden rounded-3xl p-5
+    @apply relative overflow-hidden rounded-3xl p-5 backdrop-blur-xl
       transition-[border-color,box-shadow] duration-300;
     border: 1px solid var(--nabi-border);
-    background: color-mix(in srgb, var(--nabi-bg) 82%, var(--nabi-card));
+    background: var(--nabi-card);
     box-shadow: var(--shadow-glass);
   }
 
@@ -408,7 +171,7 @@ body {
     @apply relative overflow-hidden rounded-2xl
       shadow-glass backdrop-blur-xl transition-all duration-300 ease-apple hover:-translate-y-0.5;
     border: 1px solid var(--nabi-border);
-    background: color-mix(in srgb, var(--nabi-bg) 82%, var(--nabi-card));
+    background: var(--nabi-card);
   }
   .nabi-bento-item:hover {
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);

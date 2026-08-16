@@ -28,14 +28,6 @@ const LanguageDropdown = dynamic(
   { ssr: false }
 );
 
-const ThemeToggleButton = dynamic(
-  () =>
-    import("@/components/ui/ThemeToggleButton").then((m) => ({
-      default: m.ThemeToggleButton,
-    })),
-  { ssr: false }
-);
-
 const StudioProfileMenu = dynamic(
   () =>
     import("@/components/StudioProfileMenu").then((m) => ({
@@ -90,14 +82,13 @@ export function AppShellChrome({ children }: { children: React.ReactNode }) {
       {chromeReady ? <AppToast /> : null}
       {chromeReady ? <Sidebar /> : null}
       <MainShell>
-        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-nabi-border bg-nabi-bg/85 px-4 py-2.5 backdrop-blur-md md:px-8">
+        <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-violet-400/25 bg-[#0b0e17]/85 px-4 py-2.5 backdrop-blur-xl md:px-8">
           <p className="text-sm font-medium tracking-tight text-nabi-ink md:hidden">
             Al-Nabi
           </p>
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <ChatQueryOpener />
             <ProducerChatTrigger />
-            {chromeReady ? <ThemeToggleButton /> : null}
             {chromeReady ? <LanguageDropdown /> : null}
             <CreditsBadge />
             {chromeReady ? <StudioProfileMenu /> : null}
