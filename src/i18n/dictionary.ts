@@ -167,6 +167,74 @@ export type Dictionary = {
     passcodeTooShort: string;
     showPasscode: string;
     hidePasscode: string;
+    navAnalytics: string;
+    navLedger: string;
+    navUsers: string;
+    navJobs: string;
+    navModels: string;
+    navSettings: string;
+    ledgerEyebrow: string;
+    ledgerTitle: string;
+    ledgerSubtitle: string;
+    incomeUsd: string;
+    expenseUsd: string;
+    refundUsd: string;
+    cashflow: string;
+    ncIn: string;
+    ncOut: string;
+    paidOrders: string;
+    refundedOrders: string;
+    ledgerByKind: string;
+    ledgerEntries: string;
+    purchasesTitle: string;
+    colType: string;
+    colDelta: string;
+    colReason: string;
+    colBalance: string;
+    colStatus: string;
+    emptyLedger: string;
+    emptyPurchases: string;
+    openLedger: string;
+    usersEyebrow: string;
+    usersTitle: string;
+    usersSubtitle: string;
+    usersSearch: string;
+    colRole: string;
+    colPlan: string;
+    colCreated: string;
+    colLastLogin: string;
+    roleUser: string;
+    roleModerator: string;
+    roleAdmin: string;
+    statusActive: string;
+    statusWarning: string;
+    statusBanned: string;
+    confirmBan: string;
+    adjustNc: string;
+    adjustNcHint: string;
+    adjustNcReason: string;
+    applyAction: string;
+    actionSaved: string;
+    actionError: string;
+    jobsEyebrow: string;
+    jobsTitle: string;
+    jobsSubtitle: string;
+    jobsSearch: string;
+    colJobType: string;
+    colCost: string;
+    colError: string;
+    filterAll: string;
+    emptyUsers: string;
+    emptyJobs: string;
+    prevPage: string;
+    nextPage: string;
+    kindSignupGrant: string;
+    kindPurchase: string;
+    kindCharge: string;
+    kindBonus: string;
+    kindReferral: string;
+    kindRollback: string;
+    kindAdjustment: string;
   };
 };
 
@@ -339,6 +407,75 @@ const en: Dictionary = {
     passcodeTooShort: "Passcode must be at least 8 characters",
     showPasscode: "Show passcode",
     hidePasscode: "Hide passcode",
+    navAnalytics: "Analytics",
+    navLedger: "Cash flow",
+    navUsers: "Users",
+    navJobs: "Generations",
+    navModels: "Models",
+    navSettings: "Settings",
+    ledgerEyebrow: "Admin · Finance",
+    ledgerTitle: "Income & expenses",
+    ledgerSubtitle:
+      "Paid orders, refunds, estimated API cost, and NC in/out for the selected window.",
+    incomeUsd: "Income",
+    expenseUsd: "Expenses",
+    refundUsd: "Refunds",
+    cashflow: "Cash flow",
+    ncIn: "NC in",
+    ncOut: "NC out",
+    paidOrders: "paid orders",
+    refundedOrders: "refunded orders",
+    ledgerByKind: "NC by type",
+    ledgerEntries: "NC ledger",
+    purchasesTitle: "Payments",
+    colType: "Type",
+    colDelta: "Change",
+    colReason: "Reason",
+    colBalance: "Balance",
+    colStatus: "Status",
+    emptyLedger: "No ledger activity in this window.",
+    emptyPurchases: "No payments in this window.",
+    openLedger: "Income & expenses",
+    usersEyebrow: "Admin · Accounts",
+    usersTitle: "Users",
+    usersSubtitle: "Search accounts, change role or status, and adjust NC.",
+    usersSearch: "Search by email",
+    colRole: "Role",
+    colPlan: "Plan",
+    colCreated: "Created",
+    colLastLogin: "Last login",
+    roleUser: "User",
+    roleModerator: "Moderator",
+    roleAdmin: "Admin",
+    statusActive: "Active",
+    statusWarning: "Warning",
+    statusBanned: "Banned",
+    confirmBan: "Ban this user and zero their NC?",
+    adjustNc: "Adjust NC",
+    adjustNcHint: "+ add / − deduct",
+    adjustNcReason: "Reason (optional)",
+    applyAction: "Apply",
+    actionSaved: "Saved",
+    actionError: "Action failed",
+    jobsEyebrow: "Admin · Jobs",
+    jobsTitle: "Generations",
+    jobsSubtitle: "Recent AI jobs, status, cost, and errors.",
+    jobsSearch: "Search by email",
+    colJobType: "Type",
+    colCost: "Cost",
+    colError: "Error",
+    filterAll: "All",
+    emptyUsers: "No users found.",
+    emptyJobs: "No jobs found.",
+    prevPage: "Previous",
+    nextPage: "Next",
+    kindSignupGrant: "Signup grant",
+    kindPurchase: "Purchase",
+    kindCharge: "Charge",
+    kindBonus: "Bonus",
+    kindReferral: "Referral",
+    kindRollback: "Rollback",
+    kindAdjustment: "Adjustment",
   },
 };
 
@@ -512,6 +649,75 @@ const uz: Dictionary = {
     passcodeTooShort: "Parol kamida 8 belgidan iborat bo‘lishi kerak",
     showPasscode: "Parolni ko‘rsatish",
     hidePasscode: "Parolni yashirish",
+    navAnalytics: "Analitika",
+    navLedger: "Kirim-chiqim",
+    navUsers: "Foydalanuvchilar",
+    navJobs: "Generatsiyalar",
+    navModels: "Modellar",
+    navSettings: "Sozlamalar",
+    ledgerEyebrow: "Admin · Moliya",
+    ledgerTitle: "Kirim-chiqim",
+    ledgerSubtitle:
+      "Tanlangan davr uchun tushum, qaytarim, API xarajati va NC oqimi.",
+    incomeUsd: "Kirim",
+    expenseUsd: "Chiqim",
+    refundUsd: "Qaytarim",
+    cashflow: "Kirim-chiqim",
+    ncIn: "Kirim NC",
+    ncOut: "Chiqim NC",
+    paidOrders: "to‘langan buyurtma",
+    refundedOrders: "qaytarilgan buyurtma",
+    ledgerByKind: "NC turlari bo‘yicha",
+    ledgerEntries: "NC jurnal",
+    purchasesTitle: "To‘lovlar",
+    colType: "Tur",
+    colDelta: "O‘zgarish",
+    colReason: "Sabab",
+    colBalance: "Qoldiq",
+    colStatus: "Holat",
+    emptyLedger: "Bu davrda jurnal yozuvi yo‘q.",
+    emptyPurchases: "Bu davrda to‘lov yo‘q.",
+    openLedger: "Kirim-chiqim",
+    usersEyebrow: "Admin · Hisoblar",
+    usersTitle: "Foydalanuvchilar",
+    usersSubtitle: "Qidirish, rol, holat va NC balansini boshqarish.",
+    usersSearch: "Email bo‘yicha qidirish",
+    colRole: "Rol",
+    colPlan: "Tarif",
+    colCreated: "Yaratilgan",
+    colLastLogin: "So‘nggi kirish",
+    roleUser: "Foydalanuvchi",
+    roleModerator: "Moderator",
+    roleAdmin: "Admin",
+    statusActive: "Faol",
+    statusWarning: "Ogohlantirish",
+    statusBanned: "Bloklangan",
+    confirmBan: "Bu foydalanuvchini bloklab, NC ni nol qilasizmi?",
+    adjustNc: "NC tuzatish",
+    adjustNcHint: "+ qo‘shish / − ayirish",
+    adjustNcReason: "Sabab (ixtiyoriy)",
+    applyAction: "Qo‘llash",
+    actionSaved: "Saqlandi",
+    actionError: "Amal bajarilmadi",
+    jobsEyebrow: "Admin · Ishlar",
+    jobsTitle: "Generatsiyalar",
+    jobsSubtitle: "So‘nggi AI ishlar, holat, narx va xatolar.",
+    jobsSearch: "Email bo‘yicha qidirish",
+    colJobType: "Tur",
+    colCost: "Narx",
+    colError: "Xato",
+    filterAll: "Hammasi",
+    emptyUsers: "Foydalanuvchi topilmadi.",
+    emptyJobs: "Ish topilmadi.",
+    prevPage: "Oldingi",
+    nextPage: "Keyingi",
+    kindSignupGrant: "Ro‘yxatdan o‘tish",
+    kindPurchase: "Sotib olish",
+    kindCharge: "Sarf",
+    kindBonus: "Bonus",
+    kindReferral: "Referal",
+    kindRollback: "Qaytarish",
+    kindAdjustment: "Tuzatish",
   },
 };
 
@@ -685,6 +891,75 @@ const ru: Dictionary = {
     passcodeTooShort: "Пароль должен содержать не менее 8 символов",
     showPasscode: "Показать пароль",
     hidePasscode: "Скрыть пароль",
+    navAnalytics: "Аналитика",
+    navLedger: "Приход-расход",
+    navUsers: "Пользователи",
+    navJobs: "Генерации",
+    navModels: "Модели",
+    navSettings: "Настройки",
+    ledgerEyebrow: "Админ · Финансы",
+    ledgerTitle: "Приход и расход",
+    ledgerSubtitle:
+      "Оплаты, возвраты, оценка затрат API и поток NC за выбранный период.",
+    incomeUsd: "Приход",
+    expenseUsd: "Расход",
+    refundUsd: "Возвраты",
+    cashflow: "Приход-расход",
+    ncIn: "Вход NC",
+    ncOut: "Выход NC",
+    paidOrders: "оплаченных заказов",
+    refundedOrders: "возвращённых заказов",
+    ledgerByKind: "NC по типам",
+    ledgerEntries: "Журнал NC",
+    purchasesTitle: "Платежи",
+    colType: "Тип",
+    colDelta: "Изменение",
+    colReason: "Причина",
+    colBalance: "Остаток",
+    colStatus: "Статус",
+    emptyLedger: "В этом периоде нет записей журнала.",
+    emptyPurchases: "В этом периоде нет платежей.",
+    openLedger: "Приход-расход",
+    usersEyebrow: "Админ · Аккаунты",
+    usersTitle: "Пользователи",
+    usersSubtitle: "Поиск, роль, статус и корректировка NC.",
+    usersSearch: "Поиск по email",
+    colRole: "Роль",
+    colPlan: "Тариф",
+    colCreated: "Создан",
+    colLastLogin: "Последний вход",
+    roleUser: "Пользователь",
+    roleModerator: "Модератор",
+    roleAdmin: "Админ",
+    statusActive: "Активен",
+    statusWarning: "Предупреждение",
+    statusBanned: "Заблокирован",
+    confirmBan: "Заблокировать пользователя и обнулить NC?",
+    adjustNc: "Корректировка NC",
+    adjustNcHint: "+ начислить / − списать",
+    adjustNcReason: "Причина (необязательно)",
+    applyAction: "Применить",
+    actionSaved: "Сохранено",
+    actionError: "Не удалось выполнить",
+    jobsEyebrow: "Админ · Задачи",
+    jobsTitle: "Генерации",
+    jobsSubtitle: "Последние AI-задачи, статус, стоимость и ошибки.",
+    jobsSearch: "Поиск по email",
+    colJobType: "Тип",
+    colCost: "Стоимость",
+    colError: "Ошибка",
+    filterAll: "Все",
+    emptyUsers: "Пользователи не найдены.",
+    emptyJobs: "Задачи не найдены.",
+    prevPage: "Назад",
+    nextPage: "Далее",
+    kindSignupGrant: "Бонус регистрации",
+    kindPurchase: "Покупка",
+    kindCharge: "Списание",
+    kindBonus: "Бонус",
+    kindReferral: "Реферал",
+    kindRollback: "Откат",
+    kindAdjustment: "Корректировка",
   },
 };
 

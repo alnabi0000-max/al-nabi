@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
@@ -20,6 +20,12 @@ import type {
   AdminAnalyticsPayload,
   AnalyticsRangeKey,
 } from "@/lib/admin/analytics";
+import { AdminRangeFilters } from "@/components/admin/AdminRangeFilters";
+import {
+  formatAdminWhen,
+  formatNc,
+  formatUsd,
+} from "@/components/admin/admin-format";
 
 const AdminIncomeChart = dynamic(
   () => import("./AdminCharts").then((m) => ({ default: m.AdminIncomeChart })),
@@ -30,36 +36,6 @@ const AdminPackChart = dynamic(
   () => import("./AdminCharts").then((m) => ({ default: m.AdminPackChart })),
   { ssr: false }
 );
-
-const RANGE_ORDER: AnalyticsRangeKey[] = [
-  "today",
-  "5days",
-  "weekly",
-  "monthly",
-];
-
-function usd(n: number): string {
-  return n.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-function nc(n: number): string {
-  return `${n.toLocaleString("en-US")} NC`;
-}
-
-function formatWhen(iso: string, locale: string): string {
-  const date = new Date(iso);
-  return date.toLocaleString(locale === "uz" ? "uz-UZ" : locale === "ru" ? "ru-RU" : "en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export function AdminAnalyticsDashboard({
   initial,
@@ -77,17 +53,6 @@ export function AdminAnalyticsDashboard({
   const [data, setData] = useState<AdminAnalyticsPayload | null>(initial ?? null);
   const [busy, setBusy] = useState(!initial);
   const [error, setError] = useState<string | null>(null);
-
-  const rangeLabels = useMemo(
-    () => ({
-      today: t.admin.filterToday,
-      "5days": t.admin.filter5Days,
-      weekly: t.admin.filterWeek,
-      monthly: t.admin.filterMonth,
-      custom: t.admin.filterCustom,
-    }),
-    [t]
-  );
 
   const load = useCallback(
     async (nextRange: AnalyticsRangeKey, from?: string, to?: string) => {
@@ -148,10 +113,10 @@ export function AdminAnalyticsDashboard({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
-            href="/admin/models"
+            href="/admin/ledger"
             className="inline-flex items-center gap-1.5 rounded-full border border-nabi-border px-3 py-1.5 text-xs text-nabi-muted hover:bg-nabi-elevated hover:text-nabi-ink"
           >
-            {t.admin.modelsLink}
+            {t.admin.openLedger}
             <ArrowUpRight size={12} />
           </Link>
           <button
@@ -176,64 +141,16 @@ export function AdminAnalyticsDashboard({
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-2">
-        {RANGE_ORDER.map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setRange(key)}
-            className={clsx(
-              "rounded-full px-3.5 py-1.5 text-sm transition",
-              range === key
-                ? "bg-white text-nabi-bg"
-                : "border border-nabi-border text-nabi-muted hover:bg-nabi-elevated hover:text-nabi-ink"
-            )}
-          >
-            {rangeLabels[key]}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => setRange("custom")}
-          className={clsx(
-            "rounded-full px-3.5 py-1.5 text-sm transition",
-            range === "custom"
-              ? "bg-white text-nabi-bg"
-              : "border border-nabi-border text-nabi-muted hover:bg-nabi-elevated hover:text-nabi-ink"
-          )}
-        >
-          {rangeLabels.custom}
-        </button>
-        {range === "custom" && (
-          <form
-            className="flex flex-wrap items-center gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (customFrom && customTo) void load("custom", customFrom, customTo);
-            }}
-          >
-            <input
-              type="date"
-              value={customFrom}
-              onChange={(e) => setCustomFrom(e.target.value)}
-              className="rounded-xl border border-nabi-border bg-nabi-input px-2.5 py-1.5 text-sm text-nabi-ink"
-            />
-            <input
-              type="date"
-              value={customTo}
-              onChange={(e) => setCustomTo(e.target.value)}
-              className="rounded-xl border border-nabi-border bg-nabi-input px-2.5 py-1.5 text-sm text-nabi-ink"
-            />
-            <button
-              type="submit"
-              disabled={!customFrom || !customTo || busy}
-              className="rounded-full bg-white px-3 py-1.5 text-sm font-semibold text-nabi-bg disabled:opacity-50"
-            >
-              {t.admin.applyRange}
-            </button>
-          </form>
-        )}
-      </div>
+      <AdminRangeFilters
+        range={range}
+        customFrom={customFrom}
+        customTo={customTo}
+        busy={busy}
+        onRange={setRange}
+        onCustomFrom={setCustomFrom}
+        onCustomTo={setCustomTo}
+        onApplyCustom={(from, to) => void load("custom", from, to)}
+      />
 
       {error && <p className="text-sm text-rose-400">{error}</p>}
 
@@ -241,7 +158,7 @@ export function AdminAnalyticsDashboard({
         <MetricCard
           icon={Wallet}
           label={t.admin.totalRevenue}
-          value={metrics ? usd(metrics.totalRevenueUsd) : "—"}
+          value={metrics ? formatUsd(metrics.totalRevenueUsd) : "—"}
           hint={
             metrics
               ? `${metrics.paidOrderCount} ${t.admin.orders}`
@@ -251,10 +168,10 @@ export function AdminAnalyticsDashboard({
         <MetricCard
           icon={TrendingUp}
           label={t.admin.netProfit}
-          value={metrics ? usd(metrics.netProfitUsd) : "—"}
+          value={metrics ? formatUsd(metrics.netProfitUsd) : "—"}
           hint={
             metrics
-              ? `${t.admin.apiOverhead} ${usd(metrics.estimatedApiCostUsd)}`
+              ? `${t.admin.apiOverhead} ${formatUsd(metrics.estimatedApiCostUsd)}`
               : t.common.loading
           }
           accent
@@ -272,7 +189,7 @@ export function AdminAnalyticsDashboard({
         <MetricCard
           icon={Coins}
           label={t.admin.totalNcBalance}
-          value={metrics ? nc(metrics.totalNcBalance) : "—"}
+          value={metrics ? formatNc(metrics.totalNcBalance) : "—"}
           hint={t.admin.totalNcBalanceHint}
         />
       </section>
@@ -285,20 +202,20 @@ export function AdminAnalyticsDashboard({
           <dl className="mt-4 space-y-3">
             <FlowRow
               label={t.admin.ncIssued}
-              value={nc(issued)}
+              value={formatNc(issued)}
               ratio={issued / flowMax}
               tone="in"
             />
             <FlowRow
               label={t.admin.ncConsumed}
-              value={nc(consumed)}
+              value={formatNc(consumed)}
               ratio={consumed / flowMax}
               tone="out"
             />
           </dl>
           {metrics && (
             <p className="mt-4 text-xs text-nabi-muted">
-              {t.admin.apiOverhead}: {usd(metrics.estimatedApiCostUsd)}
+              {t.admin.apiOverhead}: {formatUsd(metrics.estimatedApiCostUsd)}
             </p>
           )}
         </article>
@@ -312,6 +229,52 @@ export function AdminAnalyticsDashboard({
             <EmptyChart loading={busy} label={t.admin.emptyChart} />
           )}
         </article>
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-nabi-border bg-nabi-card">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-nabi-border px-4 py-3">
+          <h2 className="text-sm font-medium text-nabi-ink">{t.admin.cashflow}</h2>
+          <Link
+            href="/admin/ledger"
+            className="inline-flex items-center gap-1 text-xs text-nabi-muted hover:text-nabi-ink"
+          >
+            {t.admin.openLedger}
+            <ArrowUpRight size={12} />
+          </Link>
+        </div>
+        {data?.ledgerByKind.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] text-left text-sm">
+              <thead className="text-[11px] uppercase tracking-wider text-nabi-muted">
+                <tr>
+                  <th className="px-4 py-2 font-medium">{t.admin.colType}</th>
+                  <th className="px-4 py-2 font-medium">{t.admin.ncIssued}</th>
+                  <th className="px-4 py-2 font-medium">{t.admin.ncConsumed}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.ledgerByKind.map((row) => (
+                  <tr
+                    key={row.type}
+                    className="border-t border-nabi-border/80 text-nabi-ink"
+                  >
+                    <td className="px-4 py-2.5">{ledgerKindLabel(row.type, t)}</td>
+                    <td className="px-4 py-2.5 tabular-nums text-emerald-300">
+                      {row.ncIssued ? formatNc(row.ncIssued) : "—"}
+                    </td>
+                    <td className="px-4 py-2.5 tabular-nums text-rose-300">
+                      {row.ncConsumed ? formatNc(row.ncConsumed) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="px-4 py-10 text-center text-sm text-nabi-muted">
+            {busy ? t.common.loading : t.admin.emptyLedger}
+          </p>
+        )}
       </section>
 
       <section className="rounded-2xl border border-nabi-border bg-nabi-card p-4">
@@ -348,14 +311,14 @@ export function AdminAnalyticsDashboard({
                     className="border-t border-nabi-border/80 text-nabi-ink"
                   >
                     <td className="px-4 py-2.5 tabular-nums text-nabi-muted">
-                      {formatWhen(row.createdAt, locale)}
+                      {formatAdminWhen(row.createdAt, locale)}
                     </td>
                     <td className="px-4 py-2.5">{row.email}</td>
                     <td className="px-4 py-2.5">
                       {row.packName} · ${row.amountUsd >= 1 ? Math.round(row.amountUsd) : row.amountUsd}
                     </td>
-                    <td className="px-4 py-2.5 tabular-nums">{usd(row.amountUsd)}</td>
-                    <td className="px-4 py-2.5 tabular-nums">{nc(row.nc)}</td>
+                    <td className="px-4 py-2.5 tabular-nums">{formatUsd(row.amountUsd)}</td>
+                    <td className="px-4 py-2.5 tabular-nums">{formatNc(row.nc)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -369,6 +332,30 @@ export function AdminAnalyticsDashboard({
       </section>
     </div>
   );
+}
+
+function ledgerKindLabel(
+  type: AdminAnalyticsPayload["ledgerByKind"][number]["type"],
+  t: ReturnType<typeof useLanguage>["t"]
+): string {
+  switch (type) {
+    case "SIGNUP_GRANT":
+      return t.admin.kindSignupGrant;
+    case "PURCHASE":
+      return t.admin.kindPurchase;
+    case "CHARGE":
+      return t.admin.kindCharge;
+    case "BONUS":
+      return t.admin.kindBonus;
+    case "REFERRAL":
+      return t.admin.kindReferral;
+    case "ROLLBACK":
+      return t.admin.kindRollback;
+    case "ADJUSTMENT":
+      return t.admin.kindAdjustment;
+    default:
+      return type;
+  }
 }
 
 function MetricCard({

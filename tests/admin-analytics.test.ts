@@ -18,6 +18,7 @@ import {
   zonedYmd,
 } from "@/lib/admin/analytics";
 import { USD_PER_COIN } from "@/lib/credits";
+import { AdminOpsError } from "@/lib/admin/ops";
 
 const NOON_TASHKENT = new Date("2026-08-16T12:00:00+05:00");
 
@@ -30,10 +31,21 @@ describe("admin role gate", () => {
   });
 });
 
+describe("admin ops errors", () => {
+  it("carries a stable code for panel actions", () => {
+    const err = new AdminOpsError("Adjustment cannot be zero", "ZERO_ADJUST");
+    expect(err.name).toBe("AdminOpsError");
+    expect(err.code).toBe("ZERO_ADJUST");
+  });
+});
+
 describe("admin analytics API surface", () => {
   it("requires a session instead of ADMIN_API_SECRET", () => {
     expect(requiresSessionToken("/api/admin/analytics")).toBe(true);
     expect(requiresSessionToken("/api/admin/passcode")).toBe(true);
+    expect(requiresSessionToken("/api/admin/ledger")).toBe(true);
+    expect(requiresSessionToken("/api/admin/users")).toBe(true);
+    expect(requiresSessionToken("/api/admin/jobs")).toBe(true);
     expect(requiresSessionToken("/api/admin/unlock")).toBe(false);
     expect(requiresSessionToken("/api/admin/models")).toBe(false);
     expect(requiresSessionToken("/api/admin/system")).toBe(false);

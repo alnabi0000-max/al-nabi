@@ -48,6 +48,9 @@ const SECRET_GUARDED_PREFIXES = ["/api/admin/", "/api/cron/"] as const;
 const SESSION_ROLE_ADMIN_API = new Set([
   "/api/admin/analytics",
   "/api/admin/passcode",
+  "/api/admin/ledger",
+  "/api/admin/users",
+  "/api/admin/jobs",
 ]);
 
 export function isApiPath(pathname: string): boolean {

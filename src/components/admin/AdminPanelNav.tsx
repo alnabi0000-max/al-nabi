@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Lock, Sparkles } from "lucide-react";
+import {
+  BarChart3,
+  Clapperboard,
+  Lock,
+  Scale,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import clsx from "clsx";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -15,14 +22,17 @@ export function AdminPanelNav() {
   const { t } = useLanguage();
 
   const items = [
-    { href: "/admin", label: t.admin.analyticsTitle, icon: BarChart3, exact: true },
-    { href: "/admin/models", label: t.admin.modelsLink, icon: Sparkles },
-    { href: "/admin/settings", label: t.admin.settingsTitle, icon: Lock },
+    { href: "/admin", label: t.admin.navAnalytics, icon: BarChart3, exact: true },
+    { href: "/admin/ledger", label: t.admin.navLedger, icon: Scale },
+    { href: "/admin/users", label: t.admin.navUsers, icon: Users },
+    { href: "/admin/jobs", label: t.admin.navJobs, icon: Clapperboard },
+    { href: "/admin/models", label: t.admin.navModels, icon: Sparkles },
+    { href: "/admin/settings", label: t.admin.navSettings, icon: Lock },
   ];
 
   return (
     <nav
-      aria-label={t.admin.settingsTitle}
+      aria-label={t.admin.navAnalytics}
       className="mx-auto mb-6 flex max-w-6xl flex-wrap gap-2"
     >
       {items.map(({ href, label, icon: Icon, exact }) => {
