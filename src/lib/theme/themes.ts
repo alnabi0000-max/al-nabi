@@ -13,7 +13,6 @@ export const THEME_IDS = [
   "zumrad",
   "kecha",
   "qizil",
-  "monoxrom",
   "yorug",
   "kobalt",
   "pushti",
@@ -76,13 +75,6 @@ export const THEMES: ThemeMeta[] = [
     label: "Qizil",
     swatch: "#ff4d4d",
     swatchEnd: "#ff8080",
-    light: false,
-  },
-  {
-    id: "monoxrom",
-    label: "Monoxrom",
-    swatch: "#e5e5e5",
-    swatchEnd: "#a3a3a3",
     light: false,
   },
   {

@@ -190,36 +190,6 @@ html[data-theme="qizil"] {
     0 0 40px rgba(255, 77, 77, 0.25);
 }
 
-html[data-theme="monoxrom"] {
-  color-scheme: dark;
-  --nabi-bg: #161616;
-  --nabi-card: rgba(229, 229, 229, 0.06);
-  --nabi-elevated: rgba(229, 229, 229, 0.1);
-  --bg-elevated-solid: #1f1f1f;
-  --nabi-border: rgba(229, 229, 229, 0.16);
-  --nabi-neon: #e5e5e5;
-  --nabi-gold: #a3a3a3;
-  --nabi-muted: #a3a3a3;
-  --text-primary: #f5f5f5;
-  --text-secondary: #a3a3a3;
-  --accent: #e5e5e5;
-  --accent-2: #a3a3a3;
-  --accent-from: #e5e5e5;
-  --accent-via: #d4d4d4;
-  --accent-to: #a3a3a3;
-  --btn-on-accent: #171717;
-  --input-bg: rgba(0, 0, 0, 0.45);
-  --glass-bg: rgba(255, 255, 255, 0.06);
-  --glow-1: rgba(229, 229, 229, 0.12);
-  --glow-2: rgba(163, 163, 163, 0.1);
-  --glow-3: rgba(229, 229, 229, 0.08);
-  --shadow-neon: 0 0 24px rgba(229, 229, 229, 0.2);
-  --shadow-gold: 0 0 18px rgba(163, 163, 163, 0.18);
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-ring: 0 0 0 1px rgba(229, 229, 229, 0.14),
-    0 0 32px rgba(229, 229, 229, 0.12);
-}
-
 html[data-theme="yorug"] {
   color-scheme: light;
   --nabi-bg: #fafafa;
