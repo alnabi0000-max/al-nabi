@@ -5,21 +5,13 @@
 
 import fs from "fs/promises";
 import path from "path";
-import { spawn } from "child_process";
 import type { FoleyClip } from "@/lib/producer/foley";
+import { runFfmpeg } from "@/lib/ffmpeg-worker";
 
 /** Linear gain ≈ −20 dB so VO stays dominant. */
 const BGM_VOLUME = 0.1;
 const BGM_FADE_IN_SEC = 1.2;
 const BGM_FADE_OUT_SEC = 1.5;
-
-function runFfmpeg(args: string[]): Promise<boolean> {
-  return new Promise((resolve) => {
-    const proc = spawn("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
-    proc.on("error", () => resolve(false));
-    proc.on("close", (code) => resolve(code === 0));
-  });
-}
 
 /**
  * Mix voiceover with timed Foley clips and optional looping BGM into one audio file.
@@ -82,22 +74,23 @@ export async function mixVoiceAndFoley(opts: {
     `${mixLabels.join("")}amix=inputs=${n}:duration=longest:dropout_transition=0[aout]`
   );
 
-  const ok = await runFfmpeg([
-    ...inputs,
-    "-filter_complex",
-    filterParts.join(";"),
-    "-map",
-    "[aout]",
-    "-t",
-    String(opts.durationSec),
-    "-c:a",
-    "aac",
-    "-b:a",
-    "192k",
-    opts.outputPath,
-  ]);
-
-  if (!ok) {
+  try {
+    await runFfmpeg([
+      ...inputs,
+      "-filter_complex",
+      filterParts.join(";"),
+      "-map",
+      "[aout]",
+      "-t",
+      String(opts.durationSec),
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      opts.outputPath,
+    ]);
+  } catch (error) {
+    if (process.env.NODE_ENV === "production") throw error;
     await fs.copyFile(opts.voicePath, opts.outputPath);
   }
   return opts.outputPath;

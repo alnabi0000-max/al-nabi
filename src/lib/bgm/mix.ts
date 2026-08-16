@@ -4,21 +4,12 @@
 
 import fs from "fs/promises";
 import path from "path";
-import { spawn } from "child_process";
-import { muxVideoWithAudio } from "@/lib/ffmpeg-worker";
+import { muxVideoWithAudio, runFfmpeg } from "@/lib/ffmpeg-worker";
 
 /** Linear gain ≈ −20 dB so dialogue stays clear. */
 export const BGM_LINEAR_VOLUME = 0.1;
 const BGM_FADE_IN_SEC = 1.2;
 const BGM_FADE_OUT_SEC = 1.5;
-
-function runFfmpeg(args: string[]): Promise<boolean> {
-  return new Promise((resolve) => {
-    const proc = spawn("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
-    proc.on("error", () => resolve(false));
-    proc.on("close", (code) => resolve(code === 0));
-  });
-}
 
 /** Build a duration-matched ambient bed (loop + soft fades + duck). */
 export async function renderAmbientBed(opts: {
@@ -32,27 +23,30 @@ export async function renderAmbientBed(opts: {
   const vol = opts.volume ?? BGM_LINEAR_VOLUME;
   const fadeOutStart = Math.max(0, dur - BGM_FADE_OUT_SEC);
 
-  const ok = await runFfmpeg([
-    "-y",
-    "-stream_loop",
-    "-1",
-    "-i",
-    opts.bgmPath,
-    "-t",
-    String(dur),
-    "-af",
-    `atrim=0:${dur},asetpts=PTS-STARTPTS,` +
-      `afade=t=in:st=0:d=${BGM_FADE_IN_SEC},` +
-      `afade=t=out:st=${fadeOutStart}:d=${BGM_FADE_OUT_SEC},` +
-      `volume=${vol}`,
-    "-c:a",
-    "aac",
-    "-b:a",
-    "192k",
-    opts.outputPath,
-  ]);
-
-  if (!ok) return null;
+  try {
+    await runFfmpeg([
+      "-y",
+      "-stream_loop",
+      "-1",
+      "-i",
+      opts.bgmPath,
+      "-t",
+      String(dur),
+      "-af",
+      `atrim=0:${dur},asetpts=PTS-STARTPTS,` +
+        `afade=t=in:st=0:d=${BGM_FADE_IN_SEC},` +
+        `afade=t=out:st=${fadeOutStart}:d=${BGM_FADE_OUT_SEC},` +
+        `volume=${vol}`,
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      opts.outputPath,
+    ]);
+  } catch (error) {
+    if (process.env.NODE_ENV === "production") throw error;
+    return null;
+  }
   return opts.outputPath;
 }
 

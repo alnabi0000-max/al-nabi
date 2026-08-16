@@ -2,6 +2,100 @@ import fs from "fs/promises";
 import path from "path";
 import { spawn } from "child_process";
 
+type FfmpegCapability = {
+  available: boolean;
+  reason?: string;
+};
+
+let capabilityCheck: Promise<FfmpegCapability> | null = null;
+
+const isProductionRuntime = () => process.env.NODE_ENV === "production";
+
+/**
+ * Production media processing must run only on a runtime explicitly provisioned
+ * with FFmpeg. This prevents serverless instances from silently producing
+ * incomplete or unplayable assets.
+ */
+export function isFfmpegFeatureEnabled(): boolean {
+  return !isProductionRuntime() || process.env.ALNABIY_FFMPEG_ENABLED === "1";
+}
+
+export class FfmpegCapabilityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FfmpegCapabilityError";
+  }
+}
+
+async function inspectFfmpeg(): Promise<FfmpegCapability> {
+  return new Promise((resolve) => {
+    const proc = spawn("ffmpeg", ["-hide_banner", "-encoders"], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let output = "";
+    let settled = false;
+
+    const finish = (result: FfmpegCapability) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+
+    proc.stdout?.on("data", (chunk) => {
+      output += chunk.toString();
+    });
+    proc.stderr?.on("data", (chunk) => {
+      output += chunk.toString();
+    });
+    proc.once("error", () =>
+      finish({ available: false, reason: "FFmpeg binary is not available." })
+    );
+    proc.once("close", (code) => {
+      if (code !== 0) {
+        finish({ available: false, reason: "FFmpeg capability probe failed." });
+        return;
+      }
+
+      const hasH264 = /\blibx264\b/i.test(output);
+      const hasAac = /(?:^|\s)aac(?:\s|$)/im.test(output);
+      finish(
+        hasH264 && hasAac
+          ? { available: true }
+          : {
+              available: false,
+              reason:
+                "FFmpeg must include the libx264 video and AAC audio encoders.",
+            }
+      );
+    });
+  });
+}
+
+async function getFfmpegCapability(): Promise<FfmpegCapability> {
+  capabilityCheck ||= inspectFfmpeg();
+  return capabilityCheck;
+}
+
+export async function isFfmpegAvailable(): Promise<boolean> {
+  if (!isFfmpegFeatureEnabled()) return false;
+  return (await getFfmpegCapability()).available;
+}
+
+export async function assertFfmpegAvailable(): Promise<void> {
+  if (!isFfmpegFeatureEnabled()) {
+    throw new FfmpegCapabilityError(
+      "FFmpeg media processing is disabled for this production runtime."
+    );
+  }
+
+  const capability = await getFfmpegCapability();
+  if (!capability.available) {
+    throw new FfmpegCapabilityError(
+      capability.reason || "FFmpeg capability check failed."
+    );
+  }
+}
+
 export interface MergeClip {
   videoPath: string;
   audioPath?: string;
@@ -81,30 +175,15 @@ export async function mergeClipsToMp4(
   return outputPath;
 }
 
-function runFfmpeg(args: string[]): Promise<void> {
-  return new Promise((resolve, reject) => {
+export async function runFfmpeg(args: string[]): Promise<void> {
+  await assertFfmpegAvailable();
+  await new Promise<void>((resolve, reject) => {
     const proc = spawn("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
     let stderr = "";
     proc.stderr?.on("data", (d) => {
       stderr += d.toString();
     });
     proc.on("error", (err) => {
-      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
-        const soft =
-          process.env.NODE_ENV !== "production" ||
-          process.env.ALNABIY_ALLOW_FFMPEG_MOCK === "1";
-        if (soft) {
-          console.warn("[Alnabiy] ffmpeg topilmadi — mock merge (dev only)");
-          resolve();
-          return;
-        }
-        reject(
-          new Error(
-            "FFmpeg is required in production. Install ffmpeg or set ALNABIY_ALLOW_FFMPEG_MOCK=1"
-          )
-        );
-        return;
-      }
       reject(err);
     });
     proc.on("close", (code) => {
@@ -202,16 +281,6 @@ export async function muxVideoWithAudio(opts: {
     "+faststart",
     opts.outputPath,
   ]);
-
-  // ffmpeg yo'q bo'lsa — bo'sh fayl o'rniga video nusxa
-  try {
-    const st = await fs.stat(opts.outputPath);
-    if (st.size === 0 && videoPath !== opts.outputPath) {
-      await fs.copyFile(videoPath, opts.outputPath);
-    }
-  } catch {
-    /* ignore */
-  }
 
   return opts.outputPath;
 }

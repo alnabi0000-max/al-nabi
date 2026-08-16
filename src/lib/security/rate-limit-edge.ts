@@ -1,19 +1,39 @@
 /**
- * Edge-safe rate limit (middleware) — Upstash Node SDK import qilinmaydi.
- * Upstash Redis Node API route'larda: rate-limit.ts
+ * Edge-safe distributed rate limiting for middleware.
  */
+
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 export type RateLimitResult = {
   success: boolean;
   limit: number;
   remaining: number;
   reset: number;
-  source: "upstash" | "memory";
+  source: "upstash" | "memory" | "unavailable";
 };
 
 type MemoryBucket = { count: number; resetAt: number };
 
 const memory = new Map<string, MemoryBucket>();
+const isProductionRuntime = () => process.env.NODE_ENV === "production";
+
+function isUpstashConfigured(): boolean {
+  return Boolean(
+    process.env.UPSTASH_REDIS_REST_URL?.trim() &&
+      process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
+  );
+}
+
+function unavailableLimit(): RateLimitResult {
+  return {
+    success: false,
+    limit: 0,
+    remaining: 0,
+    reset: Date.now() + 60_000,
+    source: "unavailable",
+  };
+}
 
 function memoryLimit(
   key: string,
@@ -42,6 +62,19 @@ function memoryLimit(
   };
 }
 
+let apiLimiter: Ratelimit | null = null;
+
+function getApiLimiter(): Ratelimit | null {
+  if (!isUpstashConfigured()) return null;
+  apiLimiter ||= new Ratelimit({
+    redis: Redis.fromEnv(),
+    limiter: Ratelimit.slidingWindow(120, "1 m"),
+    prefix: "alnabiy:edge-api",
+    analytics: true,
+  });
+  return apiLimiter;
+}
+
 export function clientIp(req: { headers: Headers }): string {
   return (
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -55,7 +88,27 @@ export function clientIp(req: { headers: Headers }): string {
 export async function rateLimitApi(
   identifier: string
 ): Promise<RateLimitResult> {
-  return memoryLimit(`api:${identifier}`, 120, 60_000);
+  try {
+    const limiter = getApiLimiter();
+    if (!limiter) {
+      return isProductionRuntime()
+        ? unavailableLimit()
+        : memoryLimit(`api:${identifier}`, 120, 60_000);
+    }
+    const result = await limiter.limit(identifier);
+    return {
+      success: result.success,
+      limit: result.limit,
+      remaining: result.remaining,
+      reset: result.reset,
+      source: "upstash",
+    };
+  } catch (error) {
+    console.error("[Alnabiy] Upstash edge rate limit failed", error);
+    return isProductionRuntime()
+      ? unavailableLimit()
+      : memoryLimit(`api:${identifier}`, 120, 60_000);
+  }
 }
 
 export function rateLimitHeaders(result: RateLimitResult): HeadersInit {
