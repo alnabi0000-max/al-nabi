@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { resolveUserByKey } from "@/lib/assets";
-import { getLocalSessionUser } from "@/lib/auth/session";
+import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
 import { createSignedGetUrl } from "@/lib/storage/signed-url";
 
 const schema = z.object({
@@ -17,11 +16,27 @@ const schema = z.object({
  */
 export async function POST(req: NextRequest) {
   try {
+    if (
+      ["key", "alnabiyKey", "alnabiy_key"].some((name) =>
+        req.nextUrl.searchParams.has(name)
+      )
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "CREDENTIAL_IN_URL",
+          error: "Credentials in URL query parameters are not accepted.",
+        },
+        { status: 400 }
+      );
+    }
+
     const body = schema.parse(await req.json());
-    const keyHeader = req.headers.get("x-alnabiy-key");
-    const user =
-      (await resolveUserByKey(keyHeader)) ||
-      (await getLocalSessionUser().catch(() => null));
+    const authenticated = await ensureRequestLedgerUser({
+      alnabiyKey: req.headers.get("x-alnabiy-key"),
+      allowGuest: false,
+    });
+    const user = authenticated?.user ?? null;
 
     if (!user) {
       return NextResponse.json(
@@ -92,22 +107,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Lokal / public URL
+    // Local media uses the authenticated session cookie; never append a
+    // reusable bearer key to the URL.
     if (fallbackUrl) {
-      let url = fallbackUrl;
-      if (
-        user?.alnabiyKey &&
-        url.startsWith("/api/media/") &&
-        !url.includes("key=")
-      ) {
-        const join = url.includes("?") ? "&" : "?";
-        url = `${url}${join}key=${encodeURIComponent(user.alnabiyKey)}`;
-      }
       return NextResponse.json({
         ok: true,
         mode: "direct",
-        signedUrl: url,
-        url,
+        signedUrl: fallbackUrl,
+        url: fallbackUrl,
       });
     }
 

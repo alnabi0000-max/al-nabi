@@ -1,25 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listUserAssets, getUserBalanceStats } from "@/lib/assets";
-
-function keyFrom(req: NextRequest, body?: { alnabiyKey?: string | null }) {
-  return (
-    body?.alnabiyKey ||
-    req.headers.get("x-alnabiy-key") ||
-    req.nextUrl.searchParams.get("key") ||
-    null
-  );
-}
+import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
 
 /** GET — foydalanuvchi media kutubxonasi + balans statistikasi */
 export async function GET(req: NextRequest) {
   try {
-    const alnabiyKey = keyFrom(req);
-    if (!alnabiyKey) {
+    if (
+      ["key", "alnabiyKey", "alnabiy_key"].some((name) =>
+        req.nextUrl.searchParams.has(name)
+      )
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Credentials in URL query parameters are not accepted.",
+          code: "CREDENTIAL_IN_URL",
+          assets: [],
+        },
+        { status: 400 }
+      );
+    }
+
+    const authenticated = await ensureRequestLedgerUser({
+      alnabiyKey: req.headers.get("x-alnabiy-key"),
+      allowGuest: false,
+    });
+    if (!authenticated) {
       return NextResponse.json(
         { ok: false, error: "Unauthorized", code: "UNAUTHORIZED", assets: [] },
         { status: 401 }
       );
     }
+    const alnabiyKey = authenticated.user.alnabiyKey;
 
     const [assets, stats] = await Promise.all([
       listUserAssets(alnabiyKey),

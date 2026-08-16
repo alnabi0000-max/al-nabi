@@ -1,7 +1,3 @@
-/**
- * Request → ledger User (local session / key / dev guest).
- */
-
 import { getAuthMode, isSupabaseConfigured } from "@/lib/auth/config";
 import {
   findUserByEmail,
@@ -21,15 +17,17 @@ export type LedgerUser = Pick<
   "id" | "email" | "alnabiyKey" | "coins" | "referralCode" | "status"
 >;
 
-/** Local / development — avtomatik guest session ruxsat */
+/** Local / development-only guest support. Never enable this for Supabase. */
 export function isSoftAuthEnabled(): boolean {
-  if (process.env.AUTH_MODE?.toLowerCase() === "local") return true;
+  if (process.env.NODE_ENV === "production") return false;
+  if (getAuthMode() !== "local") return false;
+
   if (process.env.NEXT_PUBLIC_ALNABIY_MODE === "development") return true;
   if (process.env.ALNABIY_DEV_AUTH_BYPASS === "1") return true;
-  if (process.env.NODE_ENV !== "production" && !isSupabaseConfigured()) {
+  if (!isSupabaseConfigured()) {
     return true;
   }
-  return getAuthMode() === "local";
+  return false;
 }
 
 function asLedger(u: User | LocalUser): LedgerUser {
@@ -57,13 +55,51 @@ export async function ensureDevGuestUser(): Promise<LedgerUser> {
   return asLedger(local);
 }
 
+async function getSupabaseSessionLedgerUser(): Promise<LedgerUser | null> {
+  try {
+    const { createClient } = await import("@/lib/supabase/server");
+    const supabase = await createClient();
+    if (!supabase) return null;
+
+    const { data, error } = await supabase.auth.getUser();
+    const identity = data.user;
+    if (error || !identity?.id || !identity.email) return null;
+
+    const { onboardNewUser } = await import("@/lib/auth/onboarding");
+    const { user } = await onboardNewUser(
+      {
+        id: identity.id,
+        email: identity.email,
+        name: identity.user_metadata?.full_name as string | undefined,
+      },
+      { sendEmail: false, source: "ledger_request" }
+    );
+
+    if (user.status === "BANNED") return null;
+    return asLedger(user);
+  } catch {
+    // Do not downgrade a failed Supabase/Prisma lookup to local storage.
+    return null;
+  }
+}
+
 /**
- * Kalit / cookie / (soft) guest → ledger account.
+ * Request session → ledger account.
+ *
+ * In Supabase mode (including all production deployments), only the
+ * authenticated Supabase session is accepted. Legacy Alnabiy keys and local
+ * storage remain available solely for local development.
  */
 export async function ensureRequestLedgerUser(opts?: {
   alnabiyKey?: string | null;
   allowGuest?: boolean;
 }): Promise<{ user: LedgerUser; guestCreated: boolean } | null> {
+  const mode = getAuthMode();
+  if (mode === "supabase") {
+    const user = await getSupabaseSessionLedgerUser();
+    return user ? { user, guestCreated: false } : null;
+  }
+
   const key = opts?.alnabiyKey?.trim() || null;
 
   if (key) {
@@ -87,8 +123,7 @@ export async function ensureRequestLedgerUser(opts?: {
     /* no cookie */
   }
 
-  const allowGuest =
-    opts?.allowGuest !== false && isSoftAuthEnabled();
+  const allowGuest = opts?.allowGuest !== false && isSoftAuthEnabled();
   if (!allowGuest) return null;
 
   const guest = await ensureDevGuestUser();

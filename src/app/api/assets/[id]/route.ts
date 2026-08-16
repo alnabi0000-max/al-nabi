@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { softDeleteAsset } from "@/lib/assets";
+import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
 
 /**
  * DELETE — faqat o'z assetini soft-delete
@@ -9,24 +10,41 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string }> }
 ) {
   const { id } = await ctx.params;
-  let alnabiyKey =
-    req.headers.get("x-alnabiy-key") ||
-    req.nextUrl.searchParams.get("key") ||
-    null;
+  if (
+    ["key", "alnabiyKey", "alnabiy_key"].some((name) =>
+      req.nextUrl.searchParams.has(name)
+    )
+  ) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "CREDENTIAL_IN_URL",
+        error: "Credentials in URL query parameters are not accepted.",
+      },
+      { status: 400 }
+    );
+  }
 
+  let body: { alnabiyKey?: string | null } | null = null;
   try {
-    const body = await req.json().catch(() => null);
-    if (body?.alnabiyKey) alnabiyKey = body.alnabiyKey;
+    body = (await req.json().catch(() => null)) as {
+      alnabiyKey?: string | null;
+    } | null;
   } catch {
     /* no body */
   }
 
-  if (!alnabiyKey) {
+  const authenticated = await ensureRequestLedgerUser({
+    alnabiyKey: body?.alnabiyKey || req.headers.get("x-alnabiy-key"),
+    allowGuest: false,
+  });
+  if (!authenticated) {
     return NextResponse.json(
       { ok: false, code: "UNAUTHORIZED", error: "Unauthorized" },
       { status: 401 }
     );
   }
+  const alnabiyKey = authenticated.user.alnabiyKey;
 
   if (!id || id.includes("..")) {
     return NextResponse.json(

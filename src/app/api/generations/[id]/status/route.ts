@@ -5,6 +5,7 @@ import { apiError, apiJson, formatRouteError } from "@/lib/api/json-response";
 import { sanitizePublicPayload, whiteLabelEngine } from "@/lib/models";
 import { sanitizeGenerationError } from "@/lib/generation/public-error";
 import { reclaimStaleGeneration } from "@/lib/generation/fail-and-refund";
+import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -48,6 +49,12 @@ const generationSelect = {
   updatedAt: true,
 } as const;
 
+function hasCredentialInQuery(req: NextRequest): boolean {
+  return ["key", "alnabiyKey", "alnabiy_key"].some((name) =>
+    req.nextUrl.searchParams.has(name)
+  );
+}
+
 function toPayload(
   generation: GenerationRow,
   balanceAfter?: number
@@ -89,25 +96,15 @@ async function authorize(
   | { ok: true; generation: GenerationRow; balanceAfter?: number }
   | { ok: false; status: number; error: string }
 > {
-  const key =
-    req.headers.get("x-alnabiy-key") ||
-    req.nextUrl.searchParams.get("key") ||
-    null;
-
   let userId: string | null = null;
   let balanceAfter: number | undefined;
   try {
-    if (key) {
-      const { resolveUserByKey } = await import("@/lib/assets");
-      const byKey = await resolveUserByKey(key);
-      userId = byKey?.id ?? null;
-      if (typeof byKey?.coins === "number") balanceAfter = byKey.coins;
-    }
-    if (!userId) {
-      const { getLocalSessionUser } = await import("@/lib/auth/session");
-      const session = await getLocalSessionUser().catch(() => null);
-      userId = session?.id ?? null;
-    }
+    const authenticated = await ensureRequestLedgerUser({
+      alnabiyKey: req.headers.get("x-alnabiy-key"),
+      allowGuest: false,
+    });
+    userId = authenticated?.user.id ?? null;
+    balanceAfter = authenticated?.user.coins;
     if (userId && balanceAfter === undefined) {
       const u = await prisma.user.findUnique({
         where: { id: userId },
@@ -144,6 +141,12 @@ async function authorize(
 export async function GET(req: NextRequest, ctx: Ctx) {
   try {
     const { id } = await ctx.params;
+    if (hasCredentialInQuery(req)) {
+      return apiError(
+        "Credentials in URL query parameters are not accepted. Use an authenticated session.",
+        { status: 400, code: "CREDENTIAL_IN_URL" }
+      );
+    }
     const stream = req.nextUrl.searchParams.get("stream") === "1";
 
     const loaded = await authorize(id, req);

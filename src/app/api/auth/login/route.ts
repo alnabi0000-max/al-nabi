@@ -17,15 +17,23 @@ const schema = z.object({
   register: z.boolean().optional(),
 });
 
-/**
- * Local auth: email + password (Supabase shart emas).
- * AUTH_MODE=supabase bo‘lsa ham lokal fallback ishlaydi agar Supabase bo‘sh bo‘lsa.
- */
+/** Local development auth. Production uses Supabase-only authentication. */
 export async function POST(req: NextRequest) {
   try {
     const body = schema.parse(await req.json());
     const email = body.email.toLowerCase();
     const mode = getAuthMode();
+
+    if (mode !== "local") {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "LOCAL_AUTH_DISABLED",
+          error: "Password authentication is disabled; use Supabase sign-in.",
+        },
+        { status: 410 }
+      );
+    }
 
     let user = findUserByEmail(email);
 

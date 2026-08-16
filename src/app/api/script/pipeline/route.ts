@@ -14,6 +14,8 @@ import {
 import {
   muxVideoWithAudio,
   runMoviePipeline,
+  assertFfmpegAvailable,
+  FfmpegCapabilityError,
 } from "@/lib/ffmpeg-worker";
 import { mixVoiceAndFoley } from "@/lib/producer/compose";
 import { resolveBgmSelection } from "@/lib/bgm";
@@ -26,6 +28,11 @@ import type { VideoStyle } from "@/lib/types";
 import type { WordTiming } from "@/lib/audio";
 import { guardSensitiveRequest } from "@/lib/security/request-guard";
 import { moderateText } from "@/lib/security/moderation";
+import {
+  assertPersistentObjectStorage,
+  ObjectStorageConfigurationError,
+  persistRemoteAsset,
+} from "@/lib/storage/object-storage";
 
 const schema = z.object({
   script: z.string().min(40).max(50000),
@@ -85,6 +92,8 @@ export async function POST(req: NextRequest) {
     if (blocked) return blocked;
 
     const body = schema.parse(await req.json());
+    await assertFfmpegAvailable();
+    assertPersistentObjectStorage();
 
     const gate = AlnabiySentinelEngine.processInput(body.script);
     if (!gate.isSafe) {
@@ -350,12 +359,20 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const stored = await persistRemoteAsset({
+      sourceUrl: resultPath,
+      userId: ensured.user.id,
+      generationId: jobId,
+      kind: "video",
+    });
     const sceneCount = enriched.length;
-    const resultUrl = `/api/media/jobs/${jobId}/final.mp4`;
+    const resultUrl = stored.url;
 
     await persistJobAsset({
       jobId,
-      alnabiyKey: body.alnabiyKey,
+      // In Supabase mode, the browser never receives the legacy bearer key.
+      // Carry the server-resolved owner identity through this legacy helper.
+      alnabiyKey: ledgerKey,
       kind: "text_to_movie",
       prompt: analysis.title,
       script: body.script,
@@ -367,6 +384,7 @@ export async function POST(req: NextRequest) {
       quality: "4K",
       provider: "script-pipeline",
       creditsCost: charge?.cost || expectedCost,
+      r2Key: stored.key,
     });
 
     return NextResponse.json(
@@ -427,7 +445,13 @@ export async function POST(req: NextRequest) {
         error: msg,
         rolledBack: charge?.ok ? charge.cost : 0,
       },
-      { status: 500 }
+      {
+        status:
+          e instanceof FfmpegCapabilityError ||
+          e instanceof ObjectStorageConfigurationError
+            ? 503
+            : 500,
+      }
     );
   }
 }

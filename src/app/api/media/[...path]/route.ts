@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 import fs from "fs/promises";
 import { assertMediaAccess } from "@/lib/assets";
+import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
 
 /**
  * Storage media — ownership guard (jobs/* faqat egasi)
@@ -10,6 +11,17 @@ export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ path: string[] }> }
 ) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      {
+        error:
+          "Local media serving is disabled in production; use persisted object storage.",
+        code: "LOCAL_MEDIA_DISABLED",
+      },
+      { status: 503 }
+    );
+  }
+
   const parts = (await ctx.params).path || [];
   if (
     !parts.length ||
@@ -20,14 +32,32 @@ export async function GET(
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
-  const alnabiyKey =
-    req.headers.get("x-alnabiy-key") ||
-    req.nextUrl.searchParams.get("key") ||
-    null;
+  if (
+    ["key", "alnabiyKey", "alnabiy_key"].some((name) =>
+      req.nextUrl.searchParams.has(name)
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Credentials in URL query parameters are not accepted. Use an authenticated session.",
+        code: "CREDENTIAL_IN_URL",
+      },
+      { status: 400 }
+    );
+  }
+
+  const authenticated =
+    parts[0] === "jobs"
+      ? await ensureRequestLedgerUser({
+          alnabiyKey: req.headers.get("x-alnabiy-key"),
+          allowGuest: false,
+        })
+      : null;
 
   const access = await assertMediaAccess({
     pathParts: parts,
-    alnabiyKey,
+    alnabiyKey: authenticated?.user.alnabiyKey,
   });
   if (!access.ok) {
     return NextResponse.json(

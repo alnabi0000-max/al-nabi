@@ -8,6 +8,7 @@ import {
 import { attachSessionCookie } from "@/lib/auth/session";
 import { syncLocalUserToPrisma } from "@/lib/auth/sync-local";
 import { prisma } from "@/lib/prisma";
+import { getAuthMode } from "@/lib/auth/config";
 
 const schema = z.object({
   email: z.string().email(),
@@ -15,12 +16,20 @@ const schema = z.object({
   alnabiy_key: z.string().min(6).max(64).optional(),
 });
 
-/**
- * Email + Alnabiy Key → local user + HttpOnly session cookie.
- * Birinchi marta: yangi akkaunt yaratadi (kalit bog‘lanadi).
- */
+/** Local development-only legacy key recovery. */
 export async function POST(req: NextRequest) {
   try {
+    if (getAuthMode() !== "local") {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "LEGACY_KEY_AUTH_DISABLED",
+          error: "Alnabiy key authentication is disabled; use Supabase sign-in.",
+        },
+        { status: 410 }
+      );
+    }
+
     const body = schema.parse(await req.json());
     const email = body.email.toLowerCase();
     const key = body.alnabiyKey || body.alnabiy_key;

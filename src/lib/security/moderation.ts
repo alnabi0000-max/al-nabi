@@ -5,19 +5,32 @@ export type ModerationResult = {
   allowed: boolean;
   flagged: boolean;
   categories: string[];
-  provider: "openrouter" | "skipped";
+  provider: "openrouter" | "skipped" | "unavailable";
   reason?: string;
 };
 
 /**
  * Content safety — OpenRouter LLM check (Sentinel/Halol hali ham ishlaydi).
- * OPENROUTER_API_KEY yo‘q bo‘lsa soft-skip.
+ * Production rejects requests whenever a moderation decision is unavailable.
  */
 export async function moderateText(
   input: string,
   opts?: { throwOnError?: boolean }
 ): Promise<ModerationResult> {
+  const failClosed =
+    process.env.NODE_ENV === "production" ||
+    process.env.MODERATION_FAIL_CLOSED === "1";
+
   if (!isOpenRouterConfigured()) {
+    if (failClosed) {
+      return {
+        allowed: false,
+        flagged: true,
+        categories: ["moderation_unavailable"],
+        provider: "unavailable",
+        reason: "Moderation is unavailable — request rejected",
+      };
+    }
     return {
       allowed: true,
       flagged: false,
@@ -48,7 +61,17 @@ Allow artistic cinematic violence and fiction.`,
       categories?: string[];
       reason?: string;
     };
-    const allowed = parsed.allowed !== false;
+    if (typeof parsed.allowed !== "boolean") {
+      return {
+        allowed: false,
+        flagged: true,
+        categories: ["moderation_invalid_response"],
+        provider: "openrouter",
+        reason: "Moderation returned an invalid decision — request rejected",
+      };
+    }
+
+    const allowed = parsed.allowed;
     const cats = Array.isArray(parsed.categories) ? parsed.categories : [];
     return {
       allowed,
@@ -63,16 +86,12 @@ Allow artistic cinematic violence and fiction.`,
   } catch (e) {
     Sentry.captureException(e, { tags: { area: "moderation" } });
     if (opts?.throwOnError) throw e;
-    const prod = process.env.NODE_ENV === "production";
-    const strict =
-      process.env.MODERATION_FAIL_CLOSED === "1" ||
-      process.env.NEXT_PUBLIC_ALNABIY_MODE === "production";
-    if (prod && strict) {
+    if (failClosed) {
       return {
         allowed: false,
         flagged: true,
         categories: ["moderation_error"],
-        provider: "openrouter",
+        provider: "unavailable",
         reason: "Moderation unavailable — request rejected",
       };
     }

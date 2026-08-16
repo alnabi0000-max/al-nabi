@@ -1,8 +1,6 @@
 /**
- * Lightweight payload obfuscation (AES-GCM when Web Crypto available).
+ * Authenticated label encryption using AES-GCM.
  */
-
-const FALLBACK_KEY = "Alnabiy-Enterprise-Shield-2026";
 
 function toBytes(s: string): Uint8Array {
   return new TextEncoder().encode(s);
@@ -31,12 +29,36 @@ function b64decode(s: string): Uint8Array {
   return out;
 }
 
-async function deriveKey(secret: string): Promise<CryptoKey | null> {
-  if (typeof crypto === "undefined" || !crypto.subtle) return null;
-  const raw = toBytes(secret.padEnd(32, "0").slice(0, 32));
-  return crypto.subtle.importKey(
+function requireObfuscationSecret(secret?: string): string {
+  const value = secret?.trim() || process.env.ALNABIY_OBFUSCATE_SECRET?.trim();
+  if (!value || value.length < 32) {
+    throw new Error(
+      "ALNABIY_OBFUSCATE_SECRET must be set to a random value of at least 32 characters."
+    );
+  }
+  return value;
+}
+
+function requireWebCrypto(): Crypto {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error("Web Crypto is required for secure label encryption.");
+  }
+  return globalThis.crypto;
+}
+
+async function deriveKey(secret: string): Promise<CryptoKey> {
+  const webCrypto = requireWebCrypto();
+  const secretBytes = toBytes(secret);
+  const digest = await webCrypto.subtle.digest(
+    "SHA-256",
+    secretBytes.buffer.slice(
+      secretBytes.byteOffset,
+      secretBytes.byteOffset + secretBytes.byteLength
+    ) as ArrayBuffer
+  );
+  return webCrypto.subtle.importKey(
     "raw",
-    raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) as ArrayBuffer,
+    digest,
     "AES-GCM",
     false,
     ["encrypt", "decrypt"]
@@ -45,19 +67,13 @@ async function deriveKey(secret: string): Promise<CryptoKey | null> {
 
 export async function encryptLabel(
   plain: string,
-  secret = process.env.ALNABIY_OBFUSCATE_SECRET || FALLBACK_KEY
+  secret?: string
 ): Promise<string> {
-  const key = await deriveKey(secret);
-  if (!key) {
-    const k = toBytes(secret);
-    const p = toBytes(plain);
-    const out = new Uint8Array(p.length);
-    for (let i = 0; i < p.length; i++) out[i] = p[i]! ^ k[i % k.length]!;
-    return `x.${b64encode(out)}`;
-  }
-  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const webCrypto = requireWebCrypto();
+  const key = await deriveKey(requireObfuscationSecret(secret));
+  const iv = webCrypto.getRandomValues(new Uint8Array(12));
   const plainBytes = toBytes(plain);
-  const cipher = await crypto.subtle.encrypt(
+  const cipher = await webCrypto.subtle.encrypt(
     { name: "AES-GCM", iv },
     key,
     plainBytes.buffer.slice(
@@ -73,26 +89,29 @@ export async function encryptLabel(
 
 export async function decryptLabel(
   token: string,
-  secret = process.env.ALNABIY_OBFUSCATE_SECRET || FALLBACK_KEY
+  secret?: string
 ): Promise<string> {
+  const webCrypto = requireWebCrypto();
+  const key = await deriveKey(requireObfuscationSecret(secret));
   if (!token.includes(".")) return token;
   const [mode, payload] = token.split(".", 2);
-  if (!payload) return token;
-  const data = b64decode(payload);
-  if (mode === "x") {
-    const k = toBytes(secret);
-    const out = new Uint8Array(data.length);
-    for (let i = 0; i < data.length; i++) out[i] = data[i]! ^ k[i % k.length]!;
-    return fromBytes(out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength));
+  if (mode !== "a" || !payload) return "";
+
+  try {
+    const data = b64decode(payload);
+    if (data.length < 13) return "";
+    const iv = data.slice(0, 12);
+    const body = data.slice(12);
+    const plain = await webCrypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      key,
+      body.buffer.slice(
+        body.byteOffset,
+        body.byteOffset + body.byteLength
+      ) as ArrayBuffer
+    );
+    return fromBytes(plain);
+  } catch {
+    return "";
   }
-  const key = await deriveKey(secret);
-  if (!key || data.length < 13) return "";
-  const iv = data.slice(0, 12);
-  const body = data.slice(12);
-  const plain = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    key,
-    body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength) as ArrayBuffer
-  );
-  return fromBytes(plain);
 }

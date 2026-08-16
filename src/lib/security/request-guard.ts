@@ -27,18 +27,23 @@ export async function guardSensitiveRequest(
 
   const limited = await rateLimitSensitive(key);
   if (!limited.success) {
+    const unavailable = limited.source === "unavailable";
     return NextResponse.json(
       {
         ok: false,
-        code: "RATE_LIMITED",
-        error: "Too many requests — try again shortly",
+        code: unavailable ? "RATE_LIMIT_UNAVAILABLE" : "RATE_LIMITED",
+        error: unavailable
+          ? "Request protection is temporarily unavailable"
+          : "Too many requests — try again shortly",
       },
       {
-        status: 429,
+        status: unavailable ? 503 : 429,
         headers: {
           ...rateLimitHeaders(limited),
           "Retry-After": String(
-            Math.max(1, Math.ceil((limited.reset - Date.now()) / 1000))
+            unavailable
+              ? 60
+              : Math.max(1, Math.ceil((limited.reset - Date.now()) / 1000))
           ),
         },
       }

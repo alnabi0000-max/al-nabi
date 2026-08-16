@@ -62,6 +62,12 @@ export function attachSessionCookie(
   res: NextResponse,
   user: Pick<LocalUser, "id" | "email">
 ) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Local authentication cookies are disabled in production; use the Supabase session."
+    );
+  }
+
   const token = encodeSession({
     uid: user.id,
     email: user.email,
@@ -81,6 +87,8 @@ export function clearSessionCookie(res: NextResponse) {
  * Generate / ledger uchun `id` Prisma `users` da bo‘lishi shart.
  */
 export async function getLocalSessionUser() {
+  if (process.env.NODE_ENV === "production") return null;
+
   const jar = await cookies();
   const payload = decodeSession(jar.get(AUTH_COOKIE)?.value);
   if (!payload) return null;

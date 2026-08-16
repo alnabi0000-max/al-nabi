@@ -11,10 +11,7 @@ const schema = z.object({
   alnabiyKey: z.string().min(6).max(64).optional().nullable(),
 });
 
-/**
- * Soft/local: sessiya yoki guest ledger user yaratadi + cookie.
- * Frontend generate oldidan / hydration da chaqiriladi.
- */
+/** Resolve the current session to a ledger user. */
 export async function POST(req: NextRequest) {
   try {
     let body: z.infer<typeof schema> = {};
@@ -24,9 +21,9 @@ export async function POST(req: NextRequest) {
       body = {};
     }
 
-    if (!isSoftAuthEnabled()) {
+    const mode = getAuthMode();
+    if (mode === "supabase") {
       const existing = await ensureRequestLedgerUser({
-        alnabiyKey: body.alnabiyKey,
         allowGuest: false,
       });
       if (!existing) {
@@ -42,17 +39,20 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json({
         ok: true,
-        mode: getAuthMode(),
+        mode,
         authenticated: true,
         guest: false,
-        ...existing.user,
-        alnabiy_key: existing.user.alnabiyKey,
+        id: existing.user.id,
+        email: existing.user.email,
+        coins: existing.user.coins,
+        referralCode: existing.user.referralCode,
+        status: existing.user.status,
       });
     }
 
     const ensured = await ensureRequestLedgerUser({
       alnabiyKey: body.alnabiyKey,
-      allowGuest: true,
+      allowGuest: isSoftAuthEnabled(),
     });
 
     if (!ensured) {

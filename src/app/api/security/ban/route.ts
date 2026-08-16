@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { assertAdmin } from "@/lib/admin/auth";
-import { getLocalSessionUser } from "@/lib/auth/session";
-import { resolveUserByKey } from "@/lib/assets";
+import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
 
 const schema = z.object({
   alnabiyKey: z.string().min(4),
@@ -19,14 +18,11 @@ export async function POST(req: NextRequest) {
   try {
     const body = schema.parse(await req.json());
     const admin = assertAdmin(req);
-    const keyHeader = req.headers.get("x-alnabiy-key");
-    const session = await getLocalSessionUser().catch(() => null);
-    const byHeader = keyHeader
-      ? await resolveUserByKey(keyHeader).catch(() => null)
-      : null;
-
-    const actorKey =
-      session?.alnabiyKey || byHeader?.alnabiyKey || keyHeader || null;
+    const authenticated = await ensureRequestLedgerUser({
+      alnabiyKey: req.headers.get("x-alnabiy-key"),
+      allowGuest: false,
+    });
+    const actorKey = authenticated?.user.alnabiyKey || null;
     const isOwner = !!actorKey && actorKey === body.alnabiyKey;
 
     if (!admin.ok && !isOwner) {
@@ -51,19 +47,14 @@ export async function POST(req: NextRequest) {
         reason: body.reason || "halol_violation",
       });
     } catch {
-      /* DB down — client already applied local ban; do not fake success for attackers */
-      if (!isOwner && !admin.ok) {
-        return NextResponse.json(
-          { ok: false, error: "Ban unavailable", code: "UNAVAILABLE" },
-          { status: 503 }
-        );
-      }
-      return NextResponse.json({
-        ok: true,
-        status: "BANNED",
-        persisted: false,
-        note: "DB unavailable — client ban applied",
-      });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Ban could not be persisted",
+          code: "UNAVAILABLE",
+        },
+        { status: 503 }
+      );
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Ban failed";
