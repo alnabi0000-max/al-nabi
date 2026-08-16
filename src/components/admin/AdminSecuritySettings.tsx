@@ -5,6 +5,7 @@ import { KeyRound, Loader2, Shield } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import { MIN_PASSCODE_LENGTH } from "@/lib/admin/passcode-policy";
+import { PasscodeField } from "@/components/admin/PasscodeField";
 
 export function AdminSecuritySettings() {
   const { t } = useLanguage();
@@ -91,34 +92,34 @@ export function AdminSecuritySettings() {
             <span className="text-xs text-nabi-muted">
               {t.admin.currentPasscode}
             </span>
-            <input
-              type="password"
-              autoComplete="current-password"
+            <PasscodeField
               value={currentPasscode}
-              onChange={(e) => setCurrentPasscode(e.target.value)}
-              className="w-full rounded-xl border border-nabi-border bg-nabi-input px-3 py-2.5 text-sm text-nabi-ink outline-none focus:ring-2 focus:ring-nabi-neon/40"
+              onChange={setCurrentPasscode}
+              autoComplete="current-password"
+              showLabel={t.admin.showPasscode}
+              hideLabel={t.admin.hidePasscode}
             />
           </label>
           <label className="block space-y-1.5">
             <span className="text-xs text-nabi-muted">{t.admin.newPasscode}</span>
-            <input
-              type="password"
-              autoComplete="new-password"
+            <PasscodeField
               value={newPasscode}
-              onChange={(e) => setNewPasscode(e.target.value)}
-              className="w-full rounded-xl border border-nabi-border bg-nabi-input px-3 py-2.5 text-sm text-nabi-ink outline-none focus:ring-2 focus:ring-nabi-neon/40"
+              onChange={setNewPasscode}
+              autoComplete="new-password"
+              showLabel={t.admin.showPasscode}
+              hideLabel={t.admin.hidePasscode}
             />
           </label>
           <label className="block space-y-1.5">
             <span className="text-xs text-nabi-muted">
               {t.admin.confirmPasscode}
             </span>
-            <input
-              type="password"
-              autoComplete="new-password"
+            <PasscodeField
               value={confirmPasscode}
-              onChange={(e) => setConfirmPasscode(e.target.value)}
-              className="w-full rounded-xl border border-nabi-border bg-nabi-input px-3 py-2.5 text-sm text-nabi-ink outline-none focus:ring-2 focus:ring-nabi-neon/40"
+              onChange={setConfirmPasscode}
+              autoComplete="new-password"
+              showLabel={t.admin.showPasscode}
+              hideLabel={t.admin.hidePasscode}
             />
           </label>
           {error ? <p className="text-sm text-rose-400">{error}</p> : null}

@@ -6,6 +6,7 @@ import { KeyRound, Loader2, X } from "lucide-react";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { useLanguage } from "@/context/LanguageContext";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
+import { PasscodeField } from "@/components/admin/PasscodeField";
 
 function isAdminHotkey(e: KeyboardEvent): boolean {
   if (e.repeat) return false;
@@ -134,14 +135,14 @@ export function HiddenAdminTrigger() {
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <label className="block">
               <span className="sr-only">{t.admin.gateTitle}</span>
-              <input
-                ref={inputRef}
-                type="password"
-                autoComplete="off"
+              <PasscodeField
+                inputRef={inputRef}
                 value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
+                onChange={setPasscode}
                 placeholder={t.admin.gatePlaceholder}
-                className="w-full rounded-2xl border border-nabi-border bg-nabi-input px-4 py-3 text-sm text-nabi-ink outline-none ring-nabi-neon/40 placeholder:text-nabi-muted focus:ring-2"
+                showLabel={t.admin.showPasscode}
+                hideLabel={t.admin.hidePasscode}
+                rounded="2xl"
               />
             </label>
             {error ? <p className="text-sm text-rose-400">{error}</p> : null}

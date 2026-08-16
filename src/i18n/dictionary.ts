@@ -165,6 +165,8 @@ export type Dictionary = {
     passcodeSaved: string;
     passcodeMismatch: string;
     passcodeTooShort: string;
+    showPasscode: string;
+    hidePasscode: string;
   };
 };
 
@@ -335,6 +337,8 @@ const en: Dictionary = {
     passcodeSaved: "Passcode updated",
     passcodeMismatch: "New passcode and confirmation do not match",
     passcodeTooShort: "Passcode must be at least 10 characters",
+    showPasscode: "Show passcode",
+    hidePasscode: "Hide passcode",
   },
 };
 
@@ -506,6 +510,8 @@ const uz: Dictionary = {
     passcodeSaved: "Parol yangilandi",
     passcodeMismatch: "Yangi parol va tasdiq mos kelmadi",
     passcodeTooShort: "Parol kamida 10 belgidan iborat bo‘lishi kerak",
+    showPasscode: "Parolni ko‘rsatish",
+    hidePasscode: "Parolni yashirish",
   },
 };
 
@@ -677,6 +683,8 @@ const ru: Dictionary = {
     passcodeSaved: "Пароль обновлён",
     passcodeMismatch: "Новый пароль и подтверждение не совпадают",
     passcodeTooShort: "Пароль должен содержать не менее 10 символов",
+    showPasscode: "Показать пароль",
+    hidePasscode: "Скрыть пароль",
   },
 };
 
