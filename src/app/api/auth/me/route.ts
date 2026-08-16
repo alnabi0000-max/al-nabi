@@ -63,6 +63,7 @@ export async function GET(req: NextRequest) {
         coins: local.coins,
         referralCode: local.referralCode,
         status: local.status,
+        role: "role" in local ? String(local.role) : "USER",
         authProvider: "LOCAL",
       }),
     });

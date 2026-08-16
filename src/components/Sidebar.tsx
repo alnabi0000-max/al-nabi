@@ -7,17 +7,20 @@ import {
   Clapperboard,
   Coins,
   User,
+  Shield,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
 import clsx from "clsx";
 import { useLanguage } from "@/context/LanguageContext";
+import { useMaster } from "@/context/MasterControllerContext";
 
 const LS_SIDEBAR = "alnabiy_sidebar_collapsed";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { t } = useLanguage();
+  const { role, authReady } = useMaster();
   const [collapsed, setCollapsed] = useState(true);
   const [tip, setTip] = useState<string | null>(null);
 
@@ -57,6 +60,9 @@ export function Sidebar() {
     { href: "/", label: t.nav.studio, icon: Clapperboard },
     { href: "/pricing", label: t.nav.pricing, icon: Coins },
     { href: "/profile", label: t.nav.cabinet, icon: User },
+    ...(authReady && role === "ADMIN"
+      ? [{ href: "/admin", label: t.nav.admin, icon: Shield }]
+      : []),
   ];
 
   return (

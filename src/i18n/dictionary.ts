@@ -31,6 +31,7 @@ export type Dictionary = {
     collapse: string;
     expand: string;
     navigation: string;
+    admin: string;
   };
   chat: {
     title: string;
@@ -114,6 +115,37 @@ export type Dictionary = {
     ready: string;
     needsKeys: string;
     secretPlaceholder: string;
+    analyticsEyebrow: string;
+    analyticsTitle: string;
+    analyticsSubtitle: string;
+    filterToday: string;
+    filter5Days: string;
+    filterWeek: string;
+    filterMonth: string;
+    filterCustom: string;
+    applyRange: string;
+    totalRevenue: string;
+    netProfit: string;
+    activePayingUsers: string;
+    lifetimePaying: string;
+    totalNcBalance: string;
+    totalNcBalanceHint: string;
+    apiOverhead: string;
+    ncIssued: string;
+    ncConsumed: string;
+    dailyIncome: string;
+    packBreakdown: string;
+    recentTransactions: string;
+    colTime: string;
+    colUser: string;
+    colPack: string;
+    colAmount: string;
+    colNc: string;
+    orders: string;
+    emptyTransactions: string;
+    emptyChart: string;
+    loadError: string;
+    modelsLink: string;
   };
 };
 
@@ -143,6 +175,7 @@ const en: Dictionary = {
     collapse: "Collapse",
     expand: "Expand",
     navigation: "Primary navigation",
+    admin: "Admin",
   },
   chat: {
     title: "Producer Chat",
@@ -230,6 +263,38 @@ const en: Dictionary = {
     ready: "Ready",
     needsKeys: "Needs keys",
     secretPlaceholder: "Admin secret",
+    analyticsEyebrow: "Admin · Finance",
+    analyticsTitle: "Analytics & Finance",
+    analyticsSubtitle:
+      "Revenue, API overhead, NC flow, and package sales for the selected window.",
+    filterToday: "Today",
+    filter5Days: "5 days",
+    filterWeek: "1 week",
+    filterMonth: "1 month",
+    filterCustom: "Custom",
+    applyRange: "Apply",
+    totalRevenue: "Total revenue",
+    netProfit: "Net profit",
+    activePayingUsers: "Active paying users",
+    lifetimePaying: "Lifetime",
+    totalNcBalance: "Total NC balance",
+    totalNcBalanceHint: "Outstanding wallet liability",
+    apiOverhead: "Est. API cost",
+    ncIssued: "NC issued",
+    ncConsumed: "NC consumed",
+    dailyIncome: "Daily income",
+    packBreakdown: "Sales by package",
+    recentTransactions: "Recent transactions",
+    colTime: "Time",
+    colUser: "User",
+    colPack: "Pack",
+    colAmount: "Amount",
+    colNc: "NC",
+    orders: "orders",
+    emptyTransactions: "No paid transactions in this window.",
+    emptyChart: "No sales in this window.",
+    loadError: "Could not load analytics",
+    modelsLink: "Model updater",
   },
 };
 
@@ -259,6 +324,7 @@ const uz: Dictionary = {
     collapse: "Yig‘ish",
     expand: "Yoyish",
     navigation: "Asosiy navigatsiya",
+    admin: "Admin",
   },
   chat: {
     title: "Producer Chat",
@@ -347,6 +413,38 @@ const uz: Dictionary = {
     ready: "Tayyor",
     needsKeys: "Kalit kerak",
     secretPlaceholder: "Admin maxfiy kaliti",
+    analyticsEyebrow: "Admin · Moliya",
+    analyticsTitle: "Analitika va moliya",
+    analyticsSubtitle:
+      "Tanlangan davr uchun tushum, API xarajati, NC oqimi va paket savdosi.",
+    filterToday: "Bugun",
+    filter5Days: "5 kun",
+    filterWeek: "1 hafta",
+    filterMonth: "1 oy",
+    filterCustom: "Maxsus",
+    applyRange: "Qo‘llash",
+    totalRevenue: "Jami tushum",
+    netProfit: "Sof foyda",
+    activePayingUsers: "Faol to‘lovchilar",
+    lifetimePaying: "Jami",
+    totalNcBalance: "Jami NC balans",
+    totalNcBalanceHint: "Hali ishlatilmagan hamyon majburiyati",
+    apiOverhead: "Taxm. API xarajati",
+    ncIssued: "Berilgan NC",
+    ncConsumed: "Sarflangan NC",
+    dailyIncome: "Kunlik tushum",
+    packBreakdown: "Paketlar bo‘yicha savdo",
+    recentTransactions: "So‘nggi tranzaksiyalar",
+    colTime: "Vaqt",
+    colUser: "Foydalanuvchi",
+    colPack: "Paket",
+    colAmount: "Summa",
+    colNc: "NC",
+    orders: "buyurtma",
+    emptyTransactions: "Bu davrda to‘langan tranzaksiya yo‘q.",
+    emptyChart: "Bu davrda savdo yo‘q.",
+    loadError: "Analitikani yuklab bo‘lmadi",
+    modelsLink: "Model yangilash",
   },
 };
 
@@ -376,6 +474,7 @@ const ru: Dictionary = {
     collapse: "Свернуть",
     expand: "Развернуть",
     navigation: "Основная навигация",
+    admin: "Админ",
   },
   chat: {
     title: "Producer Chat",
@@ -464,6 +563,38 @@ const ru: Dictionary = {
     ready: "Готово",
     needsKeys: "Нужны ключи",
     secretPlaceholder: "Admin-секрет",
+    analyticsEyebrow: "Админ · Финансы",
+    analyticsTitle: "Аналитика и финансы",
+    analyticsSubtitle:
+      "Выручка, затраты API, поток NC и продажи пакетов за выбранный период.",
+    filterToday: "Сегодня",
+    filter5Days: "5 дней",
+    filterWeek: "1 неделя",
+    filterMonth: "1 месяц",
+    filterCustom: "Свой период",
+    applyRange: "Применить",
+    totalRevenue: "Выручка",
+    netProfit: "Чистая прибыль",
+    activePayingUsers: "Платящие пользователи",
+    lifetimePaying: "Всего",
+    totalNcBalance: "Суммарный баланс NC",
+    totalNcBalanceHint: "Непогашенные обязательства кошельков",
+    apiOverhead: "Оценка затрат API",
+    ncIssued: "Выдано NC",
+    ncConsumed: "Потрачено NC",
+    dailyIncome: "Дневная выручка",
+    packBreakdown: "Продажи по пакетам",
+    recentTransactions: "Последние транзакции",
+    colTime: "Время",
+    colUser: "Пользователь",
+    colPack: "Пакет",
+    colAmount: "Сумма",
+    colNc: "NC",
+    orders: "заказов",
+    emptyTransactions: "В этом периоде нет оплаченных транзакций.",
+    emptyChart: "В этом периоде нет продаж.",
+    loadError: "Не удалось загрузить аналитику",
+    modelsLink: "Обновление моделей",
   },
 };
 

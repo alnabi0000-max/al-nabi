@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
       coins: ensured.user.coins,
       referralCode: ensured.user.referralCode,
       status: ensured.user.status,
+      role: ensured.user.role,
     });
 
     return attachSessionCookie(res, {

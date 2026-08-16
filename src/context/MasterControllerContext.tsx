@@ -59,6 +59,7 @@ interface MasterState {
   coins: number;
   alnabiyKey: string | null;
   email: string | null;
+  role: "USER" | "MODERATOR" | "ADMIN";
   locale: LocaleCode;
   isBanned: boolean;
   isOffline: boolean;
@@ -137,6 +138,11 @@ interface MasterController extends MasterState {
   clearAppToast: () => void;
 }
 
+function parseAppRole(value: unknown): MasterState["role"] {
+  if (value === "ADMIN" || value === "MODERATOR") return value;
+  return "USER";
+}
+
 const Ctx = createContext<MasterController | null>(null);
 
 /** Server + birinchi client render — bir xil (hydration-safe) */
@@ -145,6 +151,7 @@ function safeInitial(): MasterState {
     coins: DEMO_STARTING_CREDITS,
     alnabiyKey: null,
     email: null,
+    role: "USER",
     locale: "uz",
     isBanned: false,
     isOffline: false,
@@ -184,6 +191,7 @@ function loadFromStorage(): MasterState {
       coins: Number.isFinite(coins) ? coins : DEMO_STARTING_CREDITS,
       alnabiyKey: key,
       email,
+      role: "USER",
       locale,
       isBanned: status === "BANNED",
       isOffline: !navigator.onLine,
@@ -261,6 +269,7 @@ export function MasterControllerProvider({
         coins: nextCoins ?? s.coins,
         referralCode: (data.referralCode as string) || s.referralCode,
         isBanned: data.status === "BANNED",
+        role: parseAppRole(data.role),
       }));
       /* Persistence deferred to debounced persistNow — only keep key hot */
       try {
@@ -324,7 +333,7 @@ export function MasterControllerProvider({
         key || undefined
       );
     } else {
-      setState((s) => ({ ...s, email: null }));
+      setState((s) => ({ ...s, email: null, role: "USER" }));
     }
     return data;
   }, [applyAuthPayload]);
@@ -420,6 +429,7 @@ export function MasterControllerProvider({
               email: null,
               alnabiyKey: null,
               referralCode: "ALNABIY-DEMO",
+              role: "USER",
             }));
           }
         });
@@ -855,6 +865,7 @@ export function MasterControllerProvider({
       email: null,
       alnabiyKey: null,
       referralCode: "ALNABIY-DEMO",
+      role: "USER",
     }));
     try {
       localStorage.removeItem(LS_KEY);
