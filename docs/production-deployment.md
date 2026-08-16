@@ -30,6 +30,15 @@ for:
   migration connection).
 - Supabase URL, anon key, service-role key where used, `AUTH_MODE=supabase`,
   and a random 32+ character `AUTH_SECRET`.
+- Supabase Auth providers: Google and Apple enabled (Apple is required for iOS
+  App Store review), plus the email provider with `{{ .Token }}` in the Magic
+  Link template so the 6-digit code flow can deliver a code. Redirect URLs must
+  list `https://<domain>/auth/callback` and the native `alnabi://auth/callback`
+  deep link.
+- Optional `SUPABASE_JWT_SECRET`: lets the Edge middleware reject forged bearer
+  tokens before they reach a route handler. Without it the middleware still
+  enforces token expiry and every route still verifies the token against
+  Supabase Auth.
 - Stripe secret and webhook signing secret.
 - OpenRouter, Replicate, Inngest, Upstash, and a complete R2 or S3 credential
   set.

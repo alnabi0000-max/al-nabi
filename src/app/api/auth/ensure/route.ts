@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     const mode = getAuthMode();
     if (mode === "supabase") {
       const existing = await ensureRequestLedgerUser({
+        request: req,
         allowGuest: false,
       });
       if (!existing) {
@@ -37,17 +38,23 @@ export async function POST(req: NextRequest) {
           { status: 401 }
         );
       }
-      return NextResponse.json({
-        ok: true,
-        mode,
-        authenticated: true,
-        guest: false,
-        id: existing.user.id,
-        email: existing.user.email,
-        coins: existing.user.coins,
-        referralCode: existing.user.referralCode,
-        status: existing.user.status,
-      });
+      return NextResponse.json(
+        {
+          ok: true,
+          mode,
+          authenticated: true,
+          guest: false,
+          source: existing.source,
+          id: existing.user.id,
+          email: existing.user.email,
+          coins: existing.user.coins,
+          referralCode: existing.user.referralCode,
+          status: existing.user.status,
+          role: existing.user.role,
+          authProvider: existing.user.authProvider,
+        },
+        { headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     const ensured = await ensureRequestLedgerUser({

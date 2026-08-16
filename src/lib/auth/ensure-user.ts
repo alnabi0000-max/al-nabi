@@ -1,11 +1,15 @@
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { DEMO_STARTING_CREDITS } from "@/lib/credits";
+import type { AuthProvider } from "@prisma/client";
 
 export interface AuthIdentity {
   id: string; // Supabase auth.users UUID
   email: string;
   name?: string | null;
+  authProvider?: AuthProvider;
+  /** Skip the `lastLoginAt` write for background syncs that are not sign-ins. */
+  touchLogin?: boolean;
 }
 
 /**
@@ -13,20 +17,27 @@ export interface AuthIdentity {
  * Birinchi login: SIGNUP_GRANT + CoinLedger yozuvi.
  */
 export async function ensurePrismaUser(identity: AuthIdentity) {
+  const email = identity.email.toLowerCase();
+  const provider = identity.authProvider;
+  const touchLogin = identity.touchLogin !== false;
+
   const existing = await prisma.user.findUnique({
     where: { id: identity.id },
   });
+
   if (existing) {
-    if (existing.email !== identity.email.toLowerCase()) {
-      return prisma.user.update({
-        where: { id: identity.id },
-        data: {
-          email: identity.email.toLowerCase(),
-          name: identity.name ?? existing.name,
-        },
-      });
-    }
-    return existing;
+    const emailChanged = existing.email !== email;
+    const providerChanged = Boolean(provider) && existing.authProvider !== provider;
+    if (!emailChanged && !providerChanged && !touchLogin) return existing;
+
+    return prisma.user.update({
+      where: { id: identity.id },
+      data: {
+        ...(emailChanged ? { email, name: identity.name ?? existing.name } : {}),
+        ...(providerChanged ? { authProvider: provider } : {}),
+        ...(touchLogin ? { lastLoginAt: new Date() } : {}),
+      },
+    });
   }
 
   const referralCode =
@@ -37,10 +48,13 @@ export async function ensurePrismaUser(identity: AuthIdentity) {
     const user = await tx.user.create({
       data: {
         id: identity.id,
-        email: identity.email.toLowerCase(),
+        email,
         name: identity.name ?? null,
         coins: grant,
         plan: "FREE",
+        role: "USER",
+        authProvider: provider ?? "MAGIC_LINK",
+        lastLoginAt: touchLogin ? new Date() : null,
         referralCode,
         alnabiyKey: "sb_" + randomBytes(12).toString("hex"),
       },

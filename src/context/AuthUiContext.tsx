@@ -8,22 +8,27 @@ import React, {
   useState,
 } from "react";
 
+/**
+ * `quick` — one-click social + magic link
+ * `code`  — passwordless 6-digit email code
+ * `reset` — password recovery
+ */
+export type AuthTab = "quick" | "code" | "reset";
+
 type AuthUi = {
   open: boolean;
-  openAuth: (tab?: "login" | "magic" | "reset") => void;
+  openAuth: (tab?: AuthTab) => void;
   closeAuth: () => void;
-  initialTab: "login" | "magic" | "reset";
+  initialTab: AuthTab;
 };
 
 const Ctx = createContext<AuthUi | null>(null);
 
 export function AuthUiProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-  const [initialTab, setInitialTab] = useState<"login" | "magic" | "reset">(
-    "login"
-  );
+  const [initialTab, setInitialTab] = useState<AuthTab>("quick");
 
-  const openAuth = useCallback((tab: "login" | "magic" | "reset" = "login") => {
+  const openAuth = useCallback((tab: AuthTab = "quick") => {
     setInitialTab(tab);
     setOpen(true);
   }, []);

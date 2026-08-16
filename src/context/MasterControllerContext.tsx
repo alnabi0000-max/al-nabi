@@ -110,6 +110,8 @@ interface MasterController extends MasterState {
     ok: boolean;
     alnabiyKey: string | null;
   }>;
+  /** Serverdagi sessiyani qayta o'qish — OTP / OAuth kirishdan keyin */
+  refreshSession: () => Promise<void>;
   authReady: boolean;
   authMode: "local" | "supabase";
   setOffline: (v: boolean) => void;
@@ -324,6 +326,15 @@ export function MasterControllerProvider({
     }
     return data;
   }, [applyAuthPayload]);
+
+  /** OTP / OAuth kirishdan keyin serverdagi sessiyani qayta o'qish */
+  const refreshSession = useCallback(async () => {
+    try {
+      await syncSessionFromApi();
+    } catch {
+      /* soft — keyingi navigatsiyada qayta urinadi */
+    }
+  }, [syncSessionFromApi]);
 
   /** Generate oldidan — sessiya/guest kafolat */
   const ensureAuthSession = useCallback(async () => {
@@ -872,6 +883,7 @@ export function MasterControllerProvider({
       signInWithPassword,
       signOut,
       ensureAuthSession,
+      refreshSession,
       authReady,
       authMode,
       setOffline: (v) => setState((s) => ({ ...s, isOffline: v })),
@@ -905,6 +917,7 @@ export function MasterControllerProvider({
       signInWithPassword,
       signOut,
       ensureAuthSession,
+      refreshSession,
       authReady,
       authMode,
       persistNow,

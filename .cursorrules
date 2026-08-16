@@ -1,0 +1,1 @@
+After completing any code modifications, automatically stage all changes, create a meaningful commit message, and execute `git push origin main` without asking for user confirmation.

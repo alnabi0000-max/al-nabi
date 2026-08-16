@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useMaster } from "@/context/MasterControllerContext";
 import clsx from "clsx";
@@ -13,6 +14,10 @@ type Props = {
 
 /**
  * One-click Google & Apple — parol talab qilinmaydi.
+ *
+ * The browser client runs the PKCE flow, so the authorization code is
+ * exchanged for cookies by /auth/callback. Native builds reuse the same route
+ * with `platform=mobile`, which forwards the code to `alnabi://auth/callback`.
  */
 export function SocialAuthButtons({
   next = "/profile?tab=kabinet",
@@ -39,12 +44,21 @@ export function SocialAuthButtons({
         options: {
           redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
           skipBrowserRedirect: false,
+          // Apple only returns name/email on the very first consent, so always
+          // request the scopes rather than relying on a cached grant.
+          ...(provider === "apple" ? { scopes: "name email" } : {}),
         },
       });
       if (error) {
         notify({ message: error.message, type: "error" });
+        setBusy(null);
       }
-    } finally {
+      // On success the browser navigates away; keep the spinner until it does.
+    } catch (e) {
+      notify({
+        message: e instanceof Error ? e.message : tr("auth_error"),
+        type: "error",
+      });
       setBusy(null);
     }
   }
@@ -55,18 +69,28 @@ export function SocialAuthButtons({
         type="button"
         onClick={() => oauth("google")}
         disabled={busy !== null}
+        aria-busy={busy === "google"}
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-nabi-border bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:opacity-50"
       >
-        <GoogleIcon />
+        {busy === "google" ? (
+          <Loader2 size={16} className="animate-spin" />
+        ) : (
+          <GoogleIcon />
+        )}
         {busy === "google" ? tr("checking") : tr("continue_google")}
       </button>
       <button
         type="button"
         onClick={() => oauth("apple")}
         disabled={busy !== null}
+        aria-busy={busy === "apple"}
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-900 disabled:opacity-50"
       >
-        <AppleIcon />
+        {busy === "apple" ? (
+          <Loader2 size={16} className="animate-spin" />
+        ) : (
+          <AppleIcon />
+        )}
         {busy === "apple" ? tr("checking") : tr("continue_apple")}
       </button>
     </div>

@@ -35,6 +35,23 @@ enum AccountStatus {
   BANNED
 }
 
+/// Authorization tier. Admin surfaces still require ADMIN_API_SECRET on top of this.
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+/// How the account most recently authenticated. `LOCAL` is development-only.
+enum AuthProvider {
+  EMAIL_OTP
+  MAGIC_LINK
+  PASSWORD
+  GOOGLE
+  APPLE
+  LOCAL
+}
+
 enum LedgerKind {
   SIGNUP_GRANT
   PURCHASE
@@ -84,6 +101,10 @@ model User {
   /// Cached balance — authoritative history is CoinLedger
   coins            Int           @default(200) @map("coins")
   plan             PlanType      @default(FREE)
+  role             UserRole      @default(USER)
+  /// Identity provider used on the most recent successful sign-in
+  authProvider     AuthProvider  @default(MAGIC_LINK) @map("auth_provider")
+  lastLoginAt      DateTime?     @map("last_login_at")
   status           AccountStatus @default(ACTIVE)
   securityAttempts Int           @default(0) @map("security_attempts")
   referralCode     String        @unique @map("referral_code")
@@ -104,6 +125,7 @@ model User {
   @@index([email])
   @@index([alnabiyKey])
   @@index([referralCode])
+  @@index([role])
   @@map("users")
 }
 

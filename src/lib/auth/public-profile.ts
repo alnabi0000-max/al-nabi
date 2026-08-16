@@ -8,6 +8,9 @@ export type SafePublicProfile = {
   coins: number;
   referralCode: string;
   status: string;
+  role: string;
+  authProvider: string;
+  createdAt: string | null;
 };
 
 export function toSafePublicProfile(user: {
@@ -16,12 +19,23 @@ export function toSafePublicProfile(user: {
   coins: number;
   referralCode: string;
   status: string;
+  role?: string | null;
+  authProvider?: string | null;
+  createdAt?: Date | string | null;
 }): SafePublicProfile {
+  const createdAt =
+    user.createdAt instanceof Date
+      ? user.createdAt.toISOString()
+      : user.createdAt || null;
+
   return {
     id: user.id,
     email: user.email,
     coins: user.coins,
     referralCode: user.referralCode,
     status: user.status,
+    role: user.role || "USER",
+    authProvider: user.authProvider || "MAGIC_LINK",
+    createdAt,
   };
 }

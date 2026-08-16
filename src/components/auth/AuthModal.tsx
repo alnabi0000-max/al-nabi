@@ -1,12 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { X, Mail, KeyRound, Sparkles } from "lucide-react";
-import { useAuthUi } from "@/context/AuthUiContext";
+import {
+  ArrowLeft,
+  KeyRound,
+  Loader2,
+  Mail,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
+import { useAuthUi, type AuthTab } from "@/context/AuthUiContext";
 import { useMaster } from "@/context/MasterControllerContext";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
+import { OtpCodeInput } from "@/components/auth/OtpCodeInput";
 import clsx from "clsx";
 
 const SocialAuthButtons = dynamic(
@@ -17,107 +26,160 @@ const SocialAuthButtons = dynamic(
   { ssr: false }
 );
 
-type Tab = "login" | "magic" | "reset";
+const OTP_LENGTH = 6;
+const RESEND_COOLDOWN_SEC = 45;
+
+type CodeStage = "email" | "code";
 
 /**
- * In-app auth: Social + password + Magic Link + password recovery.
+ * Al-Nabi auth: one-click social, magic link, and a passwordless 6-digit email
+ * code. Password sign-in stays available behind the quick tab for existing
+ * accounts.
  */
 export function AuthModal() {
   const { open, closeAuth, initialTab } = useAuthUi();
-  const { tr, signInWithPassword, notify } = useMaster();
-  const [tab, setTab] = useState<Tab>("login");
+  const { tr, signInWithPassword, refreshSession, notify } = useMaster();
+
+  const [tab, setTab] = useState<AuthTab>("quick");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [codeStage, setCodeStage] = useState<CodeStage>("email");
+  const [code, setCode] = useState("");
+  const [pending, setPending] = useState<null | string>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+
   const panelRef = useRef<HTMLDivElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  const resetFeedback = useCallback(() => {
+    setMsg(null);
+    setErr(null);
+  }, []);
 
   useEffect(() => {
-    if (open) {
-      setTab(initialTab);
-      setMsg(null);
-      setErr(null);
-    }
-  }, [open, initialTab]);
+    if (!open) return;
+    setTab(initialTab);
+    setCodeStage("email");
+    setCode("");
+    setShowPassword(false);
+    setPending(null);
+    resetFeedback();
+  }, [open, initialTab, resetFeedback]);
 
   useDialogFocus(panelRef, open, closeAuth);
 
-  if (!open) return null;
+  // Runs after useDialogFocus so the email field wins over the close button.
+  useEffect(() => {
+    if (!open) return;
+    const id = window.setTimeout(() => emailRef.current?.focus(), 30);
+    return () => window.clearTimeout(id);
+  }, [open, tab]);
 
-  async function onLogin(register: boolean) {
-    setLoading(true);
-    setErr(null);
-    setMsg(null);
-    try {
-      const res = await signInWithPassword(email, password, register);
-      if (res.ok) {
-        setMsg(res.message);
-        notify({ message: res.message, type: "success" });
-        window.setTimeout(() => closeAuth(), 600);
-      } else {
-        setErr(res.message);
-      }
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Login failed");
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = window.setInterval(
+      () => setCooldown((s) => Math.max(0, s - 1)),
+      1000
+    );
+    return () => window.clearInterval(id);
+  }, [cooldown]);
 
-  async function onMagic() {
-    setLoading(true);
-    setErr(null);
-    setMsg(null);
-    try {
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+
+  const post = useCallback(
+    async (url: string, body: Record<string, unknown>) => {
       const res = await fetchWithTimeout(
-        "/api/auth/magic-link",
+        url,
         {
           method: "POST",
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, next: "/profile?tab=kabinet" }),
+          body: JSON.stringify(body),
         },
         20_000
       );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || tr("auth_error"));
+      const data = (await res.json()) as Record<string, unknown>;
+      if (!res.ok || data.ok === false) {
+        throw new Error((data.error as string) || tr("auth_error"));
+      }
+      return data;
+    },
+    [tr]
+  );
+
+  async function run(key: string, fn: () => Promise<void>) {
+    setPending(key);
+    resetFeedback();
+    try {
+      await fn();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : tr("auth_error"));
+    } finally {
+      setPending(null);
+    }
+  }
+
+  const onPasswordLogin = (register: boolean) =>
+    run(register ? "register" : "login", async () => {
+      const res = await signInWithPassword(email.trim(), password, register);
+      if (!res.ok) throw new Error(res.message);
+      setMsg(res.message);
+      notify({ message: res.message, type: "success" });
+      window.setTimeout(() => closeAuth(), 600);
+    });
+
+  const onMagicLink = () =>
+    run("magic", async () => {
+      await post("/api/auth/magic-link", {
+        email: email.trim(),
+        next: "/profile?tab=kabinet",
+      });
       setMsg(tr("magic_link_sent"));
       notify({ message: tr("magic_link_sent"), type: "success" });
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : tr("auth_error"));
-    } finally {
-      setLoading(false);
-    }
-  }
+    });
 
-  async function onReset() {
-    setLoading(true);
-    setErr(null);
-    setMsg(null);
-    try {
-      const res = await fetchWithTimeout(
-        "/api/auth/reset-password",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        },
-        20_000
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || tr("auth_error"));
+  const onSendCode = () =>
+    run("send-code", async () => {
+      await post("/api/auth/otp/send", { email: email.trim() });
+      setCodeStage("code");
+      setCode("");
+      setCooldown(RESEND_COOLDOWN_SEC);
+      setMsg(tr("otp_sent", { email: email.trim() }));
+    });
+
+  const onVerifyCode = useCallback(
+    (value: string) =>
+      run("verify-code", async () => {
+        await post("/api/auth/otp/verify", {
+          email: email.trim(),
+          token: value,
+          platform: "web",
+        });
+        await refreshSession();
+        notify({ message: tr("otp_verified"), type: "success" });
+        closeAuth();
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run/post are stable for this dialog's lifecycle
+    [email, post, refreshSession, notify, tr, closeAuth]
+  );
+
+  const onReset = () =>
+    run("reset", async () => {
+      await post("/api/auth/reset-password", { email: email.trim() });
       setMsg(tr("reset_link_sent"));
       notify({ message: tr("reset_link_sent"), type: "success" });
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : tr("auth_error"));
-    } finally {
-      setLoading(false);
-    }
-  }
+    });
+
+  if (!open) return null;
+
+  const busy = pending !== null;
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/80 p-4 backdrop-blur-md sm:items-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) closeAuth();
       }}
@@ -128,147 +190,327 @@ export function AuthModal() {
         aria-modal="true"
         aria-label={tr("auth_modal_title")}
         tabIndex={-1}
-        className="w-full max-w-md rounded-2xl border border-nabi-border bg-nabi-surface p-5 shadow-2xl outline-none"
+        className="nabi-glass relative w-full max-w-md overflow-hidden rounded-3xl p-6 shadow-neon outline-none backdrop-blur-2xl"
       >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-nabi-neon">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 left-1/2 h-48 w-72 -translate-x-1/2 rounded-full bg-cinema-glow opacity-40 blur-3xl"
+        />
+
+        <div className="relative mb-5 flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-nabi-neon">
               Al-Nabi
             </p>
-            <h2 className="text-lg font-bold">{tr("auth_modal_title")}</h2>
-            <p className="text-xs text-nabi-muted">{tr("auth_modal_subtitle")}</p>
+            <h2 className="text-xl font-bold leading-tight">
+              {tr("auth_modal_title")}
+            </h2>
+            <p className="text-xs text-nabi-muted">
+              {tr("auth_modal_subtitle")}
+            </p>
           </div>
           <button
             type="button"
             onClick={closeAuth}
-            className="rounded-lg p-1.5 text-nabi-muted hover:bg-nabi-elevated hover:text-nabi-ink"
+            className="rounded-xl p-2 text-nabi-muted transition hover:bg-white/5 hover:text-nabi-ink"
             aria-label={tr("close")}
           >
             <X size={18} />
           </button>
         </div>
 
-        <SocialAuthButtons className="mb-4" />
-
-        <div className="relative mb-4 text-center text-[10px] uppercase tracking-widest text-nabi-muted">
-          <span className="relative z-10 bg-nabi-surface px-2">{tr("auth_or")}</span>
-          <div className="absolute inset-x-0 top-1/2 h-px bg-nabi-border" />
-        </div>
-
-        <div className="mb-3 flex gap-1 rounded-xl bg-nabi-input p-1">
-          {(
-            [
-              ["login", tr("login"), KeyRound],
-              ["magic", tr("magic_link"), Sparkles],
-              ["reset", tr("forgot_password"), Mail],
-            ] as const
-          ).map(([id, label, Icon]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={clsx(
-                "flex flex-1 items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] transition",
-                tab === id
-                  ? "bg-cyan-500/20 text-nabi-neon"
-                  : "text-nabi-muted hover:text-nabi-ink"
-              )}
-            >
-              <Icon size={12} />
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-3">
-          <label htmlFor="auth-modal-email" className="sr-only">
-            {tr("email_placeholder")}
-          </label>
-          <input
-            id="auth-modal-email"
-            className="nabi-input"
-            type="email"
-            placeholder={tr("email_placeholder")}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-          />
-
-          {tab === "login" && (
-            <>
-              <label htmlFor="auth-modal-password" className="sr-only">
-                {tr("password_placeholder")}
-              </label>
-              <input
-                id="auth-modal-password"
-                className="nabi-input"
-                type="password"
-                placeholder={tr("password_placeholder")}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => onLogin(false)}
-                  className="nabi-btn-primary"
-                >
-                  {loading ? tr("checking") : tr("login")}
-                </button>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() => onLogin(true)}
-                  className="nabi-btn-ghost"
-                >
-                  {tr("register")}
-                </button>
-              </div>
+        {tab === "reset" ? (
+          <button
+            type="button"
+            onClick={() => {
+              setTab("quick");
+              resetFeedback();
+            }}
+            className="relative mb-4 inline-flex items-center gap-1.5 text-[11px] text-nabi-muted transition hover:text-nabi-ink"
+          >
+            <ArrowLeft size={13} />
+            {tr("auth_back")}
+          </button>
+        ) : (
+          <div
+            role="tablist"
+            aria-label={tr("auth_modal_title")}
+            className="relative mb-5 grid grid-cols-2 gap-1 rounded-2xl border border-nabi-border bg-black/25 p-1"
+          >
+            {(
+              [
+                ["quick", tr("auth_tab_quick"), Sparkles],
+                ["code", tr("auth_tab_code"), ShieldCheck],
+              ] as const
+            ).map(([id, label, Icon]) => (
               <button
+                key={id}
+                role="tab"
                 type="button"
-                className="text-[11px] text-nabi-neon underline"
-                onClick={() => setTab("reset")}
+                aria-selected={tab === id}
+                onClick={() => {
+                  setTab(id);
+                  resetFeedback();
+                }}
+                className={clsx(
+                  "flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition",
+                  tab === id
+                    ? "bg-cyan-500/15 text-nabi-neon shadow-glass ring-1 ring-cyan-400/30"
+                    : "text-nabi-muted hover:bg-white/5 hover:text-nabi-ink"
+                )}
               >
-                {tr("forgot_password")}?
+                <Icon size={13} />
+                {label}
               </button>
+            ))}
+          </div>
+        )}
+
+        <div className="relative space-y-4">
+          {tab === "quick" && (
+            <>
+              <SocialAuthButtons />
+              <div className="relative text-center text-[10px] uppercase tracking-[0.2em] text-nabi-muted">
+                <span className="relative z-10 bg-nabi-surface px-3">
+                  {tr("auth_or")}
+                </span>
+                <div className="absolute inset-x-0 top-1/2 h-px bg-nabi-border" />
+              </div>
             </>
           )}
 
-          {tab === "magic" && (
+          {(tab !== "code" || codeStage === "email") && (
+            <div className="space-y-1.5">
+              <label
+                htmlFor="auth-email"
+                className="text-[11px] font-medium text-nabi-muted"
+              >
+                {tr("email_placeholder")}
+              </label>
+              <input
+                ref={emailRef}
+                id="auth-email"
+                className="nabi-input"
+                type="email"
+                inputMode="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  resetFeedback();
+                }}
+                autoComplete="email"
+                disabled={busy}
+              />
+            </div>
+          )}
+
+          {tab === "quick" && (
             <>
-              <p className="text-[11px] text-nabi-muted">{tr("magic_link_hint")}</p>
               <button
                 type="button"
-                disabled={loading || !email}
-                onClick={onMagic}
-                className="nabi-btn-primary w-full"
+                disabled={busy || !emailValid}
+                onClick={onMagicLink}
+                className="nabi-btn-primary flex w-full items-center justify-center gap-2"
               >
-                {loading ? tr("checking") : tr("send_magic_link")}
+                {pending === "magic" ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    {tr("checking")}
+                  </>
+                ) : (
+                  <>
+                    <Mail size={15} />
+                    {tr("send_magic_link")}
+                  </>
+                )}
+              </button>
+              <p className="text-[11px] leading-relaxed text-nabi-muted">
+                {tr("magic_link_hint")}
+              </p>
+
+              {showPassword ? (
+                <div className="space-y-3 rounded-2xl border border-nabi-border bg-black/20 p-3">
+                  <label htmlFor="auth-password" className="sr-only">
+                    {tr("password_placeholder")}
+                  </label>
+                  <input
+                    id="auth-password"
+                    className="nabi-input"
+                    type="password"
+                    placeholder={tr("password_placeholder")}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    disabled={busy}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={busy || !emailValid || password.length < 6}
+                      onClick={() => onPasswordLogin(false)}
+                      className="nabi-btn-primary"
+                    >
+                      {pending === "login" ? tr("checking") : tr("login")}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy || !emailValid || password.length < 6}
+                      onClick={() => onPasswordLogin(true)}
+                      className="nabi-btn-ghost"
+                    >
+                      {pending === "register" ? tr("checking") : tr("register")}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTab("reset");
+                      resetFeedback();
+                    }}
+                    className="text-[11px] text-nabi-neon underline underline-offset-2"
+                  >
+                    {tr("forgot_password")}?
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(true)}
+                  className="inline-flex items-center gap-1.5 text-[11px] text-nabi-muted transition hover:text-nabi-ink"
+                >
+                  <KeyRound size={12} />
+                  {tr("auth_use_password")}
+                </button>
+              )}
+            </>
+          )}
+
+          {tab === "code" && codeStage === "email" && (
+            <>
+              <button
+                type="button"
+                disabled={busy || !emailValid}
+                onClick={onSendCode}
+                className="nabi-btn-primary flex w-full items-center justify-center gap-2"
+              >
+                {pending === "send-code" ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    {tr("checking")}
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck size={15} />
+                    {tr("otp_send")}
+                  </>
+                )}
+              </button>
+              <p className="text-[11px] leading-relaxed text-nabi-muted">
+                {tr("otp_hint")}
+              </p>
+            </>
+          )}
+
+          {tab === "code" && codeStage === "code" && (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] text-nabi-muted">
+                  {tr("otp_enter_for", { email: email.trim() })}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCodeStage("email");
+                    setCode("");
+                    resetFeedback();
+                  }}
+                  className="shrink-0 text-[11px] text-nabi-neon underline underline-offset-2"
+                >
+                  {tr("auth_change_email")}
+                </button>
+              </div>
+
+              <OtpCodeInput
+                length={OTP_LENGTH}
+                value={code}
+                disabled={busy}
+                onChange={(next) => {
+                  setCode(next);
+                  if (err) setErr(null);
+                }}
+                onComplete={onVerifyCode}
+                label={tr("otp_input_label")}
+              />
+
+              <button
+                type="button"
+                disabled={busy || code.length !== OTP_LENGTH}
+                onClick={() => onVerifyCode(code)}
+                className="nabi-btn-primary flex w-full items-center justify-center gap-2"
+              >
+                {pending === "verify-code" ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    {tr("checking")}
+                  </>
+                ) : (
+                  tr("otp_verify")
+                )}
+              </button>
+
+              <button
+                type="button"
+                disabled={busy || cooldown > 0}
+                onClick={onSendCode}
+                className="w-full text-[11px] text-nabi-muted transition enabled:hover:text-nabi-ink disabled:opacity-60"
+              >
+                {cooldown > 0
+                  ? tr("otp_resend_in", { seconds: cooldown })
+                  : tr("otp_resend")}
               </button>
             </>
           )}
 
           {tab === "reset" && (
             <>
-              <p className="text-[11px] text-nabi-muted">{tr("reset_hint")}</p>
               <button
                 type="button"
-                disabled={loading || !email}
+                disabled={busy || !emailValid}
                 onClick={onReset}
-                className="nabi-btn-primary w-full"
+                className="nabi-btn-primary flex w-full items-center justify-center gap-2"
               >
-                {loading ? tr("checking") : tr("send_reset_link")}
+                {pending === "reset" ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    {tr("checking")}
+                  </>
+                ) : (
+                  tr("send_reset_link")
+                )}
               </button>
+              <p className="text-[11px] leading-relaxed text-nabi-muted">
+                {tr("reset_hint")}
+              </p>
             </>
           )}
 
-          {(msg || err) && (
-            <p className={clsx("text-xs", err ? "text-rose-400" : "text-nabi-neon")}>
-              {err || msg}
-            </p>
-          )}
+          <div aria-live="polite" className="min-h-[16px]">
+            {(msg || err) && (
+              <p
+                className={clsx(
+                  "text-xs leading-relaxed",
+                  err ? "text-rose-400" : "text-nabi-neon"
+                )}
+              >
+                {err || msg}
+              </p>
+            )}
+          </div>
+
+          <p className="border-t border-nabi-border pt-3 text-[10px] leading-relaxed text-nabi-muted">
+            {tr("auth_privacy_note")}
+          </p>
         </div>
       </div>
     </div>

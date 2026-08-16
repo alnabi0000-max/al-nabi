@@ -5,12 +5,18 @@ import { isSupabaseConfigured } from "@/lib/auth/config";
 import { rateLimitSensitive, clientIp, rateLimitHeaders } from "@/lib/security/rate-limit";
 
 const schema = z.object({
-  email: z.string().email(),
+  email: z.string().email().max(254),
   next: z.string().optional(),
+  /** `mobile` sends the user back through the app's deep link. */
+  platform: z.enum(["web", "mobile"]).default("web"),
 });
 
 /**
  * Parolsiz Magic Link — emailga bir martalik havola.
+ *
+ * Web links land on `/auth/callback`, which exchanges the code for HTTP-only
+ * cookies. Mobile links land on the same route with `platform=mobile`, which
+ * forwards the code to `alnabi://auth/callback` for the app to exchange.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -63,10 +69,16 @@ export async function POST(req: NextRequest) {
       ? rawNext
       : "/profile?tab=kabinet";
 
+    const callback = new URL(`${origin}/auth/callback`);
+    callback.searchParams.set("next", next);
+    if (body.platform === "mobile") {
+      callback.searchParams.set("platform", "mobile");
+    }
+
     const { error } = await supabase.auth.signInWithOtp({
       email: body.email.toLowerCase(),
       options: {
-        emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        emailRedirectTo: callback.toString(),
         shouldCreateUser: true,
       },
     });
