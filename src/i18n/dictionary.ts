@@ -10,6 +10,7 @@ export type Dictionary = {
     brand: string;
     producerChat: string;
     language: string;
+    theme: string;
     balance: string;
   };
   nav: {
@@ -28,6 +29,7 @@ export type Dictionary = {
     balance: string;
     collapse: string;
     expand: string;
+    navigation: string;
   };
   chat: {
     title: string;
@@ -119,6 +121,7 @@ const en: Dictionary = {
     brand: "Al-Nabi",
     producerChat: "Chat",
     language: "Language",
+    theme: "Theme",
     balance: "Balance",
   },
   nav: {
@@ -137,6 +140,7 @@ const en: Dictionary = {
     balance: "Balance",
     collapse: "Collapse",
     expand: "Expand",
+    navigation: "Primary navigation",
   },
   chat: {
     title: "Producer Chat",
@@ -169,7 +173,7 @@ const en: Dictionary = {
     bgmManual: "I choose",
     bgmOff: "No music",
     bgmAiHint: "Matches mood from your brief (calm / epic / suspense / upbeat).",
-    bgmEmpty: "No tracks yet — add files under public/music/",
+    bgmEmpty: "Background music is unavailable for this project.",
     bgmLoading: "Loading tracks…",
     currency: "NC",
     output: "Output",
@@ -232,6 +236,7 @@ const uz: Dictionary = {
     brand: "Al-Nabi",
     producerChat: "Chat",
     language: "Til",
+    theme: "Mavzu",
     balance: "Balans",
   },
   nav: {
@@ -250,6 +255,7 @@ const uz: Dictionary = {
     balance: "Balans",
     collapse: "Yig‘ish",
     expand: "Yoyish",
+    navigation: "Asosiy navigatsiya",
   },
   chat: {
     title: "Producer Chat",
@@ -282,7 +288,7 @@ const uz: Dictionary = {
     bgmManual: "O'zim tanlayman",
     bgmOff: "Musiqasiz",
     bgmAiHint: "Skript kayfiyatiga qarab tanlanadi (tinch / epik / suspense / quvnoq).",
-    bgmEmpty: "Treklar yo'q — public/music/ ga fayl qo'shing",
+    bgmEmpty: "Bu loyiha uchun fon musiqasi hozircha mavjud emas.",
     bgmLoading: "Treklar yuklanmoqda…",
     currency: "NC",
     output: "Natija",
@@ -346,6 +352,7 @@ const ru: Dictionary = {
     brand: "Al-Nabi",
     producerChat: "Чат",
     language: "Язык",
+    theme: "Тема",
     balance: "Баланс",
   },
   nav: {
@@ -364,6 +371,7 @@ const ru: Dictionary = {
     balance: "Баланс",
     collapse: "Свернуть",
     expand: "Развернуть",
+    navigation: "Основная навигация",
   },
   chat: {
     title: "Producer Chat",
@@ -396,7 +404,7 @@ const ru: Dictionary = {
     bgmManual: "Выберу сам",
     bgmOff: "Без музыки",
     bgmAiHint: "По настроению брифа (спокойная / эпик / саспенс / энергичная).",
-    bgmEmpty: "Треков нет — добавьте файлы в public/music/",
+    bgmEmpty: "Фоновая музыка пока недоступна для этого проекта.",
     bgmLoading: "Загрузка треков…",
     currency: "NC",
     output: "Результат",

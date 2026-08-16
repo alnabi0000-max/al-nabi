@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Clapperboard, Languages, User } from "lucide-react";
+import { Clapperboard, User } from "lucide-react";
 import clsx from "clsx";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -12,12 +12,14 @@ export function MobileNav() {
 
   const links = [
     { href: "/", label: t.nav.studio, icon: Clapperboard },
-    { href: "/translator", label: t.nav.translator, icon: Languages },
     { href: "/profile", label: t.nav.cabinet, icon: User },
   ];
 
   return (
-    <nav className="fixed bottom-3 left-3 right-3 z-50 flex w-auto overflow-hidden rounded-2xl border border-nabi-border bg-nabi-bg/95 pb-[env(safe-area-inset-bottom)] md:hidden">
+    <nav
+      aria-label={t.nav.navigation}
+      className="fixed bottom-3 left-3 right-3 z-50 flex w-auto overflow-hidden rounded-2xl border border-nabi-border bg-nabi-bg/95 pb-[env(safe-area-inset-bottom)] md:hidden"
+    >
       {links.map(({ href, label, icon: Icon }) => {
         const active =
           href === "/"
@@ -27,6 +29,7 @@ export function MobileNav() {
           <Link
             key={href}
             href={href}
+            aria-current={active ? "page" : undefined}
             onClick={() => {
               if (navigator.vibrate) navigator.vibrate(12);
             }}

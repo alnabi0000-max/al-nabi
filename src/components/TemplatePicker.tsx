@@ -2,18 +2,16 @@
 
 import { useMemo } from "react";
 import clsx from "clsx";
-import { Play } from "lucide-react";
 import { featuredStudioTemplates } from "@/lib/templates/catalog";
 import { resolveTemplatePreset } from "@/lib/templates/resolve";
 import type { StudioTemplate } from "@/lib/templates/types";
-import { TemplatePreviewMedia } from "@/components/templates/TemplatePreviewMedia";
 
 type Props = {
   selectedId: number | null;
   onSelect: (template: StudioTemplate) => void;
 };
 
-/** Compact featured strip for Studio — full catalog lives in /templates */
+/** Compact, production-ready set of six templates for Studio. */
 export function TemplatePicker({ selectedId, onSelect }: Props) {
   const featured = useMemo(() => featuredStudioTemplates(6), []);
 
@@ -53,16 +51,11 @@ function FeaturedCard({
           : "border-nabi-border bg-nabi-input hover:border-nabi-neon/35"
       )}
     >
-      <div className="relative aspect-video bg-nabi-surface">
-        <TemplatePreviewMedia
-          templateId={template.id}
-          previewVideo={template.preview_video}
-          posterOnly
-          videoClassName="opacity-90"
-        />
-        <span className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center opacity-0 transition group-hover:opacity-100">
-          <Play size={16} className="text-white" fill="currentColor" />
+      <div className="flex aspect-video flex-col justify-between bg-gradient-to-br from-nabi-elevated to-nabi-surface p-3">
+        <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-nabi-muted">
+          {template.category}
         </span>
+        <span className="text-xs font-medium text-nabi-ink">{resolved.aspect}</span>
       </div>
       <div className="px-2 py-1.5">
         <p className="truncate text-xs font-medium text-nabi-ink">

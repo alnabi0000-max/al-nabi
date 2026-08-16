@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useMaster } from "@/context/MasterControllerContext";
 import { useAuthUi } from "@/context/AuthUiContext";
 import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
-import { Copy, KeyRound, LogOut, Share2, Sparkles, UserRound } from "lucide-react";
-import { useIsMounted } from "@/hooks/useIsMounted";
+import { KeyRound, LogOut, Sparkles, UserRound } from "lucide-react";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import { profileHref } from "@/lib/profile-tabs";
 import clsx from "clsx";
@@ -13,13 +12,12 @@ import clsx from "clsx";
 type AuthTab = "password" | "key" | "magic";
 
 /**
- * Profile «Umumiy» — hisob / auth / referral (oldingi /profile kontenti)
+ * Profile «Umumiy» — hisob va auth (oldingi /profile kontenti)
  */
 export function ProfileUmumiyPanel() {
   const {
     email,
     alnabiyKey,
-    referralCode,
     verifyKey,
     coins,
     tr,
@@ -30,7 +28,6 @@ export function ProfileUmumiyPanel() {
     notify,
   } = useMaster();
   const { openAuth } = useAuthUi();
-  const isMounted = useIsMounted();
   const [tab, setTab] = useState<AuthTab>("password");
   const [formEmail, setFormEmail] = useState("");
   const [formPassword, setFormPassword] = useState("");
@@ -53,10 +50,6 @@ export function ProfileUmumiyPanel() {
     if (q.get("auth") === "error") setErr(tr("auth_error"));
     if (q.get("auth") === "local") setMsg(tr("auth_local_hint"));
   }, [tr]);
-
-  const referralLink = isMounted
-    ? `${window.location.origin}${profileHref("dokon", { ref: referralCode })}`
-    : `https://alnabiy.app${profileHref("dokon", { ref: referralCode })}`;
 
   async function onPasswordAuth(register: boolean) {
     setLoading(true);
@@ -301,28 +294,6 @@ export function ProfileUmumiyPanel() {
         </p>
       )}
 
-      {signedIn && (
-        <div className="nabi-card space-y-3">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-nabi-muted">
-            <Share2 size={16} /> {tr("referral")}
-          </h3>
-          <p className="text-xs text-nabi-muted">{tr("referral_desc")}</p>
-          <div className="flex gap-2">
-            <input
-              className="nabi-input !text-xs"
-              readOnly
-              value={referralLink}
-            />
-            <button
-              type="button"
-              className="nabi-btn-ghost shrink-0"
-              onClick={() => navigator.clipboard?.writeText(referralLink)}
-            >
-              <Copy size={16} />
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

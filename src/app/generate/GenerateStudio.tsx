@@ -116,7 +116,6 @@ export default function GenerateStudio() {
     applyServerCharge,
     setShowInsufficientModal,
     handleViolation,
-    identityLocked,
     isOffline,
     lowDataMode,
     notify,
@@ -196,7 +195,7 @@ export default function GenerateStudio() {
       notify({
         message: transfer.title,
         type: "success",
-        title: "Template yuklandi",
+        title: tr("template_loaded"),
       });
       return;
     }
@@ -220,7 +219,7 @@ export default function GenerateStudio() {
         })
         .catch(() => {
           notify({
-            message: "Template yuklanmadi — qayta urinib ko'ring",
+            message: tr("template_load_failed"),
             type: "error",
           });
         });
@@ -465,7 +464,7 @@ export default function GenerateStudio() {
     notify({
       message: `${template.title} · ${resolved.publicModelLabel}`,
       type: "success",
-      title: "Template",
+      title: tr("templates"),
     });
   }
 
@@ -519,7 +518,6 @@ export default function GenerateStudio() {
             quality,
             frameRate,
             autoEnhance: false,
-            identityLocked,
             emotionMode,
             locale,
             mediaKind: mediaKind === "image" ? "image" : "video",

@@ -38,7 +38,7 @@ const NcReceiptHistory = dynamic(
  */
 export function ProfileKabinetPanel() {
   const { t } = useTranslations();
-  const { coins, email, alnabiyKey, referralCode } = useMaster();
+  const { coins, email, alnabiyKey } = useMaster();
   const mounted = useIsMounted();
   const [stats, setStats] = useState({
     totalSpent: 0,
@@ -127,10 +127,6 @@ export function ProfileKabinetPanel() {
                   ? `${alnabiyKey.slice(0, 8)}…${alnabiyKey.slice(-4)}`
                   : t("dashboard_no_key")}
               </dd>
-            </div>
-            <div>
-              <dt className="text-[11px] text-nabi-muted">{t("referral")}</dt>
-              <dd className="truncate font-mono text-xs">{referralCode}</dd>
             </div>
             <div className="flex items-end gap-2">
               <Link
