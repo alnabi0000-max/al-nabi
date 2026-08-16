@@ -1,15 +1,24 @@
-import { inngest, GENERATION_EVENT } from "@/lib/inngest/client";
+import {
+  assertInngestConfigured,
+  GENERATION_EVENT,
+  inngest,
+  isInngestConfigured,
+  isProductionRuntime,
+} from "@/lib/inngest/client";
 
 /**
- * Inngest ga yuborish; kalit bo‘lmasa Next.js `after()` da lokal ishlash.
+ * Inngest ga yuborish. Development only falls back to Next.js `after()`;
+ * production must dispatch to Inngest so work is not lost with the request.
  * processGenerationJob dinamik import — webpack/module crash dan himoya.
  */
 export async function enqueueGeneration(generationId: string): Promise<{
   mode: "inngest" | "local";
 }> {
-  const hasKey = Boolean(process.env.INNGEST_EVENT_KEY?.trim());
+  if (isProductionRuntime()) {
+    assertInngestConfigured();
+  }
 
-  if (hasKey) {
+  if (isInngestConfigured()) {
     try {
       await inngest.send({
         name: GENERATION_EVENT,
@@ -17,7 +26,12 @@ export async function enqueueGeneration(generationId: string): Promise<{
       });
       return { mode: "inngest" };
     } catch (e) {
-      console.warn("[Alnabiy] inngest send failed, falling back to local", e);
+      if (isProductionRuntime()) {
+        throw new Error(
+          "Inngest dispatch failed; generation was not started. Please retry."
+        );
+      }
+      console.warn("[Alnabiy] Inngest dispatch failed, using local worker", e);
     }
   }
 

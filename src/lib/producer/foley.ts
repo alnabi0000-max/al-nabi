@@ -4,12 +4,12 @@
 
 import fs from "fs/promises";
 import path from "path";
-import { spawn } from "child_process";
 import {
   getOpenRouterApiKey,
   getWatcherModel,
   openRouterChat,
 } from "@/lib/ai/openrouter";
+import { runFfmpeg } from "@/lib/ffmpeg-worker";
 
 export type FoleyCue = {
   id: string;
@@ -146,29 +146,27 @@ async function generateProceduralFoley(
         ? 400
         : 220;
 
-  await new Promise<void>((resolve) => {
-    const proc = spawn(
-      "ffmpeg",
-      [
-        "-y",
-        "-f",
-        "lavfi",
-        "-i",
-        `sine=frequency=${freq}:duration=${sec}`,
-        "-af",
-        "afade=t=in:st=0:d=0.02,afade=t=out:st=" +
-          Math.max(0.05, sec - 0.08) +
-          `:d=0.08,volume=0.35`,
-        outPath,
-      ],
-      { stdio: ["ignore", "pipe", "pipe"] }
-    );
-    proc.on("error", async () => {
+  try {
+    await runFfmpeg([
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      `sine=frequency=${freq}:duration=${sec}`,
+      "-af",
+      "afade=t=in:st=0:d=0.02,afade=t=out:st=" +
+        Math.max(0.05, sec - 0.08) +
+        `:d=0.08,volume=0.35`,
+      outPath,
+    ]);
+  } catch (error) {
+    if (process.env.NODE_ENV === "production") throw error;
+    try {
       await writeSilenceWav(outPath.replace(/\.mp3$/i, ".wav"), durationMs);
-      resolve();
-    });
-    proc.on("close", () => resolve());
-  });
+    } catch {
+      /* development fallback */
+    }
+  }
 }
 
 /**

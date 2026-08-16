@@ -17,6 +17,15 @@ import {
 } from "@/lib/ledger/atomic";
 import { prisma } from "@/lib/prisma";
 import { recordInterestFromGeneration } from "@/lib/producer/interest-profile";
+import {
+  assertFfmpegAvailable,
+  FfmpegCapabilityError,
+} from "@/lib/ffmpeg-worker";
+import {
+  assertPersistentObjectStorage,
+  ObjectStorageConfigurationError,
+  persistRemoteAsset,
+} from "@/lib/storage/object-storage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -50,6 +59,8 @@ export async function POST(req: NextRequest) {
     if (blocked) return blocked;
 
     const body = schema.parse(await req.json());
+    await assertFfmpegAvailable();
+    assertPersistentObjectStorage();
 
     const ensured = await ensureRequestLedgerUser({
       alnabiyKey: body.alnabiyKey,
@@ -149,11 +160,18 @@ export async function POST(req: NextRequest) {
     }
 
     const dna = (body.visualDna as VisualDna | null) || null;
+    const stored = await persistRemoteAsset({
+      sourceUrl: result.finalPath!,
+      userId: user.id,
+      generationId: generation.id,
+      kind: "video",
+    });
     await prisma.generation.update({
       where: { id: generation.id },
       data: {
         status: "COMPLETED",
-        resultUrl: result.videoUrl,
+        resultUrl: stored.url,
+        r2Key: stored.key,
         style: dna?.artStyle || undefined,
         enhancedPrompt: result.promptUsed || undefined,
       },
@@ -176,7 +194,7 @@ export async function POST(req: NextRequest) {
       success: true,
       ok: true,
       jobId: result.jobId,
-      videoUrl: result.videoUrl,
+      videoUrl: stored.url,
       foleyCount: result.foleyCount,
       bgmMood: result.bgmMood,
       bgmTrackId: result.bgmTrackId,
@@ -199,6 +217,12 @@ export async function POST(req: NextRequest) {
       await prisma.generation
         .update({ where: { id: generationId }, data: { status: "FAILED" } })
         .catch(() => undefined);
+    }
+    if (
+      e instanceof FfmpegCapabilityError ||
+      e instanceof ObjectStorageConfigurationError
+    ) {
+      return apiError(e.message, { status: 503, code: "MEDIA_UNAVAILABLE" });
     }
     const formatted = formatRouteError(e);
     return apiError(sanitizeGenerationError(e, formatted.message), {

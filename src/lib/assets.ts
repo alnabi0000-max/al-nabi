@@ -64,6 +64,7 @@ export async function writeJobOwnerMarker(
   jobId: string,
   alnabiyKey?: string | null
 ) {
+  if (process.env.NODE_ENV === "production") return;
   if (!alnabiyKey) return;
   const dir = path.join(storageRoot(), "jobs", jobId);
   try {
@@ -148,6 +149,7 @@ export async function persistJobAsset(opts: {
   enhancedPrompt?: string | null;
   script?: string | null;
   resultUrl?: string | null;
+  r2Key?: string | null;
   durationSec?: number;
   emotionMode?: string;
   style?: string;
@@ -173,6 +175,7 @@ export async function persistJobAsset(opts: {
         enhancedPrompt: opts.enhancedPrompt || null,
         script: opts.script || null,
         resultUrl: opts.resultUrl || null,
+        r2Key: opts.r2Key || null,
         durationSec: opts.durationSec ?? 8,
         emotionMode: opts.emotionMode || "neutral",
         style: opts.style || null,
@@ -185,6 +188,7 @@ export async function persistJobAsset(opts: {
       update: {
         status: "COMPLETED",
         resultUrl: opts.resultUrl || undefined,
+        r2Key: opts.r2Key || undefined,
         enhancedPrompt: opts.enhancedPrompt || undefined,
         creditsCost: opts.creditsCost,
         deletedAt: null,

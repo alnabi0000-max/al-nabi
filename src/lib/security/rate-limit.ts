@@ -6,18 +6,30 @@ export type RateLimitResult = {
   limit: number;
   remaining: number;
   reset: number;
-  source: "upstash" | "memory";
+  source: "upstash" | "memory" | "unavailable";
 };
 
 type MemoryBucket = { count: number; resetAt: number };
 
 const memory = new Map<string, MemoryBucket>();
 
-function isUpstashConfigured(): boolean {
+const isProductionRuntime = () => process.env.NODE_ENV === "production";
+
+export function isUpstashConfigured(): boolean {
   return Boolean(
     process.env.UPSTASH_REDIS_REST_URL?.trim() &&
       process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
   );
+}
+
+function unavailableLimit(): RateLimitResult {
+  return {
+    success: false,
+    limit: 0,
+    remaining: 0,
+    reset: Date.now() + 60_000,
+    source: "unavailable",
+  };
 }
 
 function memoryLimit(
@@ -90,23 +102,32 @@ export function clientIp(req: {
 
 /**
  * Umumiy API rate limit (middleware).
- * Upstash yo‘q bo‘lsa — process memory fallback.
+ * Development can use process memory; production requires Upstash.
  */
 export async function rateLimitApi(
   identifier: string
 ): Promise<RateLimitResult> {
-  const limiter = getApiLimiter();
-  if (!limiter) {
-    return memoryLimit(`api:${identifier}`, 120, 60_000);
+  try {
+    const limiter = getApiLimiter();
+    if (!limiter) {
+      return isProductionRuntime()
+        ? unavailableLimit()
+        : memoryLimit(`api:${identifier}`, 120, 60_000);
+    }
+    const res = await limiter.limit(identifier);
+    return {
+      success: res.success,
+      limit: res.limit,
+      remaining: res.remaining,
+      reset: res.reset,
+      source: "upstash",
+    };
+  } catch (error) {
+    console.error("[Alnabiy] Upstash API rate limit failed", error);
+    return isProductionRuntime()
+      ? unavailableLimit()
+      : memoryLimit(`api:${identifier}`, 120, 60_000);
   }
-  const res = await limiter.limit(identifier);
-  return {
-    success: res.success,
-    limit: res.limit,
-    remaining: res.remaining,
-    reset: res.reset,
-    source: "upstash",
-  };
 }
 
 /**
@@ -115,18 +136,27 @@ export async function rateLimitApi(
 export async function rateLimitSensitive(
   identifier: string
 ): Promise<RateLimitResult> {
-  const limiter = getGenLimiter();
-  if (!limiter) {
-    return memoryLimit(`gen:${identifier}`, 20, 60_000);
+  try {
+    const limiter = getGenLimiter();
+    if (!limiter) {
+      return isProductionRuntime()
+        ? unavailableLimit()
+        : memoryLimit(`gen:${identifier}`, 20, 60_000);
+    }
+    const res = await limiter.limit(identifier);
+    return {
+      success: res.success,
+      limit: res.limit,
+      remaining: res.remaining,
+      reset: res.reset,
+      source: "upstash",
+    };
+  } catch (error) {
+    console.error("[Alnabiy] Upstash sensitive rate limit failed", error);
+    return isProductionRuntime()
+      ? unavailableLimit()
+      : memoryLimit(`gen:${identifier}`, 20, 60_000);
   }
-  const res = await limiter.limit(identifier);
-  return {
-    success: res.success,
-    limit: res.limit,
-    remaining: res.remaining,
-    reset: res.reset,
-    source: "upstash",
-  };
 }
 
 export function rateLimitHeaders(result: RateLimitResult): HeadersInit {

@@ -4,7 +4,10 @@ import {
   generateVideoClip,
   CLIP_DURATION_SEC,
 } from "@/lib/video-provider";
-import { persistRemoteAsset } from "@/lib/storage/object-storage";
+import {
+  assertPersistentObjectStorage,
+  persistRemoteAsset,
+} from "@/lib/storage/object-storage";
 import type { GenerationType } from "@prisma/client";
 import {
   isImageEngineId,
@@ -25,6 +28,7 @@ import path from "path";
 import { resolveBgmSelection, muxVideoWithAmbientBgm } from "@/lib/bgm";
 import type { BgmMode } from "@/lib/bgm/types";
 import { recordInterestFromGeneration } from "@/lib/producer/interest-profile";
+import { isFfmpegAvailable } from "@/lib/ffmpeg-worker";
 
 function isImageType(type: GenerationType): boolean {
   return type === "IMAGE";
@@ -96,6 +100,12 @@ export async function processGenerationJob(generationId: string): Promise<{
   let creditsCost = generation.creditsCost;
 
   try {
+    /*
+     * Do this before charging or calling a paid provider. Local disk cannot
+     * retain a completed asset across production serverless invocations.
+     */
+    assertPersistentObjectStorage();
+
     await prisma.generation.update({
       where: { id: generationId },
       data: {
@@ -217,8 +227,9 @@ export async function processGenerationJob(generationId: string): Promise<{
       throw new Error("Provider returned empty URL");
     }
 
-    /* Optional ambient BGM under (usually silent) provider video */
-    if (!isImageType(generation.type)) {
+    /* Optional ambient BGM under (usually silent) provider video. It is
+     * disabled unless this worker has passed the FFmpeg capability check. */
+    if (!isImageType(generation.type) && (await isFfmpegAvailable())) {
       const bgm = await resolveBgmSelection({
         mode: (meta.bgmMode as BgmMode | undefined) || "ai",
         trackId: meta.bgmTrackId,
@@ -247,6 +258,10 @@ export async function processGenerationJob(generationId: string): Promise<{
           console.warn("[Alnabiy] BGM mux skipped", bgmErr);
         }
       }
+    } else if (!isImageType(generation.type) && meta.bgmMode !== "off") {
+      console.warn(
+        "[Alnabiy] ambient BGM disabled because FFmpeg is unavailable for this runtime"
+      );
     }
 
     const stored = await persistRemoteAsset({

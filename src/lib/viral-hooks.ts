@@ -5,9 +5,9 @@
 import path from "path";
 import fs from "fs/promises";
 import { randomUUID } from "crypto";
-import { spawn } from "child_process";
 import { t, resolveLocale } from "@/lib/i18n/messages";
 import type { LocaleCode } from "@/lib/i18n/config";
+import { isFfmpegAvailable, runFfmpeg } from "@/lib/ffmpeg-worker";
 
 export interface ViralHookPack {
   frames: {
@@ -24,12 +24,13 @@ export interface ViralHookPack {
   locale: LocaleCode;
 }
 
-function runFfmpeg(args: string[]): Promise<boolean> {
-  return new Promise((resolve) => {
-    const proc = spawn("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
-    proc.on("error", () => resolve(false));
-    proc.on("close", (code) => resolve(code === 0));
-  });
+async function extractFrame(args: string[]): Promise<boolean> {
+  try {
+    await runFfmpeg(args);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function buildClickbait(
@@ -99,13 +100,23 @@ export async function generateViralPack(opts: {
   const outDir = path.join(storage, "viral", jobId);
   let ffmpegOk = false;
   const frames: ViralHookPack["frames"] = [];
+  /*
+   * Extracted frames currently have no object-storage persistence path. Keep
+   * preview frames feature-gated in production instead of returning URLs to
+   * ephemeral local files.
+   */
+  const canExtractFrames =
+    process.env.NODE_ENV !== "production" && (await isFfmpegAvailable());
 
-  if (opts.videoUrl?.startsWith("http") || opts.videoUrl?.startsWith("/")) {
+  if (
+    canExtractFrames &&
+    (opts.videoUrl?.startsWith("http") || opts.videoUrl?.startsWith("/"))
+  ) {
     try {
       await fs.mkdir(outDir, { recursive: true });
       for (let i = 0; i < 3; i++) {
         const out = path.join(outDir, `frame_${i + 1}.jpg`);
-        const ok = await runFfmpeg([
+        const ok = await extractFrame([
           "-y",
           "-ss",
           String(times[i].toFixed(2)),

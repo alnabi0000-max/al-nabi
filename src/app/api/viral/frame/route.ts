@@ -5,6 +5,17 @@ import { guardSensitiveRequest } from "@/lib/security/request-guard";
 
 /** FFmpeg chiqargan kadrni xizmat qilish */
 export async function GET(req: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      {
+        error:
+          "Ephemeral viral preview frames are disabled in production until object storage is configured.",
+        code: "VIRAL_FRAME_STORAGE_DISABLED",
+      },
+      { status: 503 }
+    );
+  }
+
   const blocked = await guardSensitiveRequest(req);
   if (blocked) return blocked;
 
