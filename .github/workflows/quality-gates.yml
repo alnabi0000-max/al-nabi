@@ -1,0 +1,39 @@
+name: Quality gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, types, tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/alnabiy
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/alnabiy
+      # Non-secret build-only values exercise fail-closed auth initialization.
+      AUTH_MODE: supabase
+      AUTH_SECRET: ci-build-auth-secret-that-is-long-enough
+      NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-build-anon-key
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run quality gates
+        run: npm run ci
