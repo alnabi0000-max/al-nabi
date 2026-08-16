@@ -101,7 +101,7 @@ export function InsufficientBalanceHint({
           </button>
         ) : null}
         <Link
-          href="/profile?tab=dokon"
+          href="/pricing"
           className="rounded-lg border border-rose-400/50 bg-rose-600/80 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-500"
         >
           {storeLabel}

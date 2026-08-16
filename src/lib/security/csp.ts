@@ -43,7 +43,7 @@ export function buildContentSecurityPolicy(isProd: boolean): string {
     `connect-src ${connectSrc}`,
     "worker-src 'self' blob:",
     "child-src 'self' blob:",
-    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com",
+    "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://*.stripe.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self' https://checkout.stripe.com",

@@ -7,8 +7,8 @@
 import type { NextRequest } from "next/server";
 import {
   COIN_PACKS,
-  STANDARD_VIDEO_NC,
   isPackPriceId,
+  packVideoCapacity,
   type PackPriceId,
 } from "@/lib/credits";
 
@@ -149,6 +149,8 @@ export type PublicGeoPack = {
   bonusPercent: number;
   totalCoins: number;
   videoCapacity: number;
+  standardVideos: number;
+  ultra4kVideos: number;
   tag: string;
   featured?: boolean;
   elite?: boolean;
@@ -329,6 +331,7 @@ export function buildSilentPricing(opts: {
     const price = OFFICIAL_PACK_PRICES[id];
     const { formatted } = formatPriceForLocale(price, opts.locale);
     const totalCoins = meta.coins + meta.bonus;
+    const capacity = packVideoCapacity(totalCoins);
     return {
       id,
       name: meta.name,
@@ -340,7 +343,9 @@ export function buildSilentPricing(opts: {
       bonus: meta.bonus,
       bonusPercent: meta.bonusPercent,
       totalCoins,
-      videoCapacity: Math.floor(totalCoins / STANDARD_VIDEO_NC),
+      videoCapacity: capacity.standardVideos,
+      standardVideos: capacity.standardVideos,
+      ultra4kVideos: capacity.ultra4kVideos,
       tag: meta.tag,
       featured: meta.featured,
       elite: meta.elite,

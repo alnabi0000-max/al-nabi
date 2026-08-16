@@ -143,8 +143,12 @@ assert(
   "legacy pack ids removed from pricing"
 );
 assert(
-  pricing.packs.every((p) => p.videoCapacity === Math.floor(p.totalCoins / 20)),
+  pricing.packs.every((p) => p.videoCapacity === Math.round(p.totalCoins / 20)),
   "pricing video capacity uses 20 NC"
 );
+
+const starterCap = packYield(COIN_PACKS[0]!);
+assert(starterCap.standardVideos === 105, "Starter ~105 standard videos");
+assert(starterCap.ultra4kVideos === 54, "Starter ~54 4K videos");
 
 console.log("ALL FORMULA CHECKS PASSED");

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Clapperboard,
+  Coins,
   User,
   ChevronsLeft,
   ChevronsRight,
@@ -54,6 +55,7 @@ export function Sidebar() {
 
   const links = [
     { href: "/", label: t.nav.studio, icon: Clapperboard },
+    { href: "/pricing", label: t.nav.pricing, icon: Coins },
     { href: "/profile", label: t.nav.cabinet, icon: User },
   ];
 

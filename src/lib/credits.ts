@@ -19,6 +19,11 @@ export const USD_PER_COIN = 0.01;
 
 /** Standard 8s prompt-to-video clip — marketing + billing base (before multipliers). */
 export const STANDARD_VIDEO_NC = 20;
+/**
+ * Display rate for 4K clip estimates on pricing / top-up.
+ * Chosen so Starter (2,100 NC) shows ~105 standard / ~54 4K videos.
+ */
+export const ULTRA_4K_VIDEO_NC = 39;
 
 export const PACK_PRICE_IDS = [
   "starter",
@@ -307,14 +312,31 @@ export function packYield(pack: Pick<CoinPack, "coins" | "bonus">): {
   videoMinutes: number;
   movieMinutes: number;
   videoClips: number;
+  standardVideos: number;
+  ultra4kVideos: number;
 } {
   const total = packTotalCoins(pack);
+  const capacity = packVideoCapacity(total);
   return {
     total,
     images: total,
     videoMinutes: Math.floor(total / CREDIT_RATES.prompt_to_video_per_min),
     movieMinutes: Math.floor(total / CREDIT_RATES.text_to_movie_per_min),
-    videoClips: Math.floor(total / STANDARD_VIDEO_NC),
+    videoClips: capacity.standardVideos,
+    standardVideos: capacity.standardVideos,
+    ultra4kVideos: capacity.ultra4kVideos,
+  };
+}
+
+/** Marketing capacity line: "~105 standard videos / ~54 4K videos". */
+export function packVideoCapacity(totalNc: number): {
+  standardVideos: number;
+  ultra4kVideos: number;
+} {
+  const total = Math.max(0, totalNc);
+  return {
+    standardVideos: Math.round(total / STANDARD_VIDEO_NC),
+    ultra4kVideos: Math.round(total / ULTRA_4K_VIDEO_NC),
   };
 }
 
@@ -325,7 +347,7 @@ export function packYield(pack: Pick<CoinPack, "coins" | "bonus">): {
 export const COIN_PACKS: CoinPack[] = [
   {
     id: "starter",
-    name: "Starter Package",
+    name: "Starter",
     priceUsd: 20,
     coins: 2000,
     bonus: 100,
@@ -334,7 +356,7 @@ export const COIN_PACKS: CoinPack[] = [
   },
   {
     id: "pro",
-    name: "Pro Package",
+    name: "Pro",
     priceUsd: 40,
     coins: 4000,
     bonus: 400,
@@ -344,7 +366,7 @@ export const COIN_PACKS: CoinPack[] = [
   },
   {
     id: "creator",
-    name: "Creator Package",
+    name: "Yaratuvchi",
     priceUsd: 60,
     coins: 6000,
     bonus: 900,
@@ -354,7 +376,7 @@ export const COIN_PACKS: CoinPack[] = [
   },
   {
     id: "business",
-    name: "Business Package",
+    name: "Biznes",
     priceUsd: 80,
     coins: 8000,
     bonus: 1600,
@@ -364,7 +386,7 @@ export const COIN_PACKS: CoinPack[] = [
   },
   {
     id: "studio",
-    name: "Studio Package",
+    name: "Studiya",
     priceUsd: 100,
     coins: 10000,
     bonus: 2500,

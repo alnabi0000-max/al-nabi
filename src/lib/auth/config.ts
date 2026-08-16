@@ -1,20 +1,24 @@
+import {
+  isPlaceholderEnvValue,
+  shouldEnforceProductionSecrets,
+} from "@/lib/env";
+
 export type AuthMode = "local" | "supabase";
 
 function configuredValue(name: string): string {
   return process.env[name]?.trim() || "";
 }
 
-function isPlaceholder(value: string): boolean {
-  return !value || value.includes("[ref]") || value.includes("...");
-}
-
 /**
  * Production must use Supabase Auth. Keeping this validation in the auth
  * module makes a misconfigured production server fail during startup/module
  * initialization instead of silently serving local or guest authentication.
+ *
+ * Local development (`NODE_ENV === "development"`) and local `next build`
+ * against placeholder keys are allowed. Fail-closed is production-only.
  */
 export function assertProductionAuthConfiguration(): void {
-  if (process.env.NODE_ENV !== "production") return;
+  if (!shouldEnforceProductionSecrets()) return;
 
   const mode = configuredValue("AUTH_MODE").toLowerCase();
   const url = configuredValue("NEXT_PUBLIC_SUPABASE_URL");
@@ -24,10 +28,10 @@ export function assertProductionAuthConfiguration(): void {
   if (mode !== "supabase") {
     problems.push("AUTH_MODE must be set to 'supabase'");
   }
-  if (isPlaceholder(url) || !url.startsWith("https://")) {
+  if (isPlaceholderEnvValue(url) || !url.startsWith("https://")) {
     problems.push("NEXT_PUBLIC_SUPABASE_URL must be a valid HTTPS URL");
   }
-  if (isPlaceholder(anon)) {
+  if (isPlaceholderEnvValue(anon)) {
     problems.push("NEXT_PUBLIC_SUPABASE_ANON_KEY must be configured");
   }
 
@@ -55,28 +59,42 @@ export function getAuthMode(): AuthMode {
 export function isSupabaseConfigured(): boolean {
   const url = configuredValue("NEXT_PUBLIC_SUPABASE_URL");
   const anon = configuredValue("NEXT_PUBLIC_SUPABASE_ANON_KEY");
-  if (isPlaceholder(url) || isPlaceholder(anon)) return false;
+  if (isPlaceholderEnvValue(url) || isPlaceholderEnvValue(anon)) return false;
   return url.startsWith("https://") || url.startsWith("http://");
 }
 
 export function isStripeConfigured(): boolean {
   const key = process.env.STRIPE_SECRET_KEY?.trim() || "";
-  return Boolean(key) && !key.includes("...");
+  return Boolean(key) && !isPlaceholderEnvValue(key);
+}
+
+export function getStripePublishableKey(): string {
+  const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() || "";
+  if (isPlaceholderEnvValue(key)) return "";
+  return key.startsWith("pk_") ? key : "";
 }
 
 const DEV_FALLBACK_AUTH_SECRET = "alnabiy-local-dev-secret-change-me-32b";
 
 export function getAuthSecret(): string {
   const configured = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
-  if (configured && configured.length >= 32) return configured;
-  if (process.env.NODE_ENV === "production") {
+  if (
+    configured &&
+    configured.length >= 32 &&
+    !isPlaceholderEnvValue(configured)
+  ) {
+    return configured;
+  }
+  if (shouldEnforceProductionSecrets()) {
     throw new Error(
       "AUTH_SECRET (or NEXTAUTH_SECRET) must be set to a random value of at least 32 characters in production — refusing to sign cookies with the dev fallback secret."
     );
   }
-  return configured || DEV_FALLBACK_AUTH_SECRET;
+  return configured && configured.length >= 32
+    ? configured
+    : configured || DEV_FALLBACK_AUTH_SECRET;
 }
 
-if (process.env.NODE_ENV === "production" && typeof window === "undefined") {
+if (typeof window === "undefined") {
   assertProductionAuthConfiguration();
 }

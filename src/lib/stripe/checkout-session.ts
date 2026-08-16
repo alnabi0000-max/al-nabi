@@ -9,15 +9,19 @@ import {
 } from "@/lib/geo";
 import { resolveLocale } from "@/lib/i18n/messages";
 import { prisma } from "@/lib/prisma";
-import { resolveUserByKey } from "@/lib/assets";
-import { getLocalSessionUser } from "@/lib/auth/session";
+import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
 import { COIN_PACKS, PACK_PRICE_IDS } from "@/lib/credits";
+import { getStripePublishableKey, isStripeConfigured } from "@/lib/auth/config";
+import { createStripeClient } from "@/lib/stripe/server";
+import { creditPaidPurchase } from "@/lib/ledger/credit-purchase";
+import { isDevelopmentNodeEnv } from "@/lib/env";
 
 const bodySchema = z.object({
   packId: z.enum(PACK_PRICE_IDS),
   locale: z.string().optional(),
   alnabiyKey: z.string().optional().nullable(),
   clientPrice: z.number().optional(),
+  uiMode: z.enum(["embedded", "hosted"]).optional(),
 });
 
 function stripeLocale(
@@ -67,8 +71,17 @@ function stripeLocale(
   return map[locale] || "auto";
 }
 
+function appOrigin(req: NextRequest): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    req.headers.get("origin") ||
+    `${req.nextUrl.protocol}//${req.nextUrl.host}`
+  );
+}
+
 /**
  * Shared Stripe Checkout Session creator (PHASE 2).
+ * Embedded mode drives Apple Pay / Google Pay / card via Stripe Elements.
  */
 export async function createCheckoutSession(req: NextRequest) {
   const body = bodySchema.parse(await req.json());
@@ -79,6 +92,7 @@ export async function createCheckoutSession(req: NextRequest) {
       req.cookies.get("alnabiy_locale")?.value ||
       "en"
   );
+  const uiMode = body.uiMode === "hosted" ? "hosted" : "embedded";
 
   const quote = resolveCheckoutQuote({
     packId: body.packId,
@@ -105,50 +119,53 @@ export async function createCheckoutSession(req: NextRequest) {
     );
   }
 
+  const ensured = await ensureRequestLedgerUser({
+    request: req,
+    alnabiyKey: body.alnabiyKey,
+    allowGuest: isDevelopmentNodeEnv(),
+  });
+  if (!ensured) {
+    return NextResponse.json(
+      {
+        ok: false,
+        code: "AUTH_REQUIRED",
+        error: "Sign in required",
+      },
+      { status: 401 }
+    );
+  }
+  const user = ensured.user;
+
   const regionToken = makeRegionToken(quote.tier, country);
   const { formatted } = formatPriceForLocale(quote.priceUsd!, locale);
   const allowed = allowedBillingCountries(quote.tier);
-  const origin =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    req.headers.get("origin") ||
-    `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+  const origin = appOrigin(req);
+  const pack = COIN_PACKS.find((p) => p.id === quote.packId);
+  const coins = quote.coins || pack?.coins || 0;
+  const bonus = quote.bonus || pack?.bonus || 0;
 
-  const user =
-    (await resolveUserByKey(body.alnabiyKey)) ||
-    (await getLocalSessionUser().catch(() => null));
-
-  // Pending Purchase (DB mavjud bo‘lsa)
   let purchaseId: string | null = null;
-  if (user) {
-    try {
-      const pack = COIN_PACKS.find((p) => p.id === quote.packId);
-      const purchase = await prisma.purchase.create({
-        data: {
-          userId: user.id,
-          packId: quote.packId,
-          coins: quote.coins || pack?.coins || 0,
-          bonus: quote.bonus || pack?.bonus || 0,
-          amountCents: quote.amountCents,
-          currency: "usd",
-          status: "PENDING",
-          regionToken,
-        },
-      });
-      purchaseId = purchase.id;
-    } catch {
-      /* soft — DB yo‘q */
-    }
+  try {
+    const purchase = await prisma.purchase.create({
+      data: {
+        userId: user.id,
+        packId: quote.packId,
+        coins,
+        bonus,
+        amountCents: quote.amountCents,
+        currency: "usd",
+        status: "PENDING",
+        regionToken,
+      },
+    });
+    purchaseId = purchase.id;
+  } catch {
+    /* DB unavailable — Stripe metadata still carries the quote */
   }
 
-  const stripeKey = process.env.STRIPE_SECRET_KEY?.trim();
-  if (!stripeKey) {
-    /* Never mint coins without a real Stripe charge in production — a
-     * missing STRIPE_SECRET_KEY must fail closed, not become a free-coin
-     * faucet. Demo instant-credit is local/dev only. */
-    if (
-      process.env.NODE_ENV === "production" &&
-      process.env.ALLOW_DEMO_CHECKOUT !== "1"
-    ) {
+  const stripe = createStripeClient();
+  if (!stripe || !isStripeConfigured()) {
+    if (process.env.NODE_ENV === "production") {
       return NextResponse.json(
         {
           ok: false,
@@ -159,51 +176,38 @@ export async function createCheckoutSession(req: NextRequest) {
       );
     }
 
-    // Demo: darhol kredit (lokal sinov)
-    if (user && purchaseId) {
+    if (purchaseId) {
       try {
-        const credit = (quote.coins || 0) + (quote.bonus || 0);
-        await prisma.$transaction(async (tx) => {
-          const updated = await tx.user.update({
-            where: { id: user.id },
-            data: { coins: { increment: credit } },
-          });
-          await tx.purchase.update({
-            where: { id: purchaseId! },
-            data: {
-              status: "PAID",
-              stripeSessionId: `demo_${Date.now()}`,
-            },
-          });
-          await tx.coinLedger.create({
-            data: {
-              userId: user.id,
-              delta: credit,
-              type: "PURCHASE",
-              reason: `demo:checkout:${quote.packId}`,
-              purchaseId: purchaseId!,
-              balanceAfter: updated.coins,
-            },
-          });
+        await creditPaidPurchase({
+          userId: user.id,
+          packId: quote.packId,
+          coins,
+          bonus,
+          amountCents: quote.amountCents,
+          stripeSessionId: `demo_${purchaseId}`,
+          purchaseId,
+          regionToken,
+          reason: `demo:checkout:${quote.packId}`,
         });
       } catch {
-        /* ignore */
+        /* ignore — client still gets a demo success URL */
       }
     }
 
     return NextResponse.json({
       ok: true,
       mode: "demo",
-      sessionId: `demo_${Date.now()}`,
+      sessionId: purchaseId ? `demo_${purchaseId}` : `demo_${Date.now()}`,
       purchaseId,
-      url: `${origin}/profile?tab=dokon&checkout=demo&pack=${quote.packId}&paid=1`,
+      ncCredited: coins + bonus,
+      url: `${origin}/pricing?checkout=demo&pack=${quote.packId}&paid=1`,
       quote: {
         packId: quote.packId,
         price: quote.priceUsd,
         priceFormatted: formatted,
         currency: "USD",
-        coins: quote.coins,
-        bonus: quote.bonus,
+        coins,
+        bonus,
         regionToken,
         country,
       },
@@ -214,19 +218,40 @@ export async function createCheckoutSession(req: NextRequest) {
     });
   }
 
-  const Stripe = (await import("stripe")).default;
-  const stripe = new Stripe(stripeKey, {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    apiVersion: "2024-11-20.acacia" as any,
-  });
+  const successPath = `/pricing?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
+  const cancelPath = `/pricing?checkout=cancel`;
+  const metadata = {
+    pack_id: quote.packId,
+    geo_tier: quote.tier,
+    geo_country: country,
+    region_token: regionToken,
+    alnabiy_key: user.alnabiyKey || "",
+    user_id: user.id,
+    purchase_id: purchaseId || "",
+    coins: String(coins),
+    bonus: String(bonus),
+    amount_cents: String(quote.amountCents),
+    locale,
+  };
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
-    success_url: `${origin}/profile?tab=dokon&checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/profile?tab=dokon&checkout=cancel`,
+    ...(uiMode === "embedded"
+      ? {
+          ui_mode: "embedded" as const,
+          return_url: `${origin}${successPath}`,
+          redirect_on_completion: "if_required" as const,
+        }
+      : {
+          success_url: `${origin}${successPath}`,
+          cancel_url: `${origin}${cancelPath}`,
+        }),
     billing_address_collection: "required",
     customer_creation: "always",
+    customer_email: user.email || undefined,
     locale: stripeLocale(locale),
+    /* `card` unlocks Apple Pay + Google Pay wallets in Stripe Checkout / Elements. */
+    payment_method_types: ["card"],
     line_items: [
       {
         quantity: 1,
@@ -234,8 +259,8 @@ export async function createCheckoutSession(req: NextRequest) {
           currency: "usd",
           unit_amount: quote.amountCents,
           product_data: {
-            name: `NC — ${quote.packId}`,
-            description: `${(quote.coins || 0) + (quote.bonus || 0)} NC (${formatted})`,
+            name: `NC — ${pack?.name || quote.packId}`,
+            description: `${coins + bonus} NC (${formatted}) · Apple Pay, Google Pay, card`,
             metadata: {
               pack_id: quote.packId,
               region_token: regionToken,
@@ -246,30 +271,12 @@ export async function createCheckoutSession(req: NextRequest) {
     ],
     payment_intent_data: {
       metadata: {
-        pack_id: quote.packId,
-        geo_tier: quote.tier,
-        geo_country: country,
-        region_token: regionToken,
-        alnabiy_key: body.alnabiyKey || user?.alnabiyKey || "",
-        user_id: user?.id || "",
-        purchase_id: purchaseId || "",
+        ...metadata,
         expected_amount_cents: String(quote.amountCents),
         allowed_billing: allowed.slice(0, 40).join(","),
       },
     },
-    metadata: {
-      pack_id: quote.packId,
-      geo_tier: quote.tier,
-      geo_country: country,
-      region_token: regionToken,
-      alnabiy_key: body.alnabiyKey || user?.alnabiyKey || "",
-      user_id: user?.id || "",
-      purchase_id: purchaseId || "",
-      coins: String(quote.coins),
-      bonus: String(quote.bonus),
-      amount_cents: String(quote.amountCents),
-      locale,
-    },
+    metadata,
     custom_text: {
       submit: {
         message:
@@ -292,16 +299,19 @@ export async function createCheckoutSession(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     mode: "stripe",
+    uiMode,
     sessionId: session.id,
     purchaseId,
+    clientSecret: session.client_secret,
+    publishableKey: getStripePublishableKey(),
     url: session.url,
     quote: {
       packId: quote.packId,
       price: quote.priceUsd,
       priceFormatted: formatted,
       currency: "USD",
-      coins: quote.coins,
-      bonus: quote.bonus,
+      coins,
+      bonus,
       regionToken,
       country,
     },
@@ -309,5 +319,95 @@ export async function createCheckoutSession(req: NextRequest) {
       regionToken,
       billingHint: "card_country_must_match_region",
     },
+  });
+}
+
+export async function getCheckoutStatus(req: NextRequest) {
+  const sessionId = req.nextUrl.searchParams.get("session_id")?.trim();
+  if (!sessionId) {
+    return NextResponse.json(
+      { ok: false, error: "session_id required" },
+      { status: 400 }
+    );
+  }
+
+  const ensured = await ensureRequestLedgerUser({
+    request: req,
+    allowGuest: false,
+  });
+  if (!ensured) {
+    return NextResponse.json(
+      { ok: false, code: "AUTH_REQUIRED", error: "Sign in required" },
+      { status: 401 }
+    );
+  }
+
+  const purchase = await prisma.purchase.findUnique({
+    where: { stripeSessionId: sessionId },
+  });
+
+  if (purchase && purchase.userId !== ensured.user.id) {
+    return NextResponse.json(
+      { ok: false, error: "Forbidden" },
+      { status: 403 }
+    );
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: ensured.user.id },
+    select: { coins: true },
+  });
+  const ncBalance = user?.coins ?? ensured.user.coins;
+
+  if (purchase?.status === "PAID") {
+    return NextResponse.json({
+      ok: true,
+      paid: true,
+      status: "PAID",
+      packId: purchase.packId,
+      credited: purchase.coins + purchase.bonus,
+      ncBalance,
+      coins: ncBalance,
+    });
+  }
+
+  if (sessionId.startsWith("demo_")) {
+    return NextResponse.json({
+      ok: true,
+      paid: false,
+      status: purchase?.status || "PENDING",
+      ncBalance,
+      coins: ncBalance,
+    });
+  }
+
+  const stripe = createStripeClient();
+  if (stripe && sessionId.startsWith("cs_")) {
+    try {
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      const stripePaid =
+        session.payment_status === "paid" ||
+        session.status === "complete";
+      return NextResponse.json({
+        ok: true,
+        paid: false,
+        processing: stripePaid,
+        status: purchase?.status || session.status,
+        packId: session.metadata?.pack_id || purchase?.packId,
+        credited: purchase ? purchase.coins + purchase.bonus : undefined,
+        ncBalance,
+        coins: ncBalance,
+      });
+    } catch {
+      /* fall through */
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    paid: false,
+    status: purchase?.status || "PENDING",
+    ncBalance,
+    coins: ncBalance,
   });
 }

@@ -2,11 +2,12 @@
 
 import { useRef } from "react";
 import { useMaster } from "@/context/MasterControllerContext";
+import { useTopUpUi } from "@/context/TopUpUiContext";
 import { useDialogFocus } from "@/hooks/useDialogFocus";
-import Link from "next/link";
 
 export function InsufficientFundsModal() {
   const { showInsufficientModal, setShowInsufficientModal, tr } = useMaster();
+  const { openTopUp } = useTopUpUi();
   const panelRef = useRef<HTMLDivElement>(null);
   const close = () => setShowInsufficientModal(false);
 
@@ -43,13 +44,16 @@ export function InsufficientFundsModal() {
           {tr("insufficient_funds")}
         </p>
         <div className="relative mt-6 flex flex-wrap justify-center gap-3">
-          <Link
-            href="/profile?tab=dokon"
-            onClick={close}
+          <button
+            type="button"
+            onClick={() => {
+              close();
+              openTopUp();
+            }}
             className="nabi-btn-primary !bg-gradient-to-r !from-rose-600 !to-orange-600"
           >
             {tr("store")}
-          </Link>
+          </button>
           <button
             type="button"
             onClick={close}

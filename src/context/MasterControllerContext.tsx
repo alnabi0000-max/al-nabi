@@ -237,7 +237,9 @@ export function MasterControllerProvider({
   const applyAuthPayload = useCallback(
     (email: string, data: Record<string, unknown>, keyFallback?: string) => {
       const nextCoins =
-        typeof data.coins === "number"
+        typeof data.ncBalance === "number"
+          ? data.ncBalance
+          : typeof data.coins === "number"
           ? data.coins
           : typeof data.alnabiyCoins === "number"
             ? (data.alnabiyCoins as number)

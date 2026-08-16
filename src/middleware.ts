@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth/session-ttl";
 import { inspectAccessToken } from "@/lib/auth/jwt";
 import { requiresSessionToken } from "@/lib/auth/protected-routes";
+import { isPlaceholderEnvValue } from "@/lib/env";
 
 /**
  * WAF + rate limit + fail-closed session gate + Supabase session refresh
@@ -125,7 +126,12 @@ export async function middleware(request: NextRequest) {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-  const supabaseEnabled = Boolean(url && anon && !url.includes("[ref]"));
+  const supabaseEnabled = Boolean(
+    url &&
+      anon &&
+      !isPlaceholderEnvValue(url) &&
+      !isPlaceholderEnvValue(anon)
+  );
 
   // Local development on the file-backed auth store keeps its guest bypass:
   // the route-level guard owns that decision. Production always resolves to

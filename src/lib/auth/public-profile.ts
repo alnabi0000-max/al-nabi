@@ -6,6 +6,8 @@ export type SafePublicProfile = {
   id: string;
   email: string;
   coins: number;
+  /** Alias of `coins` — NC wallet balance (1 NC = $0.01). */
+  ncBalance: number;
   referralCode: string;
   status: string;
   role: string;
@@ -32,6 +34,7 @@ export function toSafePublicProfile(user: {
     id: user.id,
     email: user.email,
     coins: user.coins,
+    ncBalance: user.coins,
     referralCode: user.referralCode,
     status: user.status,
     role: user.role || "USER",

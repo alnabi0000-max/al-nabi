@@ -25,6 +25,7 @@ export type Dictionary = {
     scriptMovie: string;
     history: string;
     store: string;
+    pricing: string;
     profile: string;
     balance: string;
     collapse: string;
@@ -136,6 +137,7 @@ const en: Dictionary = {
     scriptMovie: "Script-to-Movie",
     history: "History",
     store: "Store",
+    pricing: "Pricing",
     profile: "Profile",
     balance: "Balance",
     collapse: "Collapse",
@@ -251,6 +253,7 @@ const uz: Dictionary = {
     scriptMovie: "Skript-film",
     history: "Tarix",
     store: "Do‘kon",
+    pricing: "Narxlar",
     profile: "Profil",
     balance: "Balans",
     collapse: "Yig‘ish",
@@ -367,6 +370,7 @@ const ru: Dictionary = {
     scriptMovie: "Скрипт-фильм",
     history: "История",
     store: "Магазин",
+    pricing: "Цены",
     profile: "Профиль",
     balance: "Баланс",
     collapse: "Свернуть",

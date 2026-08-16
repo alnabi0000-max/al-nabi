@@ -98,7 +98,7 @@ model User {
   avatarUrl        String?       @map("avatar_url")
   /// Legacy license key (local auth / migratsiya) — brauzer: `alnabiy_key`
   alnabiyKey       String        @unique @map("alnabiy_key")
-  /// Cached balance — authoritative history is CoinLedger
+  /// Cached NC balance (`ncBalance`, 1 NC = $0.01). Authoritative history is CoinLedger.
   coins            Int           @default(200) @map("coins")
   plan             PlanType      @default(FREE)
   role             UserRole      @default(USER)
@@ -149,8 +149,8 @@ model ProducerInterestProfile {
   @@map("producer_interest_profiles")
 }
 
-// ─── CoinLedger ───────────────────────────────────────────────────────────────
-/// Server-side ledger — replaces client localStorage coin simulations
+// ─── CoinLedger (CreditLedger) ───────────────────────────────────────────────
+/// Server-side NC ledger — Purchase rows are the payment Transactions log.
 
 model CoinLedger {
   id            String     @id @default(cuid())
