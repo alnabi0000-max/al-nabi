@@ -7,6 +7,7 @@ import {
   ARCHIVE_REDOWNLOAD_FEE_NC,
   COIN_NAME,
 } from "@/lib/credits";
+import { isPersistentObjectStorageConfigured } from "@/lib/storage/object-storage";
 
 export const PLATFORM = {
   brand: "Al-Nabi",
@@ -46,15 +47,7 @@ export function probeCoreHealth(): CoreHealth {
   const cronSecret = Boolean(
     process.env.CRON_SECRET?.trim() || process.env.ADMIN_API_SECRET?.trim()
   );
-  const objectStorage = Boolean(
-    (process.env.R2_ACCOUNT_ID?.trim() &&
-      process.env.R2_ACCESS_KEY_ID?.trim() &&
-      process.env.R2_SECRET_ACCESS_KEY?.trim() &&
-      process.env.R2_BUCKET?.trim()) ||
-      (process.env.AWS_ACCESS_KEY_ID?.trim() &&
-        process.env.AWS_SECRET_ACCESS_KEY?.trim() &&
-        process.env.S3_BUCKET?.trim())
-  );
+  const objectStorage = isPersistentObjectStorageConfigured();
 
   return {
     brand: PLATFORM.brand,
