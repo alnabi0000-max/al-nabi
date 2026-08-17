@@ -38,7 +38,7 @@ export const EMPTY_NEGATIVE_CANVAS: NegativeCanvasValue = {
   strokeCount: 0,
 };
 
-export const DRAFT_PREVIEW_SEC = 2;
+export const DRAFT_PREVIEW_SEC = 5;
 
 function round3(n: number): number {
   return Math.round(n * 1000) / 1000;

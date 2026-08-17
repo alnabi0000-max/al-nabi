@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CINEMA_GLASS } from "@/components/studio/studio-primitives";
 import { LightingJoystick } from "@/components/studio/LightingJoystick";
 import { KeyframeDropzones } from "@/components/studio/KeyframeDropzones";
-import { NegativeCanvas } from "@/components/studio/NegativeCanvas";
 import { DraftModeSwitch } from "@/components/studio/DraftModeSwitch";
 import type {
   LightingJoystickValue,
@@ -49,9 +48,6 @@ export function ProModePanel({
   onLightingChange,
   keyframes,
   onKeyframesChange,
-  canvas,
-  onCanvasChange,
-  canvasBackground,
   draftMode,
   onDraftModeChange,
   copy,
@@ -84,14 +80,6 @@ export function ProModePanel({
                 tooLarge={copy.tooLarge}
               />
             )}
-            <NegativeCanvas
-              backgroundUrl={canvasBackground}
-              value={canvas}
-              onChange={onCanvasChange}
-              title={copy.canvasTitle}
-              hint={copy.canvasHint}
-              clearLabel={copy.canvasClear}
-            />
             {showVideoTools && (
               <DraftModeSwitch
                 enabled={draftMode}

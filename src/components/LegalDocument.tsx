@@ -39,6 +39,9 @@ export function LegalDocument({
         <Link href="/refund-policy" className="hover:text-nabi-gold">
           {t("refund_policy")}
         </Link>
+        <Link href="/support" className="hover:text-nabi-gold">
+          {t("nav_support")}
+        </Link>
         <Link href="/" className="hover:text-nabi-gold">
           {t("home")}
         </Link>

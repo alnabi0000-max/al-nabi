@@ -24,6 +24,7 @@ import { getDictionary, resolveAppLocale } from "@/i18n/dictionary";
 import { listStudioTemplates } from "@/lib/templates/catalog";
 import type { StudioTemplate, TemplateCategory } from "@/lib/templates/types";
 import { TEMPLATE_CATEGORIES } from "@/lib/templates/types";
+import { SUPPORT_EMAIL } from "@/lib/support";
 
 export type QuickAction =
   | { id: "aspect_reels"; label: string; aspect: "9:16" }
@@ -111,6 +112,7 @@ const ALLOWED_NAV_PATHS = new Set([
   "/terms",
   "/privacy",
   "/refund-policy",
+  "/support",
 ]);
 
 const PRODUCER_TOOLS: ChatToolDefinition[] = [
@@ -253,7 +255,7 @@ NIMA QILA OLADI:
 - Timeline: matnni o‘qish (TTS) + SFX + BGM — studio ichida.
 - /profile — Kabinet: hisob, NC balansi, mediakutubxona (tarix), do‘kon (?tab=kabinet | dokon | umumiy).
 - /auth/reset — Tiklash emaili orqali yangi parol o‘rnatish.
-- /terms, /privacy, /refund-policy — Foydalanish shartlari, maxfiylik va NC qaytarish qoidalari.
+- /terms, /privacy, /refund-policy, /support — shartlar, maxfiylik, NC qaytarish va mijoz yordami (${SUPPORT_EMAIL}).
 - Global: NC bilan to‘lov, 20 til (RTL), kontent filtri (halal), floating Producer Chat.
 
 NIMA QILA OLMAYDI (hali yo‘q — va’da qilma):
@@ -414,6 +416,7 @@ function defaultNavLabel(href: string, lang: PromptLang): string {
     "/store": ["Do‘kon", "Store", "Магазин"],
     "/dashboard": ["Kabinet", "Cabinet", "Кабинет"],
     "/producer": ["Producer Chat", "Producer Chat", "Producer Chat"],
+    "/support": ["Yordam", "Support", "Поддержка"],
   };
   if (href.includes("templates=1")) {
     return uz ? "Shablonlar" : ru ? "Шаблоны" : "Templates";

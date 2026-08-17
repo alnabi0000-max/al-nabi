@@ -59,6 +59,10 @@ export default function RefundPolicyPage() {
         <a className="text-nabi-neon" href="mailto:billing@alnabiy.app">
           billing@alnabiy.app
         </a>{" "}
+        or open{" "}
+        <a className="text-nabi-neon" href="/support">
+          Support
+        </a>{" "}
         within <strong>14 days</strong> of the charge and include:
       </p>
       <ul>

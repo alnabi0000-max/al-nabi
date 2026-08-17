@@ -1,4 +1,5 @@
-import { REFERRAL_REWARD, DEMO_STARTING_CREDITS } from "@/lib/credits";
+import { SUPPORT_EMAIL } from "@/lib/support";
+import { sendTransactionalEmail } from "@/lib/email/send";
 
 export type WelcomePayload = {
   email: string;
@@ -14,59 +15,26 @@ export type WelcomePayload = {
 export async function sendWelcomeEmail(
   payload: WelcomePayload
 ): Promise<{ ok: boolean; mode: "resend" | "log" }> {
-  const subject = "Welcome to Al-Nabi — your bonus NC are ready";
+  const app = process.env.NEXT_PUBLIC_APP_URL || "https://alnabiy.app";
+  const subject = "Welcome to Al-Nabi — your studio is ready";
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;color:#111">
       <h1 style="font-size:22px">Assalomu alaykum${
         payload.name ? `, ${payload.name}` : ""
       }!</h1>
-      <p>Alnabiy AI platformasiga xush kelibsiz.</p>
-      <p><strong>${payload.coins.toLocaleString()}</strong> NC hisobingizga qo‘shildi.</p>
-      <p>Prompt-to-Video va Script-to-Movie bilan birinchi asaringizni yarating.</p>
-      ${
-        payload.referralCode
-          ? `<p>Referral kodingiz: <code>${payload.referralCode}</code> — do‘stingiz sotib olsa +${REFERRAL_REWARD} NC.</p>`
-          : ""
-      }
-      <p><a href="${
-        process.env.NEXT_PUBLIC_APP_URL || "https://alnabiy.app"
-      }/">Studio’ga o‘tish →</a></p>
+      <p>Al-Nabi Studio’ga xush kelibsiz.</p>
+      <p>Hisobingizda <strong>${payload.coins.toLocaleString()}</strong> NC bor. Prompt yozib video yoki rasm yarating — 15 soniya, 4K, native ovoz.</p>
+      <p><a href="${app}/">Studio’ga o‘tish →</a> · <a href="${app}/support">Yordam</a></p>
       <hr/>
-      <p style="font-size:12px;color:#666">Alnabiy · legal@alnabiy.app</p>
+      <p style="font-size:12px;color:#666">Al-Nabi · ${SUPPORT_EMAIL}</p>
     </div>
   `;
 
-  const key = process.env.RESEND_API_KEY?.trim();
-  const from =
-    process.env.RESEND_FROM_EMAIL?.trim() || "Alnabiy <onboarding@alnabiy.app>";
-
-  if (key) {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: [payload.email],
-        subject,
-        html,
-      }),
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      console.warn("[Alnabiy] welcome email failed", res.status, text);
-      return { ok: false, mode: "resend" };
-    }
-    return { ok: true, mode: "resend" };
-  }
-
-  console.info("[Alnabiy] welcome email (log mode)", {
+  return sendTransactionalEmail({
     to: payload.email,
-    coins: payload.coins || DEMO_STARTING_CREDITS,
+    subject,
+    html,
   });
-  return { ok: true, mode: "log" };
 }
 
 /** Oddiy marketing list yozuvi (webhook / ESP sync) */

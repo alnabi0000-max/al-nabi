@@ -108,6 +108,11 @@ export default function TermsPage() {
         <a className="text-nabi-neon" href="mailto:legal@alnabiy.app">
           legal@alnabiy.app
         </a>
+        <br />
+        Customer support:{" "}
+        <a className="text-nabi-neon" href="/support">
+          /support
+        </a>
       </p>
     </LegalDocument>
   );

@@ -6,6 +6,7 @@ import {
 } from "@/lib/geo";
 import { prisma } from "@/lib/prisma";
 import { creditPaidPurchase } from "@/lib/ledger/credit-purchase";
+import { sendPurchaseReceiptEmail } from "@/lib/email/purchase-receipt";
 import {
   createStripeClient,
   getStripeSecretKey,
@@ -167,6 +168,21 @@ export async function handleStripeWebhook(req: NextRequest) {
         purchaseId: purchaseIdMeta || null,
         reason: `stripe:checkout:${packId}`,
       });
+
+      if (!result.duplicate && user.email) {
+        void sendPurchaseReceiptEmail({
+          email: user.email,
+          name: user.name,
+          packId,
+          coins,
+          bonus,
+          amountCents,
+          balanceAfter: result.ncBalance,
+          stripeSessionId: session.id,
+        }).catch((err) =>
+          console.warn("[Alnabiy] purchase receipt email failed", err)
+        );
+      }
 
       return NextResponse.json({
         ok: true,

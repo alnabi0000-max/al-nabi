@@ -96,8 +96,11 @@ export function ViralHooksPanel({
 
       {pack && (
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            {pack.frames.map((f) => (
+          {pack.frames.some((f) => f.isReal) && (
+            <div className="grid gap-3 sm:grid-cols-3">
+              {pack.frames
+                .filter((f) => f.isReal)
+                .map((f) => (
               <div
                 key={f.index}
                 className="relative overflow-hidden rounded-xl border border-nabi-border"
@@ -117,8 +120,9 @@ export function ViralHooksPanel({
                   {tr("peak_frame")} #{f.index} · {f.timeSec}s
                 </p>
               </div>
-            ))}
-          </div>
+                ))}
+            </div>
+          )}
 
           <div className="space-y-2">
             <p className="text-[10px] uppercase tracking-wider text-nabi-muted">
