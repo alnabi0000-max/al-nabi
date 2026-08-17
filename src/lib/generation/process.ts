@@ -12,6 +12,7 @@ import type { GenerationType } from "@prisma/client";
 import {
   isImageEngineId,
   isVideoEngineId,
+  engineHasNativeAudio,
   type FrameRate,
   type RenderQuality,
 } from "@/lib/ai/catalog";
@@ -47,6 +48,7 @@ type ScenesMeta = {
   frameRate?: number;
   bgmMode?: "ai" | "manual" | "off";
   bgmTrackId?: string | null;
+  endImageUrl?: string | null;
 };
 
 /**
@@ -186,6 +188,8 @@ export async function processGenerationJob(generationId: string): Promise<{
         prompt,
         aspect,
         engine: imageEngine,
+        quality,
+        imageUrl: generation.sourceImageUrl || undefined,
       });
       providerUrl = img.url;
       provider = whiteLabelEngine(img.provider);
@@ -197,6 +201,7 @@ export async function processGenerationJob(generationId: string): Promise<{
       const clip = await generateVideoClip({
         prompt,
         imageUrl: generation.sourceImageUrl || undefined,
+        endImageUrl: meta.endImageUrl || undefined,
         cameraMove: (generation.cameraMove as
           | "static"
           | "zoom_in"
@@ -229,7 +234,13 @@ export async function processGenerationJob(generationId: string): Promise<{
 
     /* Optional ambient BGM under (usually silent) provider video. It is
      * disabled unless this worker has passed the FFmpeg capability check. */
-    if (!isImageType(generation.type) && (await isFfmpegAvailable())) {
+    /* Native-audio flagship already ships dialogue + Foley. Extra BGM
+     * would fight that mix — only mux when the engine is silent. */
+    if (
+      !isImageType(generation.type) &&
+      !engineHasNativeAudio(engineId) &&
+      (await isFfmpegAvailable())
+    ) {
       const bgm = await resolveBgmSelection({
         mode: (meta.bgmMode as BgmMode | undefined) || "ai",
         trackId: meta.bgmTrackId,
@@ -258,7 +269,11 @@ export async function processGenerationJob(generationId: string): Promise<{
           console.warn("[Alnabiy] BGM mux skipped", bgmErr);
         }
       }
-    } else if (!isImageType(generation.type) && meta.bgmMode !== "off") {
+    } else if (
+      !isImageType(generation.type) &&
+      meta.bgmMode !== "off" &&
+      !engineHasNativeAudio(engineId)
+    ) {
       console.warn(
         "[Alnabiy] ambient BGM disabled because FFmpeg is unavailable for this runtime"
       );

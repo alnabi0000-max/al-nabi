@@ -28,7 +28,7 @@ export type VideoEngine =
 export { CLIP_DURATION_SEC };
 
 export function resolveVideoEngine(quality: Quality): VideoEngineId {
-  if (quality === "8K" || quality === "4K") return "kling-v2.5";
+  if (quality === "8K" || quality === "4K") return "kling-v3";
   return "auto";
 }
 
@@ -37,11 +37,15 @@ export async function generateImage(opts: {
   prompt: string;
   aspect?: "16:9" | "9:16" | "1:1";
   engine?: ImageEngineId | string;
+  quality?: Quality;
+  imageUrl?: string;
 }): Promise<{ url: string; provider: string; model: string; engineId?: string }> {
   return dispatchImage({
     prompt: opts.prompt,
     aspect: opts.aspect,
     engine: opts.engine || "auto",
+    quality: opts.quality,
+    imageUrl: opts.imageUrl,
   });
 }
 
@@ -49,6 +53,7 @@ export async function generateImage(opts: {
 export async function generateVideoClip(opts: {
   prompt: string;
   imageUrl?: string;
+  endImageUrl?: string;
   cameraMove?: CameraMovement;
   quality?: Quality;
   engine?: VideoEngine | string;
@@ -61,6 +66,7 @@ export async function generateVideoClip(opts: {
   return dispatchVideo({
     prompt: opts.prompt,
     imageUrl: opts.imageUrl,
+    endImageUrl: opts.endImageUrl,
     cameraMove: opts.cameraMove,
     quality,
     engine,

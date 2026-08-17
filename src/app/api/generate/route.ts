@@ -40,7 +40,8 @@ const ENGINE_IDS = [
 const schema = z.object({
   prompt: z.string().min(3).max(2000),
   imageUrl: z.string().optional(),
-  durationSec: z.number().min(1).max(600).default(8),
+  endImageUrl: z.string().optional(),
+  durationSec: z.number().min(1).max(600).default(10),
   customSeconds: z.number().min(1).max(60).optional(),
   aspect: z.enum(["16:9", "9:16", "1:1"]).default("16:9"),
   quality: z.enum(["720p", "1080p", "4K", "8K"]).default("1080p"),
@@ -171,7 +172,7 @@ export async function POST(req: NextRequest) {
         : body.engine || "auto";
     const costOpts = {
       engine: costEngine,
-      quality: body.quality,
+      quality: body.quality === "8K" ? "4K" : body.quality,
       frameRate: body.frameRate,
     };
 
@@ -229,7 +230,7 @@ export async function POST(req: NextRequest) {
         enhancedPrompt: enhanced,
         style: body.style,
         emotionMode: body.emotionMode,
-        quality: body.quality,
+        quality: body.quality === "8K" ? "4K" : body.quality,
         durationSec: body.mediaKind === "image" ? 0 : duration,
         cameraMove: body.cameraMove,
         sourceImageUrl: body.imageUrl || null,
@@ -244,6 +245,7 @@ export async function POST(req: NextRequest) {
           frameRate: body.frameRate,
           bgmMode: body.bgmMode || "ai",
           bgmTrackId: body.bgmTrackId || null,
+          endImageUrl: body.endImageUrl || null,
         },
       },
     });
@@ -358,7 +360,7 @@ export async function POST(req: NextRequest) {
       clipDurationSec: CLIP_DURATION_SEC,
       emotionMode: body.emotionMode,
       aspect: body.aspect,
-      quality: body.quality,
+      quality: body.quality === "8K" ? "4K" : body.quality,
     });
 
     const res = apiJson(payload);

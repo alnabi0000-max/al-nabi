@@ -76,7 +76,7 @@ export function ScriptToMovieStudio() {
     DEFAULT_BGM_SELECTION.trackId
   );
   const [durationSec, setDurationSec] = useState(60);
-  const [videoEngine, setVideoEngine] = useState<VideoEngineId>("kling-v2.5");
+  const [videoEngine, setVideoEngine] = useState<VideoEngineId>("auto");
   const [imageEngine, setImageEngine] = useState<ImageEngineId>("flux-pro");
   const [quality, setQuality] = useState<RenderQuality>("1080p");
   const [frameRate, setFrameRate] = useState<FrameRate>(24);

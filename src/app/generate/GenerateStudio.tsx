@@ -57,6 +57,7 @@ import {
 import {
   IMAGE_MODEL_CARDS,
   VIDEO_MODEL_CARDS,
+  STUDIO_VIDEO_ENGINE_IDS,
   isVideoEngineId,
   type FrameRate,
   type ImageEngineId,
@@ -98,12 +99,7 @@ const NcReceiptHistory = dynamic(
   { ssr: false }
 );
 
-const STUDIO_VIDEO_IDS: VideoEngineId[] = [
-  "kling-v2.5",
-  "luma-ray2",
-  "kling-v3",
-  "auto",
-];
+const STUDIO_VIDEO_IDS: VideoEngineId[] = STUDIO_VIDEO_ENGINE_IDS;
 
 const STUDIO_IMAGE_IDS: ImageEngineId[] = ["flux-pro", "sd3.5-large", "auto"];
 
@@ -132,13 +128,13 @@ export default function GenerateStudio() {
   const style = styleFromPreset(stylePreset);
   const [quality, setQuality] = useState<RenderQuality>("1080p");
   const [frameRate] = useState<FrameRate>(24);
-  const [videoEngine, setVideoEngine] = useState<VideoEngineId>("kling-v2.5");
+  const [videoEngine, setVideoEngine] = useState<VideoEngineId>("auto");
   const [imageEngine, setImageEngine] = useState<ImageEngineId>("flux-pro");
   const [aspect, setAspect] = useState<"16:9" | "9:16" | "1:1">("16:9");
   const [cameraMove, setCameraMove] = useState<CameraMovement>("static");
   const [templateId, setTemplateId] = useState<number | null>(null);
   const [templateBasePrompt, setTemplateBasePrompt] = useState("");
-  const [duration, setDuration] = useState(10);
+  const [duration, setDuration] = useState(15);
   const [loading, setLoading] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [resultImage, setResultImage] = useState<string | null>(null);
@@ -528,6 +524,10 @@ export default function GenerateStudio() {
             engine: mediaKind === "image" ? imageEngine : videoEngine,
             imageEngine,
             templateId: templateId ?? undefined,
+            endImageUrl:
+              mediaKind === "video" && proMode && keyframes.endUrl
+                ? keyframes.endUrl
+                : undefined,
           }),
         },
         30_000

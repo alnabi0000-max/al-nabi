@@ -32,6 +32,6 @@ export function getElevenLabsDefaults() {
     voiceId:
       process.env.ELEVENLABS_VOICE_ID?.trim() || "21m00Tcm4TlvDq8ikWAM",
     model:
-      process.env.ELEVENLABS_MODEL?.trim() || "eleven_multilingual_v2",
+      process.env.ELEVENLABS_MODEL?.trim() || "eleven_v3",
   };
 }

@@ -4,8 +4,9 @@ import clsx from "clsx";
 import {
   IMAGE_MODEL_CARDS,
   VIDEO_MODEL_CARDS,
-  RENDER_QUALITIES,
+  PUBLIC_RENDER_QUALITIES,
   FRAME_RATES,
+  STUDIO_VIDEO_ENGINE_IDS,
   type FrameRate,
   type ImageEngineId,
   type RenderQuality,
@@ -62,9 +63,7 @@ export function ModelSwitcher({
       ? IMAGE_MODEL_CARDS
       : VIDEO_MODEL_CARDS.filter((c) =>
           compact
-            ? ["kling-v2.5", "kling-v3", "luma-ray2", "runway-gen3", "auto"].includes(
-                c.id
-              )
+            ? STUDIO_VIDEO_ENGINE_IDS.includes(c.id as VideoEngineId)
             : true
         );
 
@@ -123,9 +122,7 @@ export function ModelSwitcher({
             {tr("quality")}
           </p>
           <div className="flex flex-wrap gap-2">
-            {RENDER_QUALITIES.filter((q) =>
-              media === "image" ? q !== "8K" : true
-            ).map((q) => (
+            {PUBLIC_RENDER_QUALITIES.map((q) => (
               <button
                 key={q}
                 type="button"

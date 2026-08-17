@@ -13,12 +13,12 @@ const MODEL_MAP: Record<
   { engine: VideoEngineId; label: string }
 > = {
   "alnabi-cinematic": {
-    engine: "kling-v2.5",
-    label: "Cinematic",
+    engine: "auto",
+    label: "Auto",
   },
   "alnabi-cinematic-ultra": {
     engine: "kling-v3",
-    label: "Cinematic Pro",
+    label: "Flagship",
   },
   "alnabi-motion-pro": {
     engine: "luma-ray2",

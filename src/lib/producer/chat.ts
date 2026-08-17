@@ -108,7 +108,6 @@ const ALLOWED_NAV_PATHS = new Set([
   "/store",
   "/balance",
   "/profile",
-  "/translator",
   "/terms",
   "/privacy",
   "/refund-policy",
@@ -247,19 +246,21 @@ ALLOWED (ordinary curiosity — answer openly and briefly):
 const SITE_CAPABILITIES = `Sayt imkoniyatlari:
 NIMA QILA OLADI:
 - / — Studio: matndan rasm yoki video (Video) yoki uzun skriptdan film (Film). Shablonlar Studio ichida (?templates=1).
-- /?mode=film — Film: enhance → sahnalar → ovoz (TTS) + video montaj (30s–10 daqiqa).
+- Video: Auto/Flagship 15 soniyagacha, native ovoz (dialog + foley bir passda), 720p/1080p/4K. Rasm yuklab image-to-video. Pro rejimda start/end keyframe.
+- /?mode=film — Film: enhance → sahnalar → ovoz (yuqori sifatli TTS) + video montaj (30s–10 daqiqa).
 - /?templates=1 — Studio ichida shablon tanlash.
 - Chat (header copilot, /?chat=1): g‘oya, shablon, Reels/YouTube, Produce. Studio yoki Kabinetga yo‘naltiradi.
+- Timeline: matnni o‘qish (TTS) + SFX + BGM — studio ichida.
 - /profile — Kabinet: hisob, NC balansi, mediakutubxona (tarix), do‘kon (?tab=kabinet | dokon | umumiy).
 - /auth/reset — Tiklash emaili orqali yangi parol o‘rnatish.
 - /terms, /privacy, /refund-policy — Foydalanish shartlari, maxfiylik va NC qaytarish qoidalari.
-- Global: NC bilan to‘lov, ko‘p tillilik, kontent filtri (halal), referral, floating Producer Chat.
+- Global: NC bilan to‘lov, 20 til (RTL), kontent filtri (halal), floating Producer Chat.
 
 NIMA QILA OLMAYDI (hali yo‘q — va’da qilma):
 - Face Match / Identity Lock, Motion Brush, regional inpaint/outpaint.
-- Image-to-video drag-and-drop zone (Studio asosan matn + shablon).
-- Foydalanuvchi tanlovida to‘liq 4K/8K sifat picker.
-- Alohida billing history sahifasi, public admin, yoki mustaqil “viral tools” ilovasi.
+- Alohida ovoz-tarjimon sahifasi.
+- 8K video (maksimum 4K).
+- Referral bonus, alohida billing history sahifasi, public admin, yoki mustaqil “viral tools” ilovasi.
 - Uchinchi tomon AI brendlari yoki ularning maxsus funksiyalari.
 
 CAPABILITY RULE (CRITICAL):
@@ -413,7 +414,6 @@ function defaultNavLabel(href: string, lang: PromptLang): string {
     "/store": ["Do‘kon", "Store", "Магазин"],
     "/dashboard": ["Kabinet", "Cabinet", "Кабинет"],
     "/producer": ["Producer Chat", "Producer Chat", "Producer Chat"],
-    "/translator": ["Ovoz tarjima", "Voice Translate", "Голосовой перевод"],
   };
   if (href.includes("templates=1")) {
     return uz ? "Shablonlar" : ru ? "Шаблоны" : "Templates";

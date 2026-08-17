@@ -196,9 +196,9 @@ function alignmentToWords(alignment: {
 }
 
 function resolveModel(): ElevenModel {
-  const m = process.env.ELEVENLABS_MODEL || "eleven_multilingual_v2";
-  if (m === "eleven_v3" || m === "eleven_turbo_v2_5") return m;
-  return "eleven_multilingual_v2";
+  const m = process.env.ELEVENLABS_MODEL || "eleven_v3";
+  if (m === "eleven_multilingual_v2" || m === "eleven_turbo_v2_5") return m;
+  return "eleven_v3";
 }
 
 /**
@@ -225,6 +225,25 @@ export async function synthesizeSpeech(opts: {
   const model = opts.modelId || resolveModel();
   const key = process.env.ELEVENLABS_API_KEY;
   const settings = emotionToVoiceSettings(emotion);
+
+  async function requestTts(modelId: ElevenModel, withTimestamps: boolean) {
+    const url = withTimestamps
+      ? `${ELEVEN_BASE}/text-to-speech/${voiceId}/with-timestamps`
+      : `${ELEVEN_BASE}/text-to-speech/${voiceId}`;
+    return fetch(url, {
+      method: "POST",
+      headers: {
+        "xi-api-key": key as string,
+        "Content-Type": "application/json",
+        Accept: withTimestamps ? "application/json" : "audio/mpeg",
+      },
+      body: JSON.stringify({
+        text: preparedText,
+        model_id: modelId,
+        voice_settings: settings,
+      }),
+    });
+  }
 
   if (!key) {
     /* Never charge for a mock voiceover in production — AUTH_MODE alone must
@@ -268,57 +287,39 @@ export async function synthesizeSpeech(opts: {
     };
   }
 
-  // Prefer with-timestamps for director sync
-  const url = `${ELEVEN_BASE}/text-to-speech/${voiceId}/with-timestamps`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "xi-api-key": key,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      text: preparedText,
-      model_id: model,
-      voice_settings: settings,
-    }),
-  });
+  const modelsToTry: ElevenModel[] =
+    model === "eleven_v3"
+      ? ["eleven_v3", "eleven_multilingual_v2"]
+      : [model];
 
-  if (!res.ok) {
-    // Fallback: classic TTS without timestamps
-    const fallback = await fetch(
-      `${ELEVEN_BASE}/text-to-speech/${voiceId}`,
-      {
-        method: "POST",
-        headers: {
-          "xi-api-key": key,
-          "Content-Type": "application/json",
-          Accept: "audio/mpeg",
-        },
-        body: JSON.stringify({
-          text: preparedText,
-          model_id: model,
-          voice_settings: settings,
-        }),
-      }
-    );
-    if (!fallback.ok) {
-      throw new Error(`ElevenLabs error: ${res.status}/${fallback.status}`);
+  let usedModel = model;
+  let res: Response | null = null;
+  for (const candidate of modelsToTry) {
+    usedModel = candidate;
+    res = await requestTts(candidate, true);
+    if (res.ok) break;
+    const classic = await requestTts(candidate, false);
+    if (classic.ok) {
+      const buf = Buffer.from(await classic.arrayBuffer());
+      await fs.writeFile(opts.outPath, buf);
+      const words = mockWordTimings(preparedText);
+      const durationMs = estimateDurationMs(preparedText);
+      return {
+        audioPath: opts.outPath,
+        audioBase64: buf.toString("base64"),
+        durationMs,
+        words,
+        model: usedModel,
+        voiceId,
+        mock: false,
+        preparedText,
+      };
     }
-    const buf = Buffer.from(await fallback.arrayBuffer());
-    await fs.writeFile(opts.outPath, buf);
-    const words = mockWordTimings(preparedText);
-    const durationMs = estimateDurationMs(preparedText);
-    return {
-      audioPath: opts.outPath,
-      audioBase64: buf.toString("base64"),
-      durationMs,
-      words,
-      model,
-      voiceId,
-      mock: false,
-      preparedText,
-    };
+    res = classic;
+  }
+
+  if (!res || !res.ok) {
+    throw new Error(`ElevenLabs error: ${res?.status ?? "no-response"}`);
   }
 
   const data = (await res.json()) as {
@@ -345,7 +346,7 @@ export async function synthesizeSpeech(opts: {
 
   await fs.writeFile(
     opts.outPath.replace(/\.mp3$/i, ".align.json"),
-    JSON.stringify({ words, durationMs, emotion, model, voiceId }, null, 2)
+    JSON.stringify({ words, durationMs, emotion, model: usedModel, voiceId }, null, 2)
   );
 
   return {
@@ -353,7 +354,7 @@ export async function synthesizeSpeech(opts: {
     audioBase64,
     durationMs,
     words,
-    model,
+    model: usedModel,
     voiceId,
     mock: false,
     preparedText,

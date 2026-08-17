@@ -28,24 +28,31 @@ const KNOWN_UPSTREAM: Partial<
   Record<ModelSlot, Array<{ id: string; label: string }>>
 > = {
   kling25: [
-    { id: "kwaivgi/kling-v2.1", label: "v2.1" },
-    { id: "kwaivgi/kling-v1.6-standard", label: "v1.6" },
+    { id: "kwaivgi/kling-v2.5-turbo-pro", label: "2.5 Turbo Pro" },
+    { id: "kwaivgi/kling-v2.6", label: "2.6" },
   ],
   kling3: [
-    { id: "kwaivgi/kling-v2.1-master", label: "v2.1-master" },
-    { id: "kwaivgi/kling-v1.6-pro", label: "v1.6-pro" },
+    { id: "kwaivgi/kling-v3-video", label: "Video 3.0" },
+    { id: "kwaivgi/kling-v3-omni-video", label: "3.0 Omni" },
   ],
   lumaRay2: [
     { id: "luma/ray", label: "Ray" },
-    { id: "luma/ray-2-720p", label: "Ray-2 720p" },
+    { id: "luma/ray-flash-2", label: "Ray Flash 2" },
   ],
   wan: [
-    { id: "wavespeedai/wan-2.1-t2v-720p", label: "Wan 2.1 720p" },
-    { id: "wavespeedai/wan-2.1-t2v-480p", label: "Wan 2.1 480p" },
+    { id: "wan-video/wan-2.2-t2v-fast", label: "Wan 2.2 Fast" },
+    { id: "wan-video/wan-2.2-t2v-720p", label: "Wan 2.2 720p" },
   ],
   runway: [
-    { id: "minimax/video-01", label: "Video-01" },
-    { id: "minimax/video-01-live", label: "Video-01 Live" },
+    { id: "kwaivgi/kling-v2.6", label: "2.6 native audio" },
+    { id: "minimax/hailuo-02", label: "Hailuo 02" },
+  ],
+  flux: [
+    { id: "black-forest-labs/flux-2-pro", label: "FLUX.2 Pro" },
+    { id: "black-forest-labs/flux-1.1-pro", label: "FLUX 1.1 Pro" },
+  ],
+  minimax: [
+    { id: "minimax/hailuo-02", label: "Hailuo 02" },
   ],
 };
 

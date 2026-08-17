@@ -1,7 +1,7 @@
 /**
  * NC (Nabi Credits) — official financial standard:
  * 1 AI Image = 1 NC
- * 1 standard Prompt-to-Video clip (8s) = 20 NC
+ * 1 standard Prompt-to-Video clip (up to 15s flagship) = 20 NC
  * 1 minute Script-to-Movie = 40 NC
  */
 
@@ -17,7 +17,7 @@ export const ARCHIVE_REDOWNLOAD_FEE_NC = 5;
 /** USD equivalent for official packs ($20 → 2,000 base NC) */
 export const USD_PER_COIN = 0.01;
 
-/** Standard 8s prompt-to-video clip — marketing + billing base (before multipliers). */
+/** Standard prompt-to-video clip — marketing + billing base (before multipliers). */
 export const STANDARD_VIDEO_NC = 20;
 /**
  * Display rate for 4K clip estimates on pricing / top-up.
@@ -115,12 +115,12 @@ export function calculateActiveAudioCost(clips: AudioCostClip[]): number {
 export const CREDITS_PER_MINUTE = CREDIT_RATES.prompt_to_video_per_min;
 
 /**
- * Single prompt-to-video clip billable ceiling.
+ * Single prompt-to-video clip billable ceiling (Kling 3.0 max = 15s).
  * MUST stay equal to CLIP_DURATION_SEC in lib/replicate.ts — P2V is billed
  * for the clip that can actually be rendered, not an arbitrary client duration.
  * text_to_movie is NOT capped here (scales to product max, e.g. 10 min).
  */
-export const PROMPT_TO_VIDEO_CLIP_SEC = 8;
+export const PROMPT_TO_VIDEO_CLIP_SEC = 15;
 
 export function billableMinutes(durationSec: number): number {
   return Math.max(1, Math.ceil(Math.max(0, durationSec) / 60));
@@ -205,11 +205,12 @@ function applyModelMultipliers(base: number, opts?: CostOpts): number {
   // Lazy import avoided — multipliers inline to keep credits.ts lean
   let m = 1;
   switch (opts.engine) {
-    case "kling-v2.5":
-      m *= 1.25;
-      break;
+    case "auto":
     case "kling-v3":
       m *= 1.55;
+      break;
+    case "kling-v2.5":
+      m *= 1.25;
       break;
     case "luma-ray2":
       m *= 1.35;
@@ -223,7 +224,6 @@ function applyModelMultipliers(base: number, opts?: CostOpts): number {
     case "flux-pro":
     case "wan-2.5":
     case "minimax":
-    case "auto":
     default:
       break;
   }
@@ -232,10 +232,8 @@ function applyModelMultipliers(base: number, opts?: CostOpts): number {
       m *= 0.85;
       break;
     case "4K":
-      m *= 1.35;
-      break;
     case "8K":
-      m *= 1.75;
+      m *= 1.35;
       break;
     default:
       break;

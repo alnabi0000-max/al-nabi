@@ -33,6 +33,7 @@ export type DispatchResult = {
 export type DispatchVideoInput = {
   prompt: string;
   imageUrl?: string;
+  endImageUrl?: string;
   engine?: VideoEngineId | string;
   cameraMove?: CameraMovement;
   quality?: RenderQuality | string;
@@ -45,6 +46,8 @@ export type DispatchImageInput = {
   prompt: string;
   engine?: ImageEngineId | string;
   aspect?: "16:9" | "9:16" | "1:1";
+  quality?: RenderQuality | string;
+  imageUrl?: string;
 };
 
 function publicize(
@@ -80,10 +83,12 @@ export async function dispatchVideo(
   const raw = await generateReplicateVideo({
     prompt,
     imageUrl: opts.imageUrl,
+    endImageUrl: opts.endImageUrl,
     cameraMove: opts.cameraMove,
     engine,
     durationSec: opts.durationSec,
     aspect: opts.aspect,
+    quality: opts.quality,
   });
 
   return publicize(raw, engine);
@@ -106,6 +111,8 @@ export async function dispatchImage(
     prompt: opts.prompt,
     aspect: opts.aspect,
     engine,
+    quality: opts.quality,
+    imageUrl: opts.imageUrl,
   });
 
   return publicize(raw, engine);

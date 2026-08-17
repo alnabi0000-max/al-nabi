@@ -24,8 +24,22 @@ export type ImageEngineId = (typeof IMAGE_ENGINES)[number];
 export type RenderQuality = "720p" | "1080p" | "4K" | "8K";
 export type FrameRate = 24 | 30 | 60;
 
+/** API still accepts 8K (mapped to 4K). Studio never offers 8K. */
 export const RENDER_QUALITIES: RenderQuality[] = ["720p", "1080p", "4K", "8K"];
+export const PUBLIC_RENDER_QUALITIES: Exclude<RenderQuality, "8K">[] = [
+  "720p",
+  "1080p",
+  "4K",
+];
 export const FRAME_RATES: FrameRate[] = [24, 30, 60];
+
+/** Compact studio picker — simple outside, flagship inside. */
+export const STUDIO_VIDEO_ENGINE_IDS: VideoEngineId[] = [
+  "auto",
+  "kling-v3",
+  "kling-v2.5",
+  "runway-gen3",
+];
 
 export type ModelMedia = "video" | "image" | "audio";
 
@@ -44,20 +58,36 @@ export interface OfficialModelCard {
 
 export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
   {
-    id: "kling-v2.5",
+    id: "auto",
     media: "video",
-    label: "Cinematic",
+    label: "Auto",
     vendor: "Al-Nabi",
-    description: "High-motion cinematic video",
-    coinMultiplier: 1.25,
+    description: "Strongest route: 15s, native sound, up to 4K",
+    coinMultiplier: 1.55,
   },
   {
     id: "kling-v3",
     media: "video",
-    label: "Cinematic Pro",
+    label: "Flagship",
     vendor: "Al-Nabi",
-    description: "Flagship cinematic generation",
+    description: "15s cinematic video with native audio",
     coinMultiplier: 1.55,
+  },
+  {
+    id: "kling-v2.5",
+    media: "video",
+    label: "Cinematic",
+    vendor: "Al-Nabi",
+    description: "Fast high-motion cinematic clips",
+    coinMultiplier: 1.25,
+  },
+  {
+    id: "runway-gen3",
+    media: "video",
+    label: "Cinema Sound",
+    vendor: "Al-Nabi",
+    description: "Lip-sync dialogue and scene audio in one pass",
+    coinMultiplier: 1.45,
   },
   {
     id: "luma-ray2",
@@ -68,19 +98,11 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
     coinMultiplier: 1.35,
   },
   {
-    id: "runway-gen3",
-    media: "video",
-    label: "Motion Elite",
-    vendor: "Al-Nabi",
-    description: "Precision motion control",
-    coinMultiplier: 1.45,
-  },
-  {
     id: "wan-2.5",
     media: "video",
     label: "Stream",
     vendor: "Al-Nabi",
-    description: "Fast gateway video route",
+    description: "Fast draft video route",
     coinMultiplier: 1.0,
   },
   {
@@ -88,15 +110,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
     media: "video",
     label: "Pulse",
     vendor: "Al-Nabi",
-    description: "Dynamic short-form motion",
-    coinMultiplier: 1.0,
-  },
-  {
-    id: "auto",
-    media: "video",
-    label: "Auto",
-    vendor: "Al-Nabi",
-    description: "Smart best-available route",
+    description: "Real-world physics, short-form motion",
     coinMultiplier: 1.0,
   },
 ];
@@ -145,6 +159,24 @@ export function isImageEngineId(v: string): v is ImageEngineId {
   return (IMAGE_ENGINES as readonly string[]).includes(v);
 }
 
+/** 8K is not delivered — coerce to 4K so billing and the provider stay honest. */
+export function normalizeRenderQuality(
+  quality?: string | null
+): Exclude<RenderQuality, "8K"> {
+  if (quality === "720p" || quality === "1080p" || quality === "4K") {
+    return quality;
+  }
+  if (quality === "8K") return "4K";
+  return "1080p";
+}
+
+/** Engines that emit dialogue / Foley in the video file itself. */
+export function engineHasNativeAudio(engine?: string | null): boolean {
+  return (
+    engine === "auto" || engine === "kling-v3" || engine === "runway-gen3"
+  );
+}
+
 export function videoEngineMultiplier(engine?: string | null): number {
   const card = VIDEO_MODEL_CARDS.find((c) => c.id === engine);
   return card?.coinMultiplier ?? 1;
@@ -156,15 +188,13 @@ export function imageEngineMultiplier(engine?: string | null): number {
 }
 
 export function qualityMultiplier(quality?: string | null): number {
-  switch (quality) {
+  switch (normalizeRenderQuality(quality)) {
     case "720p":
       return 0.85;
     case "1080p":
       return 1;
     case "4K":
       return 1.35;
-    case "8K":
-      return 1.75;
     default:
       return 1;
   }
@@ -189,7 +219,8 @@ export function composeDirectorPrompt(
   if (opts.cameraMove && opts.cameraMove !== "static") {
     bits.push(`Camera motion: ${opts.cameraMove.replace(/_/g, " ")}`);
   }
-  if (opts.quality) bits.push(`Target resolution: ${opts.quality}`);
+  const quality = normalizeRenderQuality(opts.quality);
+  if (opts.quality) bits.push(`Target resolution: ${quality}`);
   if (opts.frameRate) bits.push(`Frame rate: ${opts.frameRate}fps`);
   return bits.join(". ");
 }

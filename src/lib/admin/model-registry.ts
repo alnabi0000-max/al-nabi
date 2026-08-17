@@ -162,13 +162,13 @@ export const WATCHED_MODELS: Array<{
   {
     slot: "kling25",
     displayName: "Cinematic",
-    defaultModelId: "kwaivgi/kling-v2.1",
+    defaultModelId: "kwaivgi/kling-v2.5-turbo-pro",
     envKey: "REPLICATE_KLING_V25_MODEL",
   },
   {
     slot: "kling3",
-    displayName: "Cinematic Pro",
-    defaultModelId: "kwaivgi/kling-v2.1-master",
+    displayName: "Flagship",
+    defaultModelId: "kwaivgi/kling-v3-video",
     envKey: "REPLICATE_KLING_V3_MODEL",
   },
   {
@@ -180,13 +180,13 @@ export const WATCHED_MODELS: Array<{
   {
     slot: "wan",
     displayName: "Stream",
-    defaultModelId: "wavespeedai/wan-2.1-t2v-720p",
+    defaultModelId: "wan-video/wan-2.2-t2v-fast",
     envKey: "REPLICATE_WAN_MODEL",
   },
   {
     slot: "runway",
-    displayName: "Motion Elite",
-    defaultModelId: "minimax/video-01",
+    displayName: "Cinema Sound",
+    defaultModelId: "kwaivgi/kling-v2.6",
     envKey: "REPLICATE_RUNWAY_MODEL",
   },
 ];

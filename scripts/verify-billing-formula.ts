@@ -41,20 +41,20 @@ assert(
   "10min is exactly 10x 1min"
 );
 
-assert(PROMPT_TO_VIDEO_CLIP_SEC === 8, "clip ceiling 8");
+assert(PROMPT_TO_VIDEO_CLIP_SEC === 15, "clip ceiling 15");
 assert(
-  chargeableDurationSec("prompt_to_video", 600) === 8,
-  "P2V 600s capped to 8"
+  chargeableDurationSec("prompt_to_video", 600) === 15,
+  "P2V 600s capped to 15"
 );
 assert(
   calculateGenerationCost("prompt_to_video", 600) ===
-    calculateGenerationCost("prompt_to_video", 8),
-  "P2V 600s same cost as 8s"
+    calculateGenerationCost("prompt_to_video", 15),
+  "P2V 600s same cost as 15s"
 );
 assert(
   calculateGenerationCost("prompt_to_video", 10) ===
     calculateGenerationCost("prompt_to_video", 8),
-  "P2V UI 10s matches billed 8s"
+  "P2V UI 10s matches billed 8s (same minute)"
 );
 
 const base = calculateGenerationCost("prompt_to_video", 8);
@@ -65,6 +65,10 @@ assert(
   kling === Math.max(1, Math.round(base * 1.55)),
   "kling-v3 multiplier"
 );
+const autoCost = calculateGenerationCost("prompt_to_video", 8, {
+  engine: "auto",
+});
+assert(autoCost === kling, "auto routes at flagship price");
 
 const msg = formatInsufficientFundsMessage(30, 5);
 assert(
@@ -78,8 +82,13 @@ assert(
   "P2V rate matches standard video constant"
 );
 assert(
-  calculateGenerationCost("prompt_to_video", 8, { engine: "auto" }) === 20,
-  "default P2V 20 NC"
+  calculateGenerationCost("prompt_to_video", 8, { engine: "auto" }) ===
+    Math.max(1, Math.round(20 * 1.55)),
+  "default Auto P2V is flagship-priced"
+);
+assert(
+  calculateGenerationCost("prompt_to_video", 8) === 20,
+  "unspecified engine P2V 20 NC"
 );
 
 const expectedPacks: Array<{
