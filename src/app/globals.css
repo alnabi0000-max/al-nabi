@@ -3,46 +3,46 @@
 @tailwind utilities;
 
 /*
- * Locked Deep Space Nebula tokens. No data-theme switcher.
+ * Hybrid C: champagne gold sections, cyan whisper, deep cinema black.
  */
 :root {
   color-scheme: dark;
-  --nabi-bg: #0b0e17;
+  --nabi-bg: #05060a;
   --nabi-card: rgba(255, 255, 255, 0.03);
   --nabi-elevated: rgba(255, 255, 255, 0.07);
-  --bg-elevated-solid: rgba(8, 11, 20, 0.7);
+  --bg-elevated-solid: rgba(8, 11, 16, 0.72);
   --nabi-border: rgba(255, 255, 255, 0.1);
-  --nabi-neon: #8b5cf6;
-  --nabi-gold: #38bdf8;
+  --nabi-neon: #38bdf8;
+  --nabi-gold: #e8c547;
   --nabi-muted: #94a3b8;
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
-  --accent: #8b5cf6;
+  --accent: #e8c547;
   --accent-2: #38bdf8;
-  --accent-from: #8b5cf6;
-  --accent-via: #7c3aed;
-  --accent-to: #38bdf8;
-  --btn-on-accent: #ffffff;
+  --accent-from: #f0d06a;
+  --accent-via: #e8c547;
+  --accent-to: #c9a227;
+  --btn-on-accent: #16120a;
   --input-bg: rgba(255, 255, 255, 0.04);
-  --glass-bg: rgba(8, 11, 20, 0.65);
+  --glass-bg: rgba(8, 11, 16, 0.65);
   --cinema-bg: var(--nabi-bg);
   --cinema-ink: var(--text-primary);
   --cinema-muted: var(--nabi-muted);
-  --glow-1: rgba(139, 92, 246, 0.32);
-  --glow-2: rgba(56, 189, 248, 0.18);
-  --glow-3: rgba(192, 132, 252, 0.14);
-  --shadow-neon: 0 0 28px rgba(139, 92, 246, 0.35);
-  --shadow-gold: 0 0 22px rgba(56, 189, 248, 0.28);
+  --glow-1: rgba(232, 197, 71, 0.22);
+  --glow-2: rgba(56, 189, 248, 0.12);
+  --glow-3: rgba(232, 197, 71, 0.08);
+  --shadow-neon: 0 0 22px rgba(56, 189, 248, 0.16);
+  --shadow-gold: 0 0 22px rgba(232, 197, 71, 0.28);
   --shadow-glass:
-    0 8px 32px rgba(0, 0, 0, 0.5), 0 0 20px rgba(139, 92, 246, 0.14);
-  --shadow-ring: 0 0 0 1px rgba(139, 92, 246, 0.35),
-    0 0 40px rgba(56, 189, 248, 0.16);
+    0 8px 32px rgba(0, 0, 0, 0.5), 0 0 18px rgba(232, 197, 71, 0.08);
+  --shadow-ring: 0 0 0 1px rgba(232, 197, 71, 0.4),
+    0 0 36px rgba(56, 189, 248, 0.12);
 }
 
 html,
 body {
   min-height: 100%;
-  background-color: #070214;
+  background-color: #05060a;
   color: var(--cinema-ink);
 }
 
@@ -54,8 +54,8 @@ body {
 
 @layer components {
   .glass-modal {
-    @apply rounded-2xl border border-white/10 shadow-2xl shadow-violet-500/10;
-    background: rgb(8 11 20 / 0.65);
+    @apply rounded-2xl border border-white/10 shadow-2xl shadow-amber-500/10;
+    background: rgb(8 11 16 / 0.65);
     -webkit-backdrop-filter: blur(40px);
     backdrop-filter: blur(40px);
   }
@@ -64,24 +64,24 @@ body {
     @apply border border-white/10 bg-white/[0.03] backdrop-blur-xl transition-all;
   }
   .glass-card:hover {
-    border-color: rgb(139 92 246 / 0.4);
+    border-color: rgb(232 197 71 / 0.35);
   }
 
   .glass-drawer {
-    background: rgb(8 11 20 / 0.7);
+    background: rgb(8 11 16 / 0.7);
     border-color: rgb(255 255 255 / 0.1);
     -webkit-backdrop-filter: blur(40px);
     backdrop-filter: blur(40px);
   }
 
   .glass-scrim {
-    @apply bg-[#080b14]/40 backdrop-blur-md;
+    @apply bg-[#05060a]/40 backdrop-blur-md;
   }
 
   .nabi-glass {
     border: 1px solid var(--nabi-border);
     background: var(--glass-bg);
-    box-shadow: 0 25px 50px -12px rgb(139 92 246 / 0.1);
+    box-shadow: 0 25px 50px -12px rgb(232 197 71 / 0.08);
     -webkit-backdrop-filter: blur(40px);
     backdrop-filter: blur(40px);
   }
@@ -103,8 +103,11 @@ body {
 
   .nabi-btn-primary {
     @apply nabi-btn;
-    background: var(--accent);
+    background: linear-gradient(180deg, var(--accent-from), var(--accent-to));
     color: var(--btn-on-accent);
+  }
+  .nabi-btn-primary:hover {
+    filter: brightness(1.06);
   }
 
   .nabi-btn-ghost {
@@ -116,6 +119,31 @@ body {
   .nabi-btn-ghost:hover {
     background: var(--nabi-elevated);
     color: var(--text-primary);
+    border-color: color-mix(in srgb, var(--nabi-gold) 35%, transparent);
+  }
+
+  .nabi-select {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-xl border text-sm font-semibold
+      transition-[color,background,border-color,box-shadow] duration-200;
+    border-color: var(--nabi-border);
+    background: transparent;
+    color: var(--nabi-muted);
+  }
+  .nabi-select:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+    border-color: color-mix(in srgb, var(--nabi-gold) 35%, transparent);
+  }
+
+  .nabi-select-on,
+  .nabi-btn-ghost.nabi-select-on,
+  .nabi-select.nabi-select-on {
+    color: var(--nabi-gold) !important;
+    background: color-mix(in srgb, var(--accent-2) 6%, transparent) !important;
+    border-color: var(--nabi-gold) !important;
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 15%, transparent),
+      0 0 16px color-mix(in srgb, var(--nabi-gold) 16%, transparent);
   }
 
   .nabi-input {
@@ -197,7 +225,7 @@ body {
   }
   .nabi-bento-item:hover {
     border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-    box-shadow: var(--shadow-neon);
+    box-shadow: var(--shadow-gold);
   }
 
   .nabi-bento-item:nth-child(4n + 1) {
@@ -214,9 +242,21 @@ body {
     color: var(--text-primary);
   }
   .nabi-chip-active {
-    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-    background: var(--nabi-elevated);
-    color: var(--text-primary);
+    color: var(--nabi-gold);
+    background: color-mix(in srgb, var(--accent-2) 6%, transparent);
+    border-color: var(--nabi-gold);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent-2) 15%, transparent),
+      0 0 16px color-mix(in srgb, var(--nabi-gold) 16%, transparent);
+  }
+
+  .nabi-film-grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.045;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 }
 

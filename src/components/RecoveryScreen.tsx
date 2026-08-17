@@ -28,7 +28,7 @@ export function RecoveryScreen({ kind, onRetry }: Props) {
           <button
             type="button"
             onClick={onRetry}
-            className="inline-flex items-center gap-2 rounded-xl bg-cyan-500/20 px-4 py-2 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/30"
+            className="nabi-btn-primary inline-flex items-center gap-2"
           >
             <RefreshCw size={16} />
             {t("try_again")}
@@ -44,7 +44,7 @@ export function RecoveryScreen({ kind, onRetry }: Props) {
         {notFound && (
           <Link
             href="/"
-            className="inline-flex items-center gap-2 rounded-xl bg-cyan-500/20 px-4 py-2 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/30"
+            className="nabi-btn-primary inline-flex items-center gap-2"
           >
             <Sparkles size={16} />
             {t("start_creating")}

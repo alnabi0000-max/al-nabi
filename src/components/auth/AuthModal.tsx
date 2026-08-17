@@ -253,10 +253,8 @@ export function AuthModal() {
                   resetFeedback();
                 }}
                 className={clsx(
-                  "flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition",
-                  tab === id
-                    ? "bg-cyan-500/15 text-nabi-neon shadow-glass ring-1 ring-cyan-400/30"
-                    : "text-nabi-muted hover:bg-white/5 hover:text-nabi-ink"
+                  "nabi-select px-3 py-2.5 text-xs",
+                  tab === id && "nabi-select-on"
                 )}
               >
                 <Icon size={13} />

@@ -47,8 +47,8 @@ function FeaturedCard({
       className={clsx(
         "group overflow-hidden rounded-xl border text-left transition",
         active
-          ? "border-white/35 bg-nabi-elevated"
-          : "border-nabi-border bg-nabi-input hover:border-nabi-neon/35"
+          ? "nabi-select-on"
+          : "border-nabi-border bg-nabi-input hover:border-nabi-gold/35"
       )}
     >
       <div className="flex aspect-video flex-col justify-between bg-gradient-to-br from-nabi-elevated to-nabi-surface p-3">

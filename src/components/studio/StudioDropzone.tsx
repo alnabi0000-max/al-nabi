@@ -58,7 +58,7 @@ export function StudioDropzone({
           CINEMA_GLASS,
           "relative flex min-h-[120px] cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden transition",
           drag
-            ? "border-cyan-400/70 bg-cyan-400/10 shadow-[0_0_24px_rgba(34,211,238,0.2)]"
+            ? "nabi-select-on"
             : "hover:border-white/20"
         )}
       >

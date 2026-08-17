@@ -34,10 +34,8 @@ export function MobileNav() {
               if (navigator.vibrate) navigator.vibrate(12);
             }}
             className={clsx(
-              "flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-[9px] transition-all duration-300 ease-apple active:scale-[0.92]",
-              active
-                ? "bg-nabi-elevated text-nabi-ink"
-                : "text-nabi-muted"
+              "nabi-select min-w-0 flex-1 flex-col gap-0.5 rounded-none border-0 py-2 text-[9px] active:scale-[0.92]",
+              active ? "nabi-select-on" : "border-transparent"
             )}
           >
             <Icon size={18} />

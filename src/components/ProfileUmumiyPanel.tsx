@@ -171,7 +171,7 @@ export function ProfileUmumiyPanel() {
           </div>
 
           <div className="nabi-card space-y-4">
-            <div className="flex gap-1 rounded-xl bg-nabi-input p-1">
+            <div className="flex flex-wrap gap-2">
               {(
                 [
                   ["password", tr("auth_tab_password")],
@@ -184,10 +184,8 @@ export function ProfileUmumiyPanel() {
                   type="button"
                   onClick={() => setTab(id)}
                   className={clsx(
-                    "flex-1 rounded-lg px-2 py-2 text-[11px] transition",
-                    tab === id
-                      ? "bg-cyan-500/20 text-nabi-neon"
-                      : "text-nabi-muted hover:text-nabi-ink"
+                    "nabi-select flex-1 px-2 py-2 text-[11px]",
+                    tab === id && "nabi-select-on"
                   )}
                 >
                   {label}

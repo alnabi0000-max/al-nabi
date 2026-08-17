@@ -153,7 +153,7 @@ export function AdminJobsView({
             setPage(1);
           }}
           placeholder={t.admin.jobsSearch}
-          className="w-full rounded-xl border border-nabi-border bg-nabi-input py-2.5 pl-9 pr-3 text-sm text-nabi-ink outline-none focus:border-nabi-neon/40"
+          className="w-full rounded-xl border border-nabi-border bg-nabi-input py-2.5 pl-9 pr-3 text-sm text-nabi-ink outline-none focus:border-nabi-gold/40"
         />
       </form>
 

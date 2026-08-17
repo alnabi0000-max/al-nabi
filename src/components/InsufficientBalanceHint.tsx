@@ -95,7 +95,7 @@ export function InsufficientBalanceHint({
           <button
             type="button"
             onClick={() => onSelectQuality?.("720p")}
-            className="rounded-lg border border-nabi-neon/35 bg-nabi-card px-3 py-1.5 text-xs text-nabi-ink hover:bg-nabi-elevated"
+            className="nabi-select px-3 py-1.5 text-xs"
           >
             {tryQualityLabel || tr("try_quality_720p")}
           </button>

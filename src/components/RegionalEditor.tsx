@@ -28,7 +28,7 @@ export function RegionalEditor() {
           type="button"
           onClick={() => run("inpaint")}
           className={`nabi-btn-ghost !text-xs ${
-            mode === "inpaint" ? "!border-nabi-neon !text-nabi-neon" : ""
+            mode === "inpaint" ? "nabi-select-on" : ""
           }`}
         >
           {tr("inpaint")}
@@ -37,7 +37,7 @@ export function RegionalEditor() {
           type="button"
           onClick={() => run("outpaint")}
           className={`nabi-btn-ghost !text-xs ${
-            mode === "outpaint" ? "!border-nabi-gold !text-nabi-gold" : ""
+            mode === "outpaint" ? "nabi-select-on" : ""
           }`}
         >
           {tr("outpaint")}

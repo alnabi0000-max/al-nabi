@@ -25,7 +25,7 @@ export function StudioGenerateCta({
       disabled={disabled}
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
-      className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-amber-400 px-5 py-3.5 text-sm font-semibold text-black shadow-[0_0_28px_rgba(34,211,238,0.28)] transition disabled:cursor-not-allowed disabled:opacity-40"
+      className="nabi-btn-primary flex w-full gap-3 px-5 py-3.5 shadow-gold disabled:cursor-not-allowed disabled:opacity-40"
     >
       {loading ? (
         <Loader2 size={16} className="animate-spin" />

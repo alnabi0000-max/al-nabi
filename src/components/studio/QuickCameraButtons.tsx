@@ -33,10 +33,8 @@ export function QuickCameraButtons({ value, onChange }: Props) {
               type="button"
               onClick={() => onChange(active ? "static" : camera.id)}
               className={clsx(
-                "rounded-xl border px-2 py-2 text-[11px] font-medium transition",
-                active
-                  ? "border-cyan-400/70 bg-cyan-400/10 text-white shadow-[0_0_16px_rgba(34,211,238,0.2)]"
-                  : "border-white/10 text-white/55 hover:border-white/25"
+                "nabi-select px-2 py-2 text-[11px]",
+                active && "nabi-select-on"
               )}
             >
               {camera.label}

@@ -69,7 +69,7 @@ export function RenderProgress({
               ? "bg-rose-500"
               : done
                 ? "bg-emerald-500"
-                : "bg-gradient-to-r from-cyan-500 via-nabi-neon to-nabi-gold"
+                : "bg-gradient-to-r from-nabi-gold via-nabi-neon to-nabi-gold"
           )}
           style={{ width: `${pct}%` }}
         />

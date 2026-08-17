@@ -765,10 +765,8 @@ export default function GenerateStudio() {
                 type="button"
                 onClick={() => setMediaKind("video")}
                 className={clsx(
-                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition",
-                  mediaKind === "video"
-                    ? "border-cyan-400/70 bg-cyan-400/10 text-white shadow-[0_0_16px_rgba(34,211,238,0.25)]"
-                    : "border-white/10 text-white/50 hover:border-white/25"
+                  "nabi-select px-3 py-1.5 text-xs",
+                  mediaKind === "video" && "nabi-select-on"
                 )}
               >
                 <Video size={12} />
@@ -778,10 +776,8 @@ export default function GenerateStudio() {
                 type="button"
                 onClick={() => setMediaKind("image")}
                 className={clsx(
-                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition",
-                  mediaKind === "image"
-                    ? "border-cyan-400/70 bg-cyan-400/10 text-white shadow-[0_0_16px_rgba(34,211,238,0.25)]"
-                    : "border-white/10 text-white/50 hover:border-white/25"
+                  "nabi-select px-3 py-1.5 text-xs",
+                  mediaKind === "image" && "nabi-select-on"
                 )}
               >
                 <ImageIcon size={12} />
@@ -791,7 +787,7 @@ export default function GenerateStudio() {
 
             <textarea
               id="studio-prompt"
-              className="min-h-[160px] w-full resize-y rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-base leading-relaxed text-white placeholder:text-white/30 focus:border-cyan-400/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+              className="nabi-input min-h-[160px] resize-y rounded-xl px-3 py-3 text-base leading-relaxed"
               placeholder={tr("prompt_placeholder")}
               value={prompt}
               maxLength={2000}
@@ -870,10 +866,8 @@ export default function GenerateStudio() {
                     type="button"
                     onClick={() => setCameraMove(c.id)}
                     className={clsx(
-                      "rounded-lg border px-2.5 py-1 text-[11px] transition",
-                      cameraMove === c.id
-                        ? "border-cyan-400/70 bg-cyan-400/10 text-white"
-                        : "border-white/10 text-white/50 hover:border-white/25"
+                      "nabi-select px-2.5 py-1 text-[11px]",
+                      cameraMove === c.id && "nabi-select-on"
                     )}
                   >
                     {c.label}
@@ -892,10 +886,8 @@ export default function GenerateStudio() {
                     type="button"
                     onClick={() => setEmotionMode(m.id)}
                     className={clsx(
-                      "rounded-full border px-2.5 py-1 text-[11px] transition",
-                      emotionMode === m.id
-                        ? "border-fuchsia-400/60 bg-fuchsia-500/10 text-white"
-                        : "border-white/10 text-white/45 hover:border-white/25"
+                      "nabi-select px-2.5 py-1 text-[11px]",
+                      emotionMode === m.id && "nabi-select-on"
                     )}
                   >
                     {tr(`emotion_${m.id}`)}
@@ -926,10 +918,8 @@ export default function GenerateStudio() {
                       type="button"
                       onClick={() => setDuration(d)}
                       className={clsx(
-                        "rounded-full border px-3 py-1 text-xs transition",
-                        duration === d
-                          ? "border-white/40 bg-white/10 text-white"
-                          : "border-white/10 text-white/45 hover:border-white/25"
+                        "nabi-select px-3 py-1 text-xs",
+                        duration === d && "nabi-select-on"
                       )}
                     >
                       {d}s
@@ -953,10 +943,8 @@ export default function GenerateStudio() {
                         }
                       }}
                       className={clsx(
-                        "rounded-full border px-3 py-1.5 text-xs transition",
-                        active
-                          ? "border-white/40 bg-white/10 text-white"
-                          : "border-white/10 text-white/50 hover:border-white/25"
+                        "nabi-select px-3 py-1.5 text-xs",
+                        active && "nabi-select-on"
                       )}
                     >
                       {card.label}

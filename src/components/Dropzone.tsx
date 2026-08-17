@@ -39,9 +39,9 @@ export function Dropzone({ onFile }: Props) {
       }}
       className={clsx(
         "relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed transition-all duration-300 ease-apple",
-        drag
-          ? "border-nabi-neon bg-cyan-500/5"
-          : "border-nabi-border bg-nabi-surface hover:border-nabi-neon/50"
+          drag
+            ? "border-nabi-gold bg-nabi-gold/10"
+            : "border-nabi-border bg-nabi-surface hover:border-nabi-gold/50"
       )}
     >
       {preview ? (

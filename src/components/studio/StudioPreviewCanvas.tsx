@@ -77,7 +77,7 @@ export function StudioPreviewCanvas({
         {loading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-[#09090B]">
             <motion.div
-              className="h-20 w-20 rounded-full bg-gradient-to-br from-cyan-400/30 via-fuchsia-500/25 to-amber-400/20"
+              className="h-20 w-20 rounded-full bg-gradient-to-br from-nabi-gold/35 via-nabi-neon/20 to-nabi-gold/15"
               animate={{ scale: [1, 1.12, 1], opacity: [0.55, 1, 0.55] }}
               transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
             />

@@ -61,7 +61,7 @@ export function MediaFileDrop({
           CINEMA_GLASS,
           "relative flex min-h-[140px] cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden p-4 transition",
           drag
-            ? "border-cyan-400/70 bg-cyan-400/10"
+            ? "nabi-select-on"
             : "hover:border-white/20"
         )}
       >
@@ -79,7 +79,7 @@ export function MediaFileDrop({
             <p className="text-sm text-white/70">{title}</p>
             <p className="text-[11px] text-white/40">{hint}</p>
             {fileName && (
-              <p className="max-w-full truncate text-[11px] text-cyan-200">
+              <p className="max-w-full truncate text-[11px] text-nabi-gold">
                 {fileName}
               </p>
             )}

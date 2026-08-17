@@ -45,10 +45,8 @@ export function AdminPanelNav() {
             href={href}
             aria-current={active ? "page" : undefined}
             className={clsx(
-              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition",
-              active
-                ? "border-nabi-ink/20 bg-nabi-elevated text-nabi-ink"
-                : "border-nabi-border text-nabi-muted hover:bg-nabi-elevated hover:text-nabi-ink"
+              "nabi-select px-3 py-1.5 text-xs",
+              active && "nabi-select-on"
             )}
           >
             <Icon size={12} />

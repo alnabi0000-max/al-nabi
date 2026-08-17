@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from "react";
 
-const BG = ["#070214", "#14082c"] as const;
-const DUST = ["#8b5cf6", "#38bdf8", "#c084fc"] as const;
+const BG = ["#141018", "#0a0c12", "#05060a"] as const;
+const DUST = ["#e8c547", "#f5e6a3", "#ffffff"] as const;
+const WHISPER = "#38bdf8";
 const LEGACY_THEME_KEYS = ["alnabiy_theme", "alnabiy_cosmic_theme"] as const;
 
 type Particle = {
@@ -43,10 +44,17 @@ function hexAlpha(hex: string, alpha: number): string {
 }
 
 function fillSpace(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  const g = ctx.createLinearGradient(0, 0, w, h);
+  const g = ctx.createRadialGradient(
+    w * 0.5,
+    h * 0.38,
+    0,
+    w * 0.5,
+    h * 0.5,
+    Math.max(w, h) * 0.78
+  );
   g.addColorStop(0, BG[0]);
-  g.addColorStop(0.45, "#0c0520");
-  g.addColorStop(1, BG[1]);
+  g.addColorStop(0.5, BG[1]);
+  g.addColorStop(1, BG[2]);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 }
@@ -54,14 +62,15 @@ function fillSpace(ctx: CanvasRenderingContext2D, w: number, h: number) {
 function spawnParticles(count: number, w: number, h: number): Particle[] {
   const out: Particle[] = new Array(count);
   for (let i = 0; i < count; i++) {
+    const cyan = i % 9 === 0;
     out[i] = {
       x: Math.random() * w,
       y: Math.random() * h,
-      vx: (Math.random() - 0.5) * 0.28,
-      vy: (Math.random() - 0.5) * 0.28,
-      r: 0.55 + Math.random() * 2,
-      a: 0.28 + Math.random() * 0.5,
-      c: DUST[i % DUST.length]!,
+      vx: (Math.random() - 0.5) * 0.1,
+      vy: -0.025 - Math.random() * 0.07,
+      r: 0.22 + Math.random() * 1.05,
+      a: 0.1 + Math.random() * 0.28,
+      c: cyan ? WHISPER : DUST[i % DUST.length]!,
       phase: Math.random() * Math.PI * 2,
     };
   }
@@ -69,17 +78,17 @@ function spawnParticles(count: number, w: number, h: number): Particle[] {
 }
 
 function spawnDust(w: number, h: number): DustCloud[] {
-  const count = 7;
+  const count = 5;
   const out: DustCloud[] = new Array(count);
   for (let i = 0; i < count; i++) {
-    const scale = 0.22 + Math.random() * 0.28;
+    const scale = 0.18 + Math.random() * 0.22;
     out[i] = {
       x: Math.random() * w,
       y: Math.random() * h,
       rx: w * scale,
-      ry: h * (scale * 0.72),
-      a: 0.07 + Math.random() * 0.08,
-      c: DUST[i % DUST.length]!,
+      ry: h * (scale * 0.7),
+      a: i % 2 === 0 ? 0.035 : 0.045,
+      c: i % 2 === 0 ? WHISPER : "#e8c547",
       phase: Math.random() * Math.PI * 2,
     };
   }
@@ -93,15 +102,15 @@ function drawDust(
 ) {
   for (let i = 0; i < clouds.length; i++) {
     const cloud = clouds[i]!;
-    const x = cloud.x + Math.sin(time * 0.07 + cloud.phase) * 22;
-    const y = cloud.y + Math.cos(time * 0.05 + cloud.phase) * 16;
+    const x = cloud.x + Math.sin(time * 0.04 + cloud.phase) * 18;
+    const y = cloud.y + Math.cos(time * 0.03 + cloud.phase) * 12;
     const g = ctx.createRadialGradient(x, y, 0, x, y, cloud.rx);
     g.addColorStop(0, hexAlpha(cloud.c, cloud.a));
-    g.addColorStop(0.55, hexAlpha(cloud.c, cloud.a * 0.35));
+    g.addColorStop(0.55, hexAlpha(cloud.c, cloud.a * 0.32));
     g.addColorStop(1, hexAlpha(cloud.c, 0));
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.ellipse(x, y, cloud.rx, cloud.ry, cloud.phase * 0.15, 0, Math.PI * 2);
+    ctx.ellipse(x, y, cloud.rx, cloud.ry, cloud.phase * 0.12, 0, Math.PI * 2);
     ctx.fill();
   }
 }
@@ -117,7 +126,7 @@ function clearLegacyThemeStorage() {
 }
 
 /**
- * Locked Deep Space Nebula backdrop. One canvas, one rAF loop, paused off-tab.
+ * Champagne dust + cyan whisper backdrop. One canvas, one rAF loop, paused off-tab.
  */
 export function CosmicBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -152,8 +161,8 @@ export function CosmicBackground() {
       canvas.style.height = `${nextH}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const budget = Math.min(
-        110,
-        Math.max(36, Math.floor((nextW * nextH) / 18000))
+        160,
+        Math.max(48, Math.floor((nextW * nextH) / 14000))
       );
       particles = spawnParticles(budget, nextW, nextH);
       dust = spawnDust(nextW, nextH);
@@ -165,7 +174,7 @@ export function CosmicBackground() {
       drawDust(ctx, dust, time);
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i]!;
-        ctx.globalAlpha = p.a * (0.65 + Math.sin(time + p.phase) * 0.2);
+        ctx.globalAlpha = p.a * (0.55 + Math.sin(time * 0.9 + p.phase) * 0.18);
         ctx.fillStyle = p.c;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
@@ -181,8 +190,8 @@ export function CosmicBackground() {
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i]!;
-        p.x += p.vx + Math.sin(time + p.phase) * 0.18;
-        p.y += p.vy + Math.cos(time * 0.7 + p.phase) * 0.16;
+        p.x += p.vx + Math.sin(time * 0.35 + p.phase) * 0.08;
+        p.y += p.vy;
         if (p.x < -10) p.x = w + 10;
         if (p.x > w + 10) p.x = -10;
         if (p.y < -10) p.y = h + 10;
@@ -228,6 +237,7 @@ export function CosmicBackground() {
       className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
     >
       <canvas ref={canvasRef} className="h-full w-full" />
+      <div className="nabi-film-grain" />
     </div>
   );
 }

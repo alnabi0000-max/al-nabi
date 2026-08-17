@@ -177,7 +177,7 @@ export default function AdminModelsPage() {
             type="password"
             value={secret}
             onChange={(e) => setSecret(e.target.value)}
-            className="mt-4 w-full rounded-xl border border-nabi-border bg-nabi-input px-3 py-2.5 text-sm text-nabi-ink outline-none focus:border-nabi-neon/40"
+            className="mt-4 w-full rounded-xl border border-nabi-border bg-nabi-input px-3 py-2.5 text-sm text-nabi-ink outline-none focus:border-nabi-gold/40"
             placeholder={t.admin.secretPlaceholder}
           />
           <button

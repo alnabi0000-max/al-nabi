@@ -116,9 +116,9 @@ export function OtpCodeInput({
           onFocus={(e) => e.currentTarget.select()}
           className={clsx(
             "h-14 w-full rounded-xl border bg-white/[0.04] text-center text-xl font-semibold tabular-nums text-white backdrop-blur-xl",
-            "transition outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/25",
+            "transition outline-none focus:border-nabi-gold/60 focus:ring-2 focus:ring-nabi-gold/25",
             "disabled:opacity-50",
-            value[i] ? "border-cyan-400/40" : "border-nabi-border"
+            value[i] ? "nabi-select-on" : "border-nabi-border"
           )}
         />
       ))}

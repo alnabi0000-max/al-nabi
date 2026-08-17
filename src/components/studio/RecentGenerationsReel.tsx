@@ -49,7 +49,7 @@ export function RecentGenerationsReel({ title, onSelect, activeId }: Props) {
               className={clsx(
                 "group relative h-24 w-40 shrink-0 overflow-hidden rounded-xl border transition",
                 active
-                  ? "border-cyan-400/80 shadow-[0_0_18px_rgba(34,211,238,0.28)]"
+                  ? "nabi-select-on"
                   : "border-white/10 hover:border-white/30"
               )}
             >

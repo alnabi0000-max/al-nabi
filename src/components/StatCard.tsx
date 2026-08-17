@@ -64,7 +64,7 @@ export function StatCard({
 
   return (
     <div
-      className="nabi-stat-card group relative overflow-hidden rounded-2xl border border-nabi-border bg-gradient-to-br from-nabi-surface via-nabi-card to-nabi-bg p-4 shadow-glass transition-all duration-300 ease-apple hover:-translate-y-1.5 hover:border-nabi-neon/35 hover:shadow-neon"
+      className="nabi-stat-card group relative overflow-hidden rounded-2xl border border-nabi-border bg-gradient-to-br from-nabi-surface via-nabi-card to-nabi-bg p-4 shadow-glass transition-all duration-300 ease-apple hover:-translate-y-1.5 hover:border-nabi-gold/35 hover:shadow-gold"
       style={{ animationDelay: `${index * 70}ms` }}
     >
       <div

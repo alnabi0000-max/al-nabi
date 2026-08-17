@@ -136,7 +136,7 @@ export function TemplateFastUseDrawer({ template, open, onClose }: Props) {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder={template.subject_placeholder}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white outline-none backdrop-blur-xl placeholder:text-white/40 focus:border-violet-400/50"
+              className="nabi-input px-3 py-2.5"
               autoFocus
             />
             <p className="mt-2 text-[11px] leading-relaxed text-nabi-muted">

@@ -18,10 +18,8 @@ export function DraftModeSwitch({ enabled, onChange, title, hint }: Props) {
       aria-checked={enabled}
       onClick={() => onChange(!enabled)}
       className={clsx(
-        "flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition",
-        enabled
-          ? "border-amber-300/60 bg-amber-300/10"
-          : "border-white/10 bg-white/[0.02] hover:border-white/25"
+        "nabi-select w-full justify-between px-3 py-3 text-left",
+        enabled ? "nabi-select-on" : ""
       )}
     >
       <span>

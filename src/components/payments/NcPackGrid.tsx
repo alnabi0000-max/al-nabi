@@ -94,9 +94,9 @@ export function NcPackGrid({
             className={clsx(
               "glass-card relative flex flex-col rounded-2xl p-5",
               isRecommended
-                ? "z-[1] scale-[1.02] border-cyan-500/40 shadow-[0_0_28px_rgba(34,211,238,0.16)]"
+                ? "z-[1] scale-[1.02] border-nabi-gold/45 shadow-gold"
                 : pack.elite
-                  ? "border-violet-500/35 shadow-[0_0_22px_rgba(139,92,246,0.14)]"
+                  ? "border-nabi-neon/30 shadow-neon"
                   : ""
             )}
           >

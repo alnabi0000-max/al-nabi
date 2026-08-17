@@ -30,16 +30,16 @@ export function LegalDocument({
         {children}
       </div>
       <footer className="flex flex-wrap gap-4 border-t border-nabi-border pt-6 text-xs text-nabi-muted">
-        <Link href="/terms" className="hover:text-nabi-neon">
+        <Link href="/terms" className="hover:text-nabi-gold">
           {t("terms")}
         </Link>
-        <Link href="/privacy" className="hover:text-nabi-neon">
+        <Link href="/privacy" className="hover:text-nabi-gold">
           {t("privacy")}
         </Link>
-        <Link href="/refund-policy" className="hover:text-nabi-neon">
+        <Link href="/refund-policy" className="hover:text-nabi-gold">
           {t("refund_policy")}
         </Link>
-        <Link href="/" className="hover:text-nabi-neon">
+        <Link href="/" className="hover:text-nabi-gold">
           {t("home")}
         </Link>
       </footer>

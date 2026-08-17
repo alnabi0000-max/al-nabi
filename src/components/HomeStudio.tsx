@@ -62,16 +62,14 @@ function HomeStudioInner() {
 
   return (
     <div className="mx-auto max-w-[1680px] space-y-6">
-      <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1 backdrop-blur-xl">
+      <div className="flex flex-wrap gap-2">
         <Link
           href={studioHref("video", searchParams)}
           scroll={false}
           suppressHydrationWarning
           className={clsx(
-            "rounded-full px-4 py-1.5 text-sm transition",
-            !film
-              ? "bg-white/10 text-white"
-              : "text-white/45 hover:text-white"
+            "nabi-select px-4 py-1.5",
+            !film && "nabi-select-on"
           )}
         >
           {tr("mode_prompt")}
@@ -81,10 +79,8 @@ function HomeStudioInner() {
           scroll={false}
           suppressHydrationWarning
           className={clsx(
-            "rounded-full px-4 py-1.5 text-sm transition",
-            film
-              ? "bg-white/10 text-white"
-              : "text-white/45 hover:text-white"
+            "nabi-select px-4 py-1.5",
+            film && "nabi-select-on"
           )}
         >
           {tr("mode_script_film")}

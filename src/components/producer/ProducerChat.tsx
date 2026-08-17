@@ -161,14 +161,8 @@ const QuickActionBar = memo(function QuickActionBar({
             disabled={busy}
             onClick={() => onQuick(a)}
             className={clsx(
-              "shrink-0 rounded-full border px-3 py-1.5 text-xs transition",
-              a.id === "produce"
-                ? "border-nabi-neon/50 bg-nabi-ink text-nabi-bg"
-                : a.id === "select_template"
-                  ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-50 hover:border-emerald-300/70"
-                  : a.id === "voice_preview"
-                    ? "border-nabi-gold/40 text-nabi-gold"
-                    : "border-nabi-border text-nabi-ink hover:border-nabi-neon/40"
+              "nabi-select shrink-0 px-3 py-1.5 text-xs",
+              a.id === "produce" && "nabi-select-on"
             )}
           >
             {a.id === "produce" ? (
@@ -283,7 +277,7 @@ const ChatComposer = memo(function ChatComposer({
           onChange={onChange}
           rows={2}
           placeholder={t.chat.placeholder}
-          className="min-h-[44px] min-w-0 flex-1 resize-none rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none placeholder:text-white/40 focus:border-violet-400/50"
+          className="nabi-input min-h-[44px] min-w-0 flex-1 resize-none px-3 py-2"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -785,19 +779,19 @@ export function ProducerChat({
               onClick={cycleWallpaper}
               title={`${t.chat.wallpaper}: ${wallpaper.label}`}
               aria-label={`${t.chat.wallpaper}: ${wallpaper.label}`}
-              className="inline-flex items-center justify-center rounded-lg border border-nabi-border px-2 py-1.5 text-base leading-none transition hover:border-nabi-neon/40 hover:bg-nabi-elevated"
+              className="inline-flex items-center justify-center rounded-lg border border-nabi-border px-2 py-1.5 text-base leading-none transition hover:border-nabi-gold/40 hover:bg-nabi-elevated"
             >
               <span aria-hidden>🎨</span>
             </button>
-            <div className="flex gap-1 rounded-full border border-nabi-border p-0.5 text-xs">
+            <div className="flex flex-wrap gap-1">
               {(["beginner", "advanced"] as const).map((l) => (
                 <button
                   key={l}
                   type="button"
                   onClick={() => setLevel(l)}
                   className={clsx(
-                    "rounded-full px-2.5 py-1 capitalize",
-                    level === l ? "bg-nabi-ink text-nabi-bg" : "text-nabi-muted"
+                    "nabi-select px-2.5 py-1 text-xs capitalize",
+                    level === l && "nabi-select-on"
                   )}
                 >
                   {l === "beginner" ? t.chat.beginner : t.chat.advanced}

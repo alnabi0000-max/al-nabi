@@ -39,7 +39,7 @@ export function CreditsBadge() {
         "glass-card flex items-center gap-2 rounded-full px-3 py-1.5 text-sm tabular-nums text-nabi-ink",
         pulse
           ? "border-emerald-400/70 shadow-[0_0_18px_rgba(52,211,153,0.45)]"
-          : "border-nabi-border hover:border-nabi-neon/40"
+          : "border-nabi-border hover:border-nabi-gold/40"
       )}
       aria-label="NC"
     >

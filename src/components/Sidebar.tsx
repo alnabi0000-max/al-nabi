@@ -110,11 +110,9 @@ export function Sidebar() {
               onMouseEnter={() => collapsed && setTip(label)}
               onMouseLeave={() => setTip(null)}
               className={clsx(
-                "relative flex items-center rounded-2xl py-2.5 text-sm transition-all duration-300 ease-apple",
+                "nabi-select relative w-full py-2.5 text-sm",
                 collapsed ? "justify-center px-2" : "gap-2.5 px-3",
-                active
-                  ? "bg-nabi-elevated text-nabi-ink"
-                  : "text-nabi-muted hover:bg-nabi-elevated hover:text-nabi-ink"
+                active ? "nabi-select-on" : "border-transparent"
               )}
             >
               <Icon size={18} className="shrink-0" />

@@ -430,10 +430,8 @@ export function ScriptToMovieStudio() {
                 key={s.id}
                 type="button"
                 onClick={() => setStyle(s.id)}
-                className={`rounded-xl border px-3 py-3 text-left text-sm transition-all duration-300 ease-apple hover:scale-[1.02] ${
-                  style === s.id
-                    ? "border-nabi-neon bg-cyan-500/10 text-nabi-neon"
-                    : "border-nabi-border text-nabi-muted"
+                className={`nabi-select w-full px-3 py-3 text-left text-sm ${
+                  style === s.id ? "nabi-select-on" : ""
                 }`}
               >
                 {tr(s.labelKey)}
@@ -451,9 +449,7 @@ export function ScriptToMovieStudio() {
                 type="button"
                 onClick={() => setEmotionMode(m.id)}
                 className={`nabi-btn-ghost !px-3 !text-xs ${
-                  emotionMode === m.id
-                    ? "!border-nabi-gold !text-nabi-gold"
-                    : ""
+                  emotionMode === m.id ? "nabi-select-on" : ""
                 }`}
               >
                 {tr(`emotion_${m.id}`)}
@@ -490,9 +486,7 @@ export function ScriptToMovieStudio() {
                 type="button"
                 onClick={() => setDurationSec(d.sec)}
                 className={`nabi-btn-ghost !px-3 ${
-                  durationSec === d.sec
-                    ? "!border-nabi-gold !text-nabi-gold"
-                    : ""
+                  durationSec === d.sec ? "nabi-select-on" : ""
                 }`}
               >
                 {d.label}

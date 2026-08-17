@@ -46,7 +46,7 @@ export function MotionBrush({ imageUrl }: Props) {
           type="button"
           onClick={() => setActive((v) => !v)}
           className={`nabi-btn-ghost !py-1 !text-xs ${
-            active ? "!border-nabi-neon !text-nabi-neon" : ""
+            active ? "nabi-select-on" : ""
           }`}
         >
           {active ? tr("motion_on") : tr("motion_off")}

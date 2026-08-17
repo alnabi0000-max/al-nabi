@@ -363,7 +363,7 @@ export function StudioTimeline({
               </span>
             ))}
             <span
-              className="pointer-events-none absolute top-0 z-10 h-full w-px bg-cyan-300"
+              className="pointer-events-none absolute top-0 z-10 h-full w-px bg-nabi-gold"
               style={{ left: playheadSec * PIXELS_PER_SECOND }}
             />
           </div>
@@ -388,7 +388,7 @@ export function StudioTimeline({
               />
             ))}
             <span
-              className="pointer-events-none absolute top-0 z-10 h-full w-px bg-cyan-300/90"
+              className="pointer-events-none absolute top-0 z-10 h-full w-px bg-nabi-gold/90"
               style={{ left: `calc(5.5rem + 0.5rem + ${playheadSec * PIXELS_PER_SECOND}px)` }}
             />
           </div>
@@ -407,13 +407,13 @@ export function StudioTimeline({
             disabled={disabled || voiceBusy}
             maxLength={500}
             rows={2}
-            className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white placeholder:text-white/30 focus:border-fuchsia-400/40 focus:outline-none"
+            className="nabi-input resize-none px-3 py-2 text-xs"
           />
           <button
             type="button"
             disabled={disabled || voiceBusy || !voiceDraft.trim()}
             onClick={() => void generateVoice()}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-400/40 px-3 py-1.5 text-[11px] text-white transition hover:bg-fuchsia-500/15 disabled:opacity-40"
+            className="nabi-select px-3 py-1.5 text-[11px] disabled:opacity-40"
           >
             {voiceBusy ? <Loader2 size={12} className="animate-spin" /> : null}
             {copy.generateVoice}
@@ -430,13 +430,13 @@ export function StudioTimeline({
             disabled={disabled || sfxBusy}
             maxLength={240}
             rows={2}
-            className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-white placeholder:text-white/30 focus:border-amber-400/40 focus:outline-none"
+            className="nabi-input resize-none px-3 py-2 text-xs"
           />
           <button
             type="button"
             disabled={disabled || sfxBusy || !sfxDraft.trim()}
             onClick={() => void generateSfx()}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400/40 px-3 py-1.5 text-[11px] text-white transition hover:bg-amber-400/15 disabled:opacity-40"
+            className="nabi-select nabi-select-on px-3 py-1.5 text-[11px] disabled:opacity-40"
           >
             {sfxBusy ? <Loader2 size={12} className="animate-spin" /> : null}
             {copy.generateSfx}

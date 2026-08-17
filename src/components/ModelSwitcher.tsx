@@ -94,10 +94,8 @@ export function ModelSwitcher({
                   }
                 }}
                 className={clsx(
-                  "rounded-xl border px-3 py-2.5 text-left transition",
-                  active
-                    ? "border-nabi-neon/40 bg-nabi-elevated"
-                    : "border-nabi-border bg-nabi-input hover:border-nabi-neon/35"
+                  "nabi-select px-3 py-2.5 text-left",
+                  active && "nabi-select-on"
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -134,7 +132,7 @@ export function ModelSwitcher({
                 onClick={() => onQuality(q)}
                 className={clsx(
                   "nabi-btn-ghost !px-3",
-                  quality === q && "!border-nabi-gold !text-nabi-gold"
+                  quality === q && "nabi-select-on"
                 )}
               >
                 {q}
@@ -156,7 +154,7 @@ export function ModelSwitcher({
                   onClick={() => onFrameRate(fps)}
                   className={clsx(
                     "nabi-btn-ghost !px-3",
-                    frameRate === fps && "!border-nabi-neon !text-nabi-neon"
+                    frameRate === fps && "nabi-select-on"
                   )}
                 >
                   {fps} fps
@@ -180,7 +178,7 @@ export function ModelSwitcher({
                 onClick={() => onCamera(c.id)}
                 className={clsx(
                   "nabi-btn-ghost !px-3 !text-xs",
-                  camera === c.id && "!border-nabi-neon !text-nabi-neon"
+                  camera === c.id && "nabi-select-on"
                 )}
               >
                 {tr(c.labelKey)}

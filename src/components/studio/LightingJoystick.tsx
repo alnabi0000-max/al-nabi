@@ -46,7 +46,7 @@ export function LightingJoystick({ value, onChange, title, hint }: Props) {
       </div>
       <div
         ref={padRef}
-        className="relative aspect-square w-full max-w-[220px] cursor-crosshair overflow-hidden rounded-full border border-white/15 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.16),rgba(9,9,11,0.95))]"
+        className="relative aspect-square w-full max-w-[220px] cursor-crosshair overflow-hidden rounded-full border border-white/15 bg-[radial-gradient(circle_at_center,rgba(232,197,71,0.16),rgba(9,9,11,0.95))]"
         onPointerDown={(e) => {
           (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
           applyPointer(e.clientX, e.clientY);
@@ -57,7 +57,7 @@ export function LightingJoystick({ value, onChange, title, hint }: Props) {
         }}
       >
         <span
-          className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-200 bg-cyan-300 shadow-[0_0_16px_rgba(34,211,238,0.65)]"
+          className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-nabi-gold/80 bg-nabi-gold shadow-gold"
           style={{ left: `${knobX}%`, top: `${knobY}%` }}
         />
       </div>
@@ -72,7 +72,7 @@ export function LightingJoystick({ value, onChange, title, hint }: Props) {
           onChange={(e) =>
             onChange({ ...value, intensity: Number(e.target.value) })
           }
-          className="mt-1 w-full accent-cyan-400"
+          className="mt-1 w-full accent-amber-400"
         />
       </label>
       <p className="font-mono text-[10px] text-white/35">

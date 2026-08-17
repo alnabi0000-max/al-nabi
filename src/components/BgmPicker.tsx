@@ -121,13 +121,11 @@ export function BgmPicker({
             aria-pressed={mode === m}
             disabled={disabled}
             onClick={() => onModeChange(m)}
-            className={clsx(
-              "rounded-lg border px-2.5 py-1.5 text-xs transition",
-              mode === m
-                ? "border-nabi-neon/50 bg-nabi-elevated text-nabi-ink"
-                : "border-nabi-border text-nabi-muted hover:border-nabi-neon/35",
-              disabled && "opacity-50"
-            )}
+                className={clsx(
+                  "nabi-select px-2.5 py-1.5 text-xs",
+                  mode === m && "nabi-select-on",
+                  disabled && "opacity-50"
+                )}
           >
             {modeLabel(m)}
           </button>

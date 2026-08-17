@@ -143,7 +143,7 @@ export function ViralHooksPanel({
             {pack.hooks.map((h) => (
               <p
                 key={h}
-                className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 px-3 py-2 text-xs text-cyan-200"
+                className="rounded-lg border border-nabi-gold/30 bg-nabi-gold/5 px-3 py-2 text-xs text-nabi-gold"
               >
                 {h}
               </p>

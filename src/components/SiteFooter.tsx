@@ -13,18 +13,18 @@ export function SiteFooter() {
           © {new Date().getFullYear()} Al-Nabi. {t("footer_rights")}
         </p>
         <nav className="flex flex-wrap gap-4">
-          <Link href="/terms" className="hover:text-nabi-neon">
+          <Link href="/terms" className="hover:text-nabi-gold">
             {t("terms_of_service")}
           </Link>
-          <Link href="/privacy" className="hover:text-nabi-neon">
+          <Link href="/privacy" className="hover:text-nabi-gold">
             {t("privacy_policy")}
           </Link>
-          <Link href="/refund-policy" className="hover:text-nabi-neon">
+          <Link href="/refund-policy" className="hover:text-nabi-gold">
             {t("refund_policy")}
           </Link>
           <a
             href="mailto:legal@alnabiy.app"
-            className="hover:text-nabi-neon"
+            className="hover:text-nabi-gold"
           >
             legal@alnabiy.app
           </a>

@@ -16,8 +16,8 @@ import type {
   PackBreakdownRow,
 } from "@/lib/admin/analytics";
 
-const ACCENT = "#8b5cf6";
-const GOLD = "#ec4899";
+const ACCENT = "#e8c547";
+const GOLD = "#38bdf8";
 const GRID = "rgba(148, 163, 184, 0.18)";
 const TICK = "#94a3b8";
 

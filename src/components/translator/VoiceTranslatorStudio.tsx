@@ -149,10 +149,8 @@ export function VoiceTranslatorStudio() {
             aria-checked={lipSync}
             onClick={() => setLipSync((v) => !v)}
             className={clsx(
-              "flex w-full items-start justify-between gap-3 rounded-xl border px-3 py-3 text-left",
-              lipSync
-                ? "border-cyan-400/50 bg-cyan-400/10"
-                : "border-white/10 bg-white/[0.02]"
+              "nabi-select w-full justify-between gap-3 px-3 py-3 text-left",
+              lipSync && "nabi-select-on"
             )}
           >
             <span>
@@ -166,7 +164,7 @@ export function VoiceTranslatorStudio() {
             <span
               className={clsx(
                 "mt-0.5 h-5 w-9 shrink-0 rounded-full",
-                lipSync ? "bg-cyan-400" : "bg-white/15"
+                lipSync ? "bg-nabi-gold" : "bg-white/15"
               )}
             />
           </button>
@@ -175,7 +173,7 @@ export function VoiceTranslatorStudio() {
               type="checkbox"
               checked={consent}
               onChange={(e) => setConsent(e.target.checked)}
-              className="mt-1 accent-cyan-400"
+              className="mt-1 accent-amber-400"
             />
             {tr("translator_consent")}
           </label>
@@ -245,7 +243,7 @@ function LanguageSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as TranslatorLanguageId)}
-        className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm normal-case text-white focus:border-cyan-400/50 focus:outline-none"
+        className="nabi-input mt-1 text-sm normal-case"
       >
         {TRANSLATOR_LANGUAGES.map((lang) => (
           <option key={lang.id} value={lang.id}>

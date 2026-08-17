@@ -17,9 +17,9 @@ export function ProModeToggle({ enabled, onChange, label }: Props) {
       aria-checked={enabled}
       onClick={() => onChange(!enabled)}
       className={clsx(
-        "inline-flex w-full items-center justify-between rounded-xl border px-3 py-2 text-xs font-semibold uppercase tracking-wider transition",
+        "nabi-select w-full justify-between px-3 py-2 text-xs uppercase tracking-wider",
         enabled
-          ? "border-fuchsia-400/60 bg-fuchsia-500/10 text-white shadow-[0_0_18px_rgba(232,121,249,0.2)]"
+          ? "nabi-select-on"
           : "border-white/10 text-white/55 hover:border-white/25 hover:text-white"
       )}
     >
@@ -30,7 +30,7 @@ export function ProModeToggle({ enabled, onChange, label }: Props) {
       <span
         className={clsx(
           "relative h-5 w-9 rounded-full transition",
-          enabled ? "bg-fuchsia-400" : "bg-white/15"
+          enabled ? "bg-nabi-gold" : "bg-white/15"
         )}
       >
         <span

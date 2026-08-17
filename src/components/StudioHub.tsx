@@ -273,7 +273,7 @@ export function StudioHub() {
         <p className="mb-2 text-xs uppercase tracking-[0.2em] text-nabi-neon">
           {tr("home_eyebrow")}
         </p>
-        <h1 className="mb-3 bg-gradient-to-r from-white via-cyan-100 to-nabi-gold bg-clip-text text-4xl font-bold tracking-tight text-transparent md:text-5xl">
+        <h1 className="mb-3 bg-gradient-to-r from-white via-nabi-gold to-nabi-neon bg-clip-text text-4xl font-bold tracking-tight text-transparent md:text-5xl">
           Al-Nabi
         </h1>
         <p className="max-w-xl text-nabi-muted">{tr("home_tagline")}</p>
@@ -285,7 +285,7 @@ export function StudioHub() {
           onClick={() => setMode("prompt")}
           className={clsx(
             "nabi-btn-ghost inline-flex items-center gap-2",
-            mode === "prompt" && "!border-nabi-neon !text-nabi-neon"
+            mode === "prompt" && "nabi-select-on"
           )}
         >
           <Clapperboard size={16} />
@@ -296,7 +296,7 @@ export function StudioHub() {
           onClick={() => setMode("script")}
           className={clsx(
             "nabi-btn-ghost inline-flex items-center gap-2",
-            mode === "script" && "!border-nabi-gold !text-nabi-gold"
+            mode === "script" && "nabi-select-on"
           )}
         >
           <Film size={16} />

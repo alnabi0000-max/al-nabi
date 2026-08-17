@@ -409,7 +409,7 @@ export function SecurePlayer({
                   className={clsx(
                     "inline-flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-sm transition",
                     loop
-                      ? "bg-cyan-400/25 text-cyan-200"
+                      ? "nabi-select-on"
                       : "bg-white/15 text-white hover:bg-white/25"
                   )}
                   aria-label="Loop"

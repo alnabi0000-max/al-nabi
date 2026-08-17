@@ -114,23 +114,21 @@ export function AspectRatioPicker({
             type="button"
             onClick={() => onChange(a.id)}
             className={clsx(
-              "flex flex-col items-center gap-2 rounded-xl border px-2 py-3 transition",
-              active
-                ? "border-cyan-400/80 bg-cyan-400/10 shadow-[0_0_20px_rgba(34,211,238,0.25)]"
-                : "border-white/10 bg-white/[0.02] hover:border-white/25"
+              "nabi-select flex-col gap-2 px-2 py-3",
+              active && "nabi-select-on"
             )}
           >
             <span
               className={clsx(
                 "rounded-sm border",
                 a.box,
-                active ? "border-cyan-300 bg-cyan-300/20" : "border-white/30"
+                active ? "border-nabi-gold bg-nabi-gold/20" : "border-white/30"
               )}
             />
             <span
               className={clsx(
                 "text-[10px] font-medium",
-                active ? "text-white" : "text-white/50"
+                active ? "text-nabi-gold" : "text-white/50"
               )}
             >
               {a.label}
@@ -161,10 +159,8 @@ export function StylePresets({
             type="button"
             onClick={() => onChange(p.id)}
             className={clsx(
-              "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-              active
-                ? "border-fuchsia-400/70 bg-fuchsia-500/15 text-white shadow-[0_0_18px_rgba(232,121,249,0.28)]"
-                : "border-white/10 text-white/55 hover:border-white/30 hover:text-white"
+              "nabi-select px-3 py-1.5 text-xs",
+              active && "nabi-select-on"
             )}
           >
             {labels[p.id]}

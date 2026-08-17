@@ -54,7 +54,7 @@ export function EpisodeBoard({
               className={clsx(
                 "rounded-xl border p-3 text-xs transition",
                 active
-                  ? "border-nabi-neon/60 bg-cyan-500/5"
+                  ? "nabi-select-on"
                   : "border-nabi-border bg-nabi-surface"
               )}
             >

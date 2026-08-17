@@ -21,7 +21,7 @@ export function TemplateGridCard({ template, onOpen }: Props) {
       className={clsx(
         "group relative overflow-hidden rounded-2xl border border-nabi-border bg-nabi-bg/80 text-left",
         "transition duration-300",
-        "hover:-translate-y-0.5 hover:border-nabi-neon/35"
+        "hover:-translate-y-0.5 hover:border-nabi-gold/35"
       )}
     >
       <div className="relative aspect-video overflow-hidden bg-nabi-surface">
@@ -36,7 +36,7 @@ export function TemplateGridCard({ template, onOpen }: Props) {
           {template.category}
         </span>
         <span className="pointer-events-none absolute inset-0 z-[3] flex items-center justify-center opacity-0 transition group-hover:opacity-100">
-          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-nabi-neon/35 bg-black/55">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-nabi-gold/35 bg-black/55">
             <Play size={16} className="ml-0.5 text-white" fill="currentColor" />
           </span>
         </span>

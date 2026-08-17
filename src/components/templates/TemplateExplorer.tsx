@@ -68,10 +68,8 @@ export function TemplateExplorer() {
                   setVisible(PAGE_SIZE);
                 }}
                 className={clsx(
-                  "rounded-full border px-3.5 py-1.5 text-sm transition",
-                  activeFilter
-                    ? "border-nabi-neon/50 bg-nabi-ink text-nabi-bg"
-                    : "border-nabi-border text-nabi-muted hover:border-nabi-neon/35 hover:text-nabi-ink"
+                  "nabi-select px-3.5 py-1.5 text-sm",
+                  activeFilter && "nabi-select-on"
                 )}
               >
                 {cat}
@@ -100,7 +98,7 @@ export function TemplateExplorer() {
               setVisible(PAGE_SIZE);
             }}
             placeholder={t.common.search}
-            className="w-full rounded-full border border-white/10 bg-white/[0.04] py-2 pl-9 pr-3 text-sm text-white outline-none backdrop-blur-xl placeholder:text-white/40 focus:border-violet-400/50"
+            className="nabi-input rounded-full py-2 pl-9 pr-3"
           />
         </label>
       </div>
@@ -130,7 +128,7 @@ export function TemplateExplorer() {
           <button
             type="button"
             onClick={() => setVisible((v) => v + PAGE_SIZE)}
-            className="rounded-full border border-nabi-border px-5 py-2.5 text-sm text-nabi-ink transition hover:border-nabi-neon/50 hover:bg-nabi-elevated"
+            className="rounded-full border border-nabi-border px-5 py-2.5 text-sm text-nabi-ink transition hover:border-nabi-gold/50 hover:bg-nabi-elevated"
           >
             Yana ko‘rsatish ({filtered.length - visible})
           </button>

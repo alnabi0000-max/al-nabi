@@ -229,7 +229,7 @@ export function VideoShowcasePanel({
               go(index - 1);
               window.setTimeout(() => setPaused(false), 4000);
             }}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-nabi-border bg-nabi-input text-nabi-ink transition hover:border-nabi-neon/40 hover:text-nabi-ink"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-nabi-border bg-nabi-input text-nabi-ink transition hover:border-nabi-gold/40 hover:text-nabi-ink"
             aria-label={tr("video_showcase_prev")}
           >
             <ChevronLeft size={16} />
@@ -241,7 +241,7 @@ export function VideoShowcasePanel({
               go(index + 1);
               window.setTimeout(() => setPaused(false), 4000);
             }}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-nabi-border bg-nabi-input text-nabi-ink transition hover:border-nabi-neon/40 hover:text-nabi-ink"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-nabi-border bg-nabi-input text-nabi-ink transition hover:border-nabi-gold/40 hover:text-nabi-ink"
             aria-label={tr("video_showcase_next")}
           >
             <ChevronRight size={16} />
