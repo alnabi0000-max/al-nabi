@@ -1,11 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Wallet } from "lucide-react";
 import { useTranslations } from "@/lib/i18n/useTranslations";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import { useTopUpUi } from "@/context/TopUpUiContext";
-import { useMaster } from "@/context/MasterControllerContext";
 import {
   NcPackGrid,
   type DisplayPack,
@@ -19,7 +17,6 @@ export function PricingView({
 }) {
   const { t, locale } = useTranslations();
   const { openTopUp } = useTopUpUi();
-  const { tr } = useMaster();
   const [packs, setPacks] = useState<DisplayPack[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,17 +55,13 @@ export function PricingView({
       <h1 className="mb-1 text-center text-xl font-bold text-nabi-gold md:text-2xl">
         {variant === "store" ? t("coin_store_title") : t("pricing_title")}
       </h1>
-      <p className="mb-2 text-center text-sm text-nabi-muted">
-        {variant === "store"
-          ? t("coin_store_subtitle")
-          : t("pricing_subtitle")}
-      </p>
-      <div className="glass-card mx-auto mb-3 max-w-3xl rounded-xl px-4 py-3 text-center text-xs leading-relaxed text-nabi-muted">
-        <p className="inline-flex items-center justify-center gap-1.5 font-medium text-nabi-ink">
-          <Wallet size={14} aria-hidden />
-          {tr("topup_wallets")}
+      {variant === "store" ? (
+        <p className="mb-2 text-center text-sm text-nabi-muted">
+          {t("coin_store_subtitle")}
         </p>
-        <p className="mt-1">{t("pricing_mix_hint")}</p>
+      ) : null}
+      <div className="glass-card mx-auto mb-3 max-w-3xl rounded-xl px-4 py-3 text-center text-xs leading-relaxed text-nabi-muted">
+        <p>{t("pricing_mix_hint")}</p>
       </div>
       <p className="mb-8 text-center text-xs text-nabi-neon/80">
         {t("official_pricing_terms")}
