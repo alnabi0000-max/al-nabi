@@ -1,9 +1,16 @@
 /**
- * Al-Nabi UI dictionary — Uzbek / Russian / English.
- * Access via useLanguage(): t.header.*, t.chat.*, t.nav.*, t.common.*, t.admin.*
+ * Nested chrome dictionary (nav, chat, admin) used by useLanguage().
+ * Strings live in src/locales/*.json; uz/en/ru keep in-file fallbacks.
  */
 
-export type AppLocale = "uz" | "ru" | "en";
+import { t } from "@/lib/i18n/messages";
+import {
+  DEFAULT_LOCALE,
+  isLocaleCode,
+  type LocaleCode,
+} from "@/lib/i18n/config";
+
+export type AppLocale = LocaleCode;
 
 export type Dictionary = {
   header: {
@@ -959,13 +966,417 @@ const ru: Dictionary = {
   },
 };
 
-export const dictionary: Record<AppLocale, Dictionary> = { uz, ru, en };
+export const dictionary: Record<"uz" | "ru" | "en", Dictionary> = { uz, ru, en };
 
-export function resolveAppLocale(code: string | null | undefined): AppLocale {
-  if (code === "uz" || code === "ru" || code === "en") return code;
-  return "en";
+export function resolveAppLocale(code: string | null | undefined): LocaleCode {
+  if (isLocaleCode(code)) return code;
+  return DEFAULT_LOCALE;
+}
+
+function pick(locale: LocaleCode, key: string, fallback: string): string {
+  const value = t(locale, key);
+  if (!value || value === key) return fallback;
+  return value;
+}
+
+function hydrate(locale: LocaleCode, fb: Dictionary): Dictionary {
+  return {
+    header: {
+      brand: pick(locale, "header_brand", fb.header.brand),
+      producerChat: pick(locale, "header_producer_chat", fb.header.producerChat),
+      language: pick(locale, "header_language", fb.header.language),
+      balance: pick(locale, "balance", fb.header.balance),
+    },
+    nav: {
+      home: pick(locale, "home", fb.nav.home),
+      studio: pick(locale, "nav_studio", fb.nav.studio),
+      translator: pick(locale, "nav_translator", fb.nav.translator),
+      cabinet: pick(locale, "nav_cabinet", fb.nav.cabinet),
+      dashboard: pick(locale, "dashboard", fb.nav.dashboard),
+      generate: pick(locale, "generate", fb.nav.generate),
+      producer: pick(locale, "nav_producer", fb.nav.producer),
+      templates: pick(locale, "templates", fb.nav.templates),
+      scriptMovie: pick(locale, "scriptMovie", fb.nav.scriptMovie),
+      history: pick(locale, "nav_history", fb.nav.history),
+      store: pick(locale, "nav_store", fb.nav.store),
+      pricing: pick(locale, "nav_pricing", fb.nav.pricing),
+      profile: pick(locale, "profile", fb.nav.profile),
+      balance: pick(locale, "balance", fb.nav.balance),
+      collapse: pick(locale, "nav_collapse", fb.nav.collapse),
+      expand: pick(locale, "nav_expand", fb.nav.expand),
+      navigation: pick(locale, "nav_navigation", fb.nav.navigation),
+      admin: pick(locale, "nav_admin", fb.nav.admin),
+    },
+    chat: {
+      title: pick(locale, "chat_title", fb.chat.title),
+      engine: pick(locale, "chat_engine", fb.chat.engine),
+      welcome: pick(locale, "chat_welcome", fb.chat.welcome),
+      placeholder: pick(locale, "chat_placeholder", fb.chat.placeholder),
+      send: pick(locale, "chat_send", fb.chat.send),
+      uploadImage: pick(locale, "chat_upload_image", fb.chat.uploadImage),
+      attachLink: pick(locale, "chat_attach_link", fb.chat.attachLink),
+      remove: pick(locale, "chat_remove", fb.chat.remove),
+      imageAttached: pick(locale, "chat_image_attached", fb.chat.imageAttached),
+      beginner: pick(locale, "chat_beginner", fb.chat.beginner),
+      advanced: pick(locale, "chat_advanced", fb.chat.advanced),
+      close: pick(locale, "close", fb.chat.close),
+      produce: pick(locale, "chat_produce", fb.chat.produce),
+      voicePreview: pick(locale, "chat_voice_preview", fb.chat.voicePreview),
+      voicePreviewFree: pick(
+        locale,
+        "chat_voice_preview_free",
+        fb.chat.voicePreviewFree
+      ),
+      reels: pick(locale, "chat_reels", fb.chat.reels),
+      youtube: pick(locale, "chat_youtube", fb.chat.youtube),
+      epicVoice: pick(locale, "chat_epic_voice", fb.chat.epicVoice),
+      calmVoice: pick(locale, "chat_calm_voice", fb.chat.calmVoice),
+      dialogue: pick(locale, "chat_dialogue", fb.chat.dialogue),
+      session: pick(locale, "chat_session", fb.chat.session),
+      aspect: pick(locale, "chat_aspect", fb.chat.aspect),
+      narration: pick(locale, "chat_narration", fb.chat.narration),
+      audio: pick(locale, "audio_engine", fb.chat.audio),
+      bgmTitle: pick(locale, "bgm_title", fb.chat.bgmTitle),
+      bgmAi: pick(locale, "bgm_ai", fb.chat.bgmAi),
+      bgmManual: pick(locale, "bgm_manual", fb.chat.bgmManual),
+      bgmOff: pick(locale, "bgm_off", fb.chat.bgmOff),
+      bgmAiHint: pick(locale, "bgm_ai_hint", fb.chat.bgmAiHint),
+      bgmEmpty: pick(locale, "bgm_empty", fb.chat.bgmEmpty),
+      bgmLoading: pick(locale, "bgm_loading", fb.chat.bgmLoading),
+      currency: pick(locale, "coins", fb.chat.currency),
+      output: pick(locale, "chat_output", fb.chat.output),
+      rendering: pick(locale, "chat_rendering", fb.chat.rendering),
+      vaultHint: pick(locale, "chat_vault_hint", fb.chat.vaultHint),
+      navGenerate: pick(locale, "chat_nav_generate", fb.chat.navGenerate),
+      navTemplates: pick(locale, "chat_nav_templates", fb.chat.navTemplates),
+      navBalance: pick(locale, "chat_nav_balance", fb.chat.navBalance),
+      navHistory: pick(locale, "chat_nav_history", fb.chat.navHistory),
+      previewReady: pick(locale, "chat_preview_ready", fb.chat.previewReady),
+      produceReady: pick(locale, "chat_produce_ready", fb.chat.produceReady),
+      wallpaper: pick(locale, "chat_wallpaper", fb.chat.wallpaper),
+      fallbackResponse: pick(
+        locale,
+        "chat_fallback_response",
+        fb.chat.fallbackResponse
+      ),
+      fallbackGuide: pick(locale, "chat_fallback_guide", fb.chat.fallbackGuide),
+      fallbackConverse: pick(
+        locale,
+        "chat_fallback_converse",
+        fb.chat.fallbackConverse
+      ),
+      fallbackContinue: pick(
+        locale,
+        "chat_fallback_continue",
+        fb.chat.fallbackContinue
+      ),
+      fallbackDescribe: pick(
+        locale,
+        "chat_fallback_describe",
+        fb.chat.fallbackDescribe
+      ),
+    },
+    common: {
+      download: pick(locale, "download", fb.common.download),
+      share: pick(locale, "share", fb.common.share),
+      delete: pick(locale, "media_delete", fb.common.delete),
+      refresh: pick(locale, "media_refresh", fb.common.refresh),
+      preview: pick(locale, "preview", fb.common.preview),
+      buy: pick(locale, "buy", fb.common.buy),
+      close: pick(locale, "close", fb.common.close),
+      cancel: pick(locale, "common_cancel", fb.common.cancel),
+      save: pick(locale, "common_save", fb.common.save),
+      unlock: pick(locale, "common_unlock", fb.common.unlock),
+      generate: pick(locale, "generate_btn", fb.common.generate),
+      signOut: pick(locale, "logout", fb.common.signOut),
+      search: pick(locale, "common_search", fb.common.search),
+      vault: pick(locale, "common_vault", fb.common.vault),
+      loading: pick(locale, "loading", fb.common.loading),
+    },
+    admin: {
+      title: pick(locale, "admin_title", fb.admin.title),
+      unlock: pick(locale, "admin_unlock", fb.admin.unlock),
+      runWatch: pick(locale, "admin_run_watch", fb.admin.runWatch),
+      approve: pick(locale, "admin_approve", fb.admin.approve),
+      dismiss: pick(locale, "admin_dismiss", fb.admin.dismiss),
+      pending: pick(locale, "admin_pending", fb.admin.pending),
+      activeEndpoints: pick(
+        locale,
+        "admin_active_endpoints",
+        fb.admin.activeEndpoints
+      ),
+      coreSystem: pick(locale, "admin_core_system", fb.admin.coreSystem),
+      currency: pick(locale, "admin_currency", fb.admin.currency),
+      engine: pick(locale, "admin_engine", fb.admin.engine),
+      vaultFee: pick(locale, "admin_vault_fee", fb.admin.vaultFee),
+      status: pick(locale, "admin_status", fb.admin.status),
+      ready: pick(locale, "admin_ready", fb.admin.ready),
+      needsKeys: pick(locale, "admin_needs_keys", fb.admin.needsKeys),
+      secretPlaceholder: pick(
+        locale,
+        "admin_secret_placeholder",
+        fb.admin.secretPlaceholder
+      ),
+      analyticsEyebrow: pick(
+        locale,
+        "admin_analytics_eyebrow",
+        fb.admin.analyticsEyebrow
+      ),
+      analyticsTitle: pick(
+        locale,
+        "admin_analytics_title",
+        fb.admin.analyticsTitle
+      ),
+      analyticsSubtitle: pick(
+        locale,
+        "admin_analytics_subtitle",
+        fb.admin.analyticsSubtitle
+      ),
+      filterToday: pick(locale, "admin_filter_today", fb.admin.filterToday),
+      filter5Days: pick(locale, "admin_filter_5days", fb.admin.filter5Days),
+      filterWeek: pick(locale, "admin_filter_week", fb.admin.filterWeek),
+      filterMonth: pick(locale, "admin_filter_month", fb.admin.filterMonth),
+      filterCustom: pick(locale, "admin_filter_custom", fb.admin.filterCustom),
+      applyRange: pick(locale, "admin_apply_range", fb.admin.applyRange),
+      totalRevenue: pick(locale, "admin_total_revenue", fb.admin.totalRevenue),
+      netProfit: pick(locale, "admin_net_profit", fb.admin.netProfit),
+      activePayingUsers: pick(
+        locale,
+        "admin_active_paying_users",
+        fb.admin.activePayingUsers
+      ),
+      lifetimePaying: pick(
+        locale,
+        "admin_lifetime_paying",
+        fb.admin.lifetimePaying
+      ),
+      totalNcBalance: pick(
+        locale,
+        "admin_total_nc_balance",
+        fb.admin.totalNcBalance
+      ),
+      totalNcBalanceHint: pick(
+        locale,
+        "admin_total_nc_balance_hint",
+        fb.admin.totalNcBalanceHint
+      ),
+      apiOverhead: pick(locale, "admin_api_overhead", fb.admin.apiOverhead),
+      ncIssued: pick(locale, "admin_nc_issued", fb.admin.ncIssued),
+      ncConsumed: pick(locale, "admin_nc_consumed", fb.admin.ncConsumed),
+      dailyIncome: pick(locale, "admin_daily_income", fb.admin.dailyIncome),
+      packBreakdown: pick(
+        locale,
+        "admin_pack_breakdown",
+        fb.admin.packBreakdown
+      ),
+      recentTransactions: pick(
+        locale,
+        "admin_recent_transactions",
+        fb.admin.recentTransactions
+      ),
+      colTime: pick(locale, "admin_col_time", fb.admin.colTime),
+      colUser: pick(locale, "admin_col_user", fb.admin.colUser),
+      colPack: pick(locale, "admin_col_pack", fb.admin.colPack),
+      colAmount: pick(locale, "admin_col_amount", fb.admin.colAmount),
+      colNc: pick(locale, "admin_col_nc", fb.admin.colNc),
+      orders: pick(locale, "admin_orders", fb.admin.orders),
+      emptyTransactions: pick(
+        locale,
+        "admin_empty_transactions",
+        fb.admin.emptyTransactions
+      ),
+      emptyChart: pick(locale, "admin_empty_chart", fb.admin.emptyChart),
+      loadError: pick(locale, "admin_load_error", fb.admin.loadError),
+      modelsLink: pick(locale, "admin_models_link", fb.admin.modelsLink),
+      gateEyebrow: pick(locale, "admin_gate_eyebrow", fb.admin.gateEyebrow),
+      gateTitle: pick(locale, "admin_gate_title", fb.admin.gateTitle),
+      gateSubtitle: pick(locale, "admin_gate_subtitle", fb.admin.gateSubtitle),
+      gatePlaceholder: pick(
+        locale,
+        "admin_gate_placeholder",
+        fb.admin.gatePlaceholder
+      ),
+      gateSubmit: pick(locale, "admin_gate_submit", fb.admin.gateSubmit),
+      gateBusy: pick(locale, "admin_gate_busy", fb.admin.gateBusy),
+      gateInvalid: pick(locale, "admin_gate_invalid", fb.admin.gateInvalid),
+      gateRateLimited: pick(
+        locale,
+        "admin_gate_rate_limited",
+        fb.admin.gateRateLimited
+      ),
+      settingsEyebrow: pick(
+        locale,
+        "admin_settings_eyebrow",
+        fb.admin.settingsEyebrow
+      ),
+      settingsTitle: pick(
+        locale,
+        "admin_settings_title",
+        fb.admin.settingsTitle
+      ),
+      settingsSubtitle: pick(
+        locale,
+        "admin_settings_subtitle",
+        fb.admin.settingsSubtitle
+      ),
+      passcodeSection: pick(
+        locale,
+        "admin_passcode_section",
+        fb.admin.passcodeSection
+      ),
+      currentPasscode: pick(
+        locale,
+        "admin_current_passcode",
+        fb.admin.currentPasscode
+      ),
+      newPasscode: pick(locale, "admin_new_passcode", fb.admin.newPasscode),
+      confirmPasscode: pick(
+        locale,
+        "admin_confirm_passcode",
+        fb.admin.confirmPasscode
+      ),
+      passcodeHint: pick(locale, "admin_passcode_hint", fb.admin.passcodeHint),
+      passcodeSaved: pick(
+        locale,
+        "admin_passcode_saved",
+        fb.admin.passcodeSaved
+      ),
+      passcodeMismatch: pick(
+        locale,
+        "admin_passcode_mismatch",
+        fb.admin.passcodeMismatch
+      ),
+      passcodeTooShort: pick(
+        locale,
+        "admin_passcode_too_short",
+        fb.admin.passcodeTooShort
+      ),
+      showPasscode: pick(locale, "admin_show_passcode", fb.admin.showPasscode),
+      hidePasscode: pick(locale, "admin_hide_passcode", fb.admin.hidePasscode),
+      navAnalytics: pick(locale, "admin_nav_analytics", fb.admin.navAnalytics),
+      navLedger: pick(locale, "admin_nav_ledger", fb.admin.navLedger),
+      navUsers: pick(locale, "admin_nav_users", fb.admin.navUsers),
+      navJobs: pick(locale, "admin_nav_jobs", fb.admin.navJobs),
+      navModels: pick(locale, "admin_nav_models", fb.admin.navModels),
+      navSettings: pick(locale, "admin_nav_settings", fb.admin.navSettings),
+      ledgerEyebrow: pick(
+        locale,
+        "admin_ledger_eyebrow",
+        fb.admin.ledgerEyebrow
+      ),
+      ledgerTitle: pick(locale, "admin_ledger_title", fb.admin.ledgerTitle),
+      ledgerSubtitle: pick(
+        locale,
+        "admin_ledger_subtitle",
+        fb.admin.ledgerSubtitle
+      ),
+      incomeUsd: pick(locale, "admin_income_usd", fb.admin.incomeUsd),
+      expenseUsd: pick(locale, "admin_expense_usd", fb.admin.expenseUsd),
+      refundUsd: pick(locale, "admin_refund_usd", fb.admin.refundUsd),
+      cashflow: pick(locale, "admin_cashflow", fb.admin.cashflow),
+      ncIn: pick(locale, "admin_nc_in", fb.admin.ncIn),
+      ncOut: pick(locale, "admin_nc_out", fb.admin.ncOut),
+      paidOrders: pick(locale, "admin_paid_orders", fb.admin.paidOrders),
+      refundedOrders: pick(
+        locale,
+        "admin_refunded_orders",
+        fb.admin.refundedOrders
+      ),
+      ledgerByKind: pick(locale, "admin_ledger_by_kind", fb.admin.ledgerByKind),
+      ledgerEntries: pick(
+        locale,
+        "admin_ledger_entries",
+        fb.admin.ledgerEntries
+      ),
+      purchasesTitle: pick(
+        locale,
+        "admin_purchases_title",
+        fb.admin.purchasesTitle
+      ),
+      colType: pick(locale, "admin_col_type", fb.admin.colType),
+      colDelta: pick(locale, "admin_col_delta", fb.admin.colDelta),
+      colReason: pick(locale, "admin_col_reason", fb.admin.colReason),
+      colBalance: pick(locale, "admin_col_balance", fb.admin.colBalance),
+      colStatus: pick(locale, "admin_col_status", fb.admin.colStatus),
+      emptyLedger: pick(locale, "admin_empty_ledger", fb.admin.emptyLedger),
+      emptyPurchases: pick(
+        locale,
+        "admin_empty_purchases",
+        fb.admin.emptyPurchases
+      ),
+      openLedger: pick(locale, "admin_open_ledger", fb.admin.openLedger),
+      usersEyebrow: pick(locale, "admin_users_eyebrow", fb.admin.usersEyebrow),
+      usersTitle: pick(locale, "admin_users_title", fb.admin.usersTitle),
+      usersSubtitle: pick(
+        locale,
+        "admin_users_subtitle",
+        fb.admin.usersSubtitle
+      ),
+      usersSearch: pick(locale, "admin_users_search", fb.admin.usersSearch),
+      colRole: pick(locale, "admin_col_role", fb.admin.colRole),
+      colPlan: pick(locale, "admin_col_plan", fb.admin.colPlan),
+      colCreated: pick(locale, "admin_col_created", fb.admin.colCreated),
+      colLastLogin: pick(locale, "admin_col_last_login", fb.admin.colLastLogin),
+      roleUser: pick(locale, "admin_role_user", fb.admin.roleUser),
+      roleModerator: pick(
+        locale,
+        "admin_role_moderator",
+        fb.admin.roleModerator
+      ),
+      roleAdmin: pick(locale, "admin_role_admin", fb.admin.roleAdmin),
+      statusActive: pick(locale, "admin_status_active", fb.admin.statusActive),
+      statusWarning: pick(
+        locale,
+        "admin_status_warning",
+        fb.admin.statusWarning
+      ),
+      statusBanned: pick(locale, "admin_status_banned", fb.admin.statusBanned),
+      confirmBan: pick(locale, "admin_confirm_ban", fb.admin.confirmBan),
+      adjustNc: pick(locale, "admin_adjust_nc", fb.admin.adjustNc),
+      adjustNcHint: pick(locale, "admin_adjust_nc_hint", fb.admin.adjustNcHint),
+      adjustNcReason: pick(
+        locale,
+        "admin_adjust_nc_reason",
+        fb.admin.adjustNcReason
+      ),
+      applyAction: pick(locale, "admin_apply_action", fb.admin.applyAction),
+      actionSaved: pick(locale, "admin_action_saved", fb.admin.actionSaved),
+      actionError: pick(locale, "admin_action_error", fb.admin.actionError),
+      jobsEyebrow: pick(locale, "admin_jobs_eyebrow", fb.admin.jobsEyebrow),
+      jobsTitle: pick(locale, "admin_jobs_title", fb.admin.jobsTitle),
+      jobsSubtitle: pick(locale, "admin_jobs_subtitle", fb.admin.jobsSubtitle),
+      jobsSearch: pick(locale, "admin_jobs_search", fb.admin.jobsSearch),
+      colJobType: pick(locale, "admin_col_job_type", fb.admin.colJobType),
+      colCost: pick(locale, "admin_col_cost", fb.admin.colCost),
+      colError: pick(locale, "admin_col_error", fb.admin.colError),
+      filterAll: pick(locale, "admin_filter_all", fb.admin.filterAll),
+      emptyUsers: pick(locale, "admin_empty_users", fb.admin.emptyUsers),
+      emptyJobs: pick(locale, "admin_empty_jobs", fb.admin.emptyJobs),
+      prevPage: pick(locale, "admin_prev_page", fb.admin.prevPage),
+      nextPage: pick(locale, "admin_next_page", fb.admin.nextPage),
+      kindSignupGrant: pick(
+        locale,
+        "admin_kind_signup_grant",
+        fb.admin.kindSignupGrant
+      ),
+      kindPurchase: pick(locale, "admin_kind_purchase", fb.admin.kindPurchase),
+      kindCharge: pick(locale, "admin_kind_charge", fb.admin.kindCharge),
+      kindBonus: pick(locale, "admin_kind_bonus", fb.admin.kindBonus),
+      kindReferral: pick(locale, "admin_kind_referral", fb.admin.kindReferral),
+      kindRollback: pick(locale, "admin_kind_rollback", fb.admin.kindRollback),
+      kindAdjustment: pick(
+        locale,
+        "admin_kind_adjustment",
+        fb.admin.kindAdjustment
+      ),
+    },
+  };
 }
 
 export function getDictionary(locale: string | null | undefined): Dictionary {
-  return dictionary[resolveAppLocale(locale)];
+  const code = resolveAppLocale(locale);
+  if (code === "uz" || code === "ru" || code === "en") {
+    return dictionary[code];
+  }
+  return hydrate(code, dictionary.en);
 }

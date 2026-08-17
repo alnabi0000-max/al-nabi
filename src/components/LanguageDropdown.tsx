@@ -7,7 +7,7 @@ import { Languages } from "lucide-react";
 import { useIsMounted } from "@/hooks/useIsMounted";
 
 /**
- * Language switcher — Master owns persistence; LanguageProvider mirrors via event.
+ * Language switcher — Master owns the 20 world locales and persistence.
  */
 export function LanguageDropdown() {
   const { locale, locales, setLocale } = useMaster();
@@ -53,7 +53,7 @@ export function LanguageDropdown() {
             id={menuId}
             role="listbox"
             aria-label={t.header.language}
-            className="glass-modal absolute right-0 z-50 mt-2 max-h-72 w-52 overflow-y-auto p-1"
+            className="glass-modal absolute right-0 z-50 mt-2 max-h-[min(24rem,70vh)] w-56 overflow-y-auto p-1"
           >
             {locales.map((l) => (
               <button

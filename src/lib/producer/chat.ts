@@ -16,7 +16,7 @@ import {
 import type { VisualDna } from "@/lib/producer/vision-dna";
 import type { ProducerMemory } from "@/lib/producer/memory";
 import {
-  languageLabel,
+  languageLabelForReply,
   resolveChatLanguage,
   type PromptLang,
 } from "@/lib/ai/prompt-language";
@@ -203,10 +203,10 @@ function resolveMode(text: string): ChatMode {
 }
 
 function dictForUserLang(lang: PromptLang, uiLocale?: string) {
+  if (uiLocale) return getDictionary(resolveAppLocale(uiLocale));
   if (lang.startsWith("uz")) return getDictionary("uz");
   if (lang === "ru") return getDictionary("ru");
-  if (lang === "en") return getDictionary("en");
-  return getDictionary(resolveAppLocale(uiLocale));
+  return getDictionary("en");
 }
 
 /** Hard-limit replies to 2–3 short grounded sentences. */
@@ -545,6 +545,7 @@ export function buildProducerSystemPrompt(opts: {
   memory?: ProducerMemory | null;
   mode: ChatMode;
   clientContext?: string | null;
+  localeCode?: string;
 }): string {
   return systemPrompt(opts);
 }
@@ -556,8 +557,9 @@ function systemPrompt(opts: {
   memory?: ProducerMemory | null;
   mode: ChatMode;
   clientContext?: string | null;
+  localeCode?: string;
 }): string {
-  const langName = languageLabel(opts.lang);
+  const langName = languageLabelForReply(opts.lang, opts.localeCode);
   const dnaBlock = opts.dna
     ? `Visual DNA: style=${opts.dna.artStyle}, lighting=${opts.dna.lighting}, lens=${opts.dna.cameraMm}.`
     : "No reference image.";
@@ -738,6 +740,7 @@ export async function runProducerChat(opts: {
         memory: opts.memory,
         mode,
         clientContext: opts.clientContext,
+        localeCode: opts.localeCode || opts.locale,
       }),
     },
   ];

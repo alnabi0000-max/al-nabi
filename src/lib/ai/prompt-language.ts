@@ -104,6 +104,46 @@ export function languageLabel(lang: PromptLang): string {
   }
 }
 
+/** Human language name for a UI locale — used to lock Producer Chat replies. */
+export const UI_LANGUAGE_NAMES: Record<string, string> = {
+  uz: "Uzbek (Latin script)",
+  en: "English",
+  ru: "Russian",
+  fr: "French",
+  ar: "Modern Standard Arabic",
+  es: "Spanish",
+  de: "German",
+  tr: "Turkish",
+  zh: "Simplified Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+  hi: "Hindi",
+  pt: "Portuguese",
+  it: "Italian",
+  id: "Indonesian",
+  ms: "Malay",
+  fa: "Persian",
+  uk: "Ukrainian",
+  pl: "Polish",
+  nl: "Dutch",
+};
+
+export function uiLanguageName(locale?: string | null): string {
+  const loc = (locale || "").toLowerCase().trim();
+  return UI_LANGUAGE_NAMES[loc] || "English";
+}
+
+/** Prefer the selected UI language so the whole product matches the picker. */
+export function languageLabelForReply(
+  lang: PromptLang,
+  uiLocale?: string | null
+): string {
+  if (uiLocale && UI_LANGUAGE_NAMES[uiLocale]) {
+    return UI_LANGUAGE_NAMES[uiLocale];
+  }
+  return languageLabel(lang);
+}
+
 /** Map UI / cookie locale → sticky chat language. */
 export function localeToPromptLang(
   locale?: string | null,
