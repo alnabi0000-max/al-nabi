@@ -67,6 +67,6 @@ export function probeCoreHealth(): CoreHealth {
     adminSecret,
     cronSecret,
     objectStorage,
-    ready: openRouter && videoApi && adminSecret,
+    ready: openRouter && videoApi,
   };
 }

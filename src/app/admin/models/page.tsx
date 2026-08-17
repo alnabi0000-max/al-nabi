@@ -1,15 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import {
-  ArrowLeft,
-  Check,
-  Loader2,
-  RefreshCw,
-  Shield,
-  X,
-} from "lucide-react";
+import { Check, Loader2, RefreshCw, X } from "lucide-react";
 import { useLanguage } from "@/context/LanguageContext";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 
@@ -37,77 +29,59 @@ type CoreHealth = {
   openRouter: boolean;
   videoApi: boolean;
   telegram: boolean;
-  adminSecret: boolean;
   cronSecret: boolean;
   objectStorage: boolean;
   ready: boolean;
 };
 
+const ADMIN_FETCH: RequestInit = {
+  credentials: "include",
+  cache: "no-store",
+};
+
 export default function AdminModelsPage() {
   const { t } = useLanguage();
-  const [secret, setSecret] = useState("");
-  const [unlocked, setUnlocked] = useState(false);
   const [pending, setPending] = useState<Pending[]>([]);
   const [active, setActive] = useState<Active[]>([]);
   const [lastWatchAt, setLastWatchAt] = useState<string | null>(null);
   const [health, setHealth] = useState<CoreHealth | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>("load");
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    try {
-      const s = sessionStorage.getItem("alnabiy_admin_secret");
-      if (s) {
-        setSecret(s);
-        setUnlocked(true);
-      }
-    } catch {
-      /* soft */
-    }
-  }, []);
-
-  const headers = useCallback(() => {
-    return {
-      "Content-Type": "application/json",
-      "x-alnabiy-admin-secret": secret,
-    };
-  }, [secret]);
-
   const load = useCallback(async () => {
-    if (!secret) return;
     setBusy("load");
     setError(null);
     try {
       const [modelsRes, sysRes] = await Promise.all([
-        fetchWithTimeout("/api/admin/models", { headers: headers() }, 15_000),
-        fetchWithTimeout("/api/admin/system", { headers: headers() }, 15_000),
+        fetchWithTimeout("/api/admin/models", ADMIN_FETCH, 15_000),
+        fetchWithTimeout("/api/admin/system", ADMIN_FETCH, 15_000),
       ]);
-      const data = await modelsRes.json();
-      if (!modelsRes.ok) throw new Error(data.error || "Failed to load");
+      const data = (await modelsRes.json()) as {
+        error?: string;
+        pending?: Pending[];
+        active?: Active[];
+        lastWatchAt?: string | null;
+      };
+      if (!modelsRes.ok) throw new Error(data.error || t.admin.loadError);
       setPending(data.pending || []);
       setActive(data.active || []);
       setLastWatchAt(data.lastWatchAt || null);
       if (sysRes.ok) {
-        const sys = await sysRes.json();
+        const sys = (await sysRes.json()) as { health?: CoreHealth };
         setHealth(sys.health || null);
       }
-      setUnlocked(true);
-      try {
-        sessionStorage.setItem("alnabiy_admin_secret", secret);
-      } catch {
-        /* soft */
-      }
     } catch (e) {
-      setUnlocked(false);
-      setError(e instanceof Error ? e.message : "Auth failed");
+      setError(e instanceof Error ? e.message : t.admin.loadError);
     } finally {
       setBusy(null);
     }
-  }, [secret, headers]);
+  }, [t]);
 
   useEffect(() => {
-    if (unlocked && secret) void load();
-  }, [unlocked]); // eslint-disable-line react-hooks/exhaustive-deps
+    void load();
+    // Initial fetch only — `load` closes over locale strings.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function runWatch() {
     setBusy("watch");
@@ -115,14 +89,14 @@ export default function AdminModelsPage() {
     try {
       const res = await fetchWithTimeout(
         "/api/admin/models",
-        { method: "POST", headers: headers() },
+        { ...ADMIN_FETCH, method: "POST" },
         30_000
       );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Watch failed");
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error || t.admin.loadError);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Watch failed");
+      setError(e instanceof Error ? e.message : t.admin.loadError);
     } finally {
       setBusy(null);
     }
@@ -135,84 +109,32 @@ export default function AdminModelsPage() {
       const res = await fetchWithTimeout(
         "/api/admin/models/approve",
         {
+          ...ADMIN_FETCH,
           method: "POST",
-          headers: headers(),
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pendingId, action }),
         },
         15_000
       );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Action failed");
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error || t.admin.actionError);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Action failed");
+      setError(e instanceof Error ? e.message : t.admin.actionError);
     } finally {
       setBusy(null);
     }
-  }
-
-  if (!unlocked) {
-    return (
-      <div className="mx-auto flex min-h-[60vh] max-w-md flex-col justify-center px-4">
-        <div className="rounded-2xl border border-nabi-border bg-nabi-card p-6">
-          <Link
-            href="/admin"
-            className="mb-4 inline-flex items-center gap-1.5 text-xs text-nabi-muted hover:text-nabi-ink"
-          >
-            <ArrowLeft size={12} />
-            {t.admin.analyticsTitle}
-          </Link>
-          <p className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wider text-nabi-muted">
-            <Shield size={12} />
-            Al-Nabi Admin
-          </p>
-          <h1 className="text-xl font-semibold text-nabi-ink">
-            {t.admin.title}
-          </h1>
-          <p className="mt-2 text-sm text-nabi-muted">
-            Enter <code className="text-nabi-muted">ADMIN_API_SECRET</code> to
-            continue.
-          </p>
-          <input
-            type="password"
-            value={secret}
-            onChange={(e) => setSecret(e.target.value)}
-            className="mt-4 w-full rounded-xl border border-nabi-border bg-nabi-input px-3 py-2.5 text-sm text-nabi-ink outline-none focus:border-nabi-gold/40"
-            placeholder={t.admin.secretPlaceholder}
-          />
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={!secret || busy === "load"}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-sm font-semibold text-nabi-bg"
-          >
-            {busy === "load" ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : null}
-            {t.admin.unlock}
-          </button>
-          {error && <p className="mt-3 text-sm text-rose-400">{error}</p>}
-        </div>
-      </div>
-    );
   }
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <Link
-            href="/admin"
-            className="mb-2 inline-flex items-center gap-1.5 text-xs text-nabi-muted hover:text-nabi-ink"
-          >
-            <ArrowLeft size={12} />
-            {t.admin.analyticsTitle}
-          </Link>
           <p className="mb-1 text-[11px] font-medium uppercase tracking-[0.2em] text-nabi-muted">
-            Admin · Model Updater
+            {t.admin.navModels}
           </p>
           <h1 className="text-2xl font-semibold text-nabi-ink">
-            Al-Nabi Notifications
+            {t.admin.title}
           </h1>
           <p className="mt-1 text-sm text-nabi-muted">
             Last watch: {lastWatchAt ? new Date(lastWatchAt).toLocaleString() : "—"}
@@ -221,8 +143,8 @@ export default function AdminModelsPage() {
         <button
           type="button"
           onClick={() => void runWatch()}
-          disabled={busy === "watch"}
-          className="inline-flex items-center gap-2 rounded-full border border-nabi-border px-4 py-2 text-sm text-nabi-ink hover:bg-nabi-elevated"
+          disabled={busy === "watch" || busy === "load"}
+          className="inline-flex items-center gap-2 rounded-full border border-nabi-border px-4 py-2 text-sm text-nabi-ink hover:bg-nabi-elevated disabled:opacity-60"
         >
           {busy === "watch" ? (
             <Loader2 size={14} className="animate-spin" />
@@ -287,7 +209,12 @@ export default function AdminModelsPage() {
         <h2 className="text-sm font-medium text-nabi-muted">
           {t.admin.pending} ({pending.length})
         </h2>
-        {pending.length === 0 && (
+        {busy === "load" && pending.length === 0 && !error ? (
+          <p className="rounded-xl border border-nabi-border bg-nabi-card px-4 py-8 text-center text-sm text-nabi-muted">
+            {t.common.loading}
+          </p>
+        ) : null}
+        {pending.length === 0 && busy !== "load" && !error && (
           <p className="rounded-xl border border-nabi-border bg-nabi-card px-4 py-8 text-center text-sm text-nabi-muted">
             Yangi model yangilanishi yo‘q / No pending model updates
           </p>

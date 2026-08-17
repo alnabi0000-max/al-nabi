@@ -51,6 +51,9 @@ const SESSION_ROLE_ADMIN_API = new Set([
   "/api/admin/ledger",
   "/api/admin/users",
   "/api/admin/jobs",
+  "/api/admin/models",
+  "/api/admin/models/approve",
+  "/api/admin/system",
 ]);
 
 export function isApiPath(pathname: string): boolean {

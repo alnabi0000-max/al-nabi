@@ -32,7 +32,7 @@ export function AdminPanelNav() {
 
   return (
     <nav
-      aria-label={t.admin.navAnalytics}
+      aria-label={t.admin.title}
       className="mx-auto mb-6 flex max-w-6xl flex-wrap gap-2"
     >
       {items.map(({ href, label, icon: Icon, exact }) => {

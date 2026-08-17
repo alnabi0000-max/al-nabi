@@ -31,6 +31,8 @@ describe("admin API session policy", () => {
     expect(requiresSessionToken("/api/admin/gate")).toBe(false);
     expect(requiresSessionToken("/api/admin/passcode")).toBe(true);
     expect(requiresSessionToken("/api/admin/analytics")).toBe(true);
+    expect(requiresSessionToken("/api/admin/models")).toBe(true);
+    expect(requiresSessionToken("/api/admin/system")).toBe(true);
   });
 });
 

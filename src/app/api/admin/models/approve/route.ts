@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { apiError, apiJson } from "@/lib/api/json-response";
-import { assertAdmin } from "@/lib/admin/auth";
+import { apiError, apiJson, formatRouteError } from "@/lib/api/json-response";
+import { requireAdminApiUser } from "@/lib/admin/require-admin";
 import {
   approvePendingUpdate,
   dismissPendingUpdate,
@@ -20,10 +20,8 @@ const schema = z.object({
  * 1-Click Approve & Update API Route — swaps model endpoint via registry override.
  */
 export async function POST(req: NextRequest) {
-  const gate = assertAdmin(req);
-  if (!gate.ok) {
-    return apiError(gate.error, { status: 401, code: "UNAUTHORIZED" });
-  }
+  const auth = await requireAdminApiUser(req);
+  if ("response" in auth) return auth.response;
 
   try {
     const body = schema.parse(await req.json());
@@ -62,9 +60,10 @@ export async function POST(req: NextRequest) {
         "API route updated via model registry override (core logic unchanged).",
     });
   } catch (e) {
-    return apiError(e instanceof Error ? e.message : "Approve failed", {
-      status: 400,
-      code: "BAD_REQUEST",
+    const formatted = formatRouteError(e);
+    return apiError(formatted.message, {
+      status: formatted.status,
+      code: formatted.code,
     });
   }
 }

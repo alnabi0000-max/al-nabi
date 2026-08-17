@@ -47,8 +47,9 @@ describe("admin analytics API surface", () => {
     expect(requiresSessionToken("/api/admin/users")).toBe(true);
     expect(requiresSessionToken("/api/admin/jobs")).toBe(true);
     expect(requiresSessionToken("/api/admin/unlock")).toBe(false);
-    expect(requiresSessionToken("/api/admin/models")).toBe(false);
-    expect(requiresSessionToken("/api/admin/system")).toBe(false);
+    expect(requiresSessionToken("/api/admin/models")).toBe(true);
+    expect(requiresSessionToken("/api/admin/models/approve")).toBe(true);
+    expect(requiresSessionToken("/api/admin/system")).toBe(true);
   });
 });
 
