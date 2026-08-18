@@ -20,7 +20,7 @@ type Props = {
  * with `platform=mobile`, which forwards the code to `alnabi://auth/callback`.
  */
 export function SocialAuthButtons({
-  next = "/profile?tab=kabinet",
+  next = "/",
   className,
   compact,
 }: Props) {

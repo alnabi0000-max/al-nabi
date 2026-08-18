@@ -492,3 +492,22 @@ html.alnabiy-capture-lock img[data-alnabiy-secure-still] {
 html.alnabiy-drm-blackout body {
   visibility: hidden !important;
 }
+
+@keyframes studio-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.studio-reveal {
+  animation: studio-reveal 0.45s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-reveal {
+    animation: none;
+  }
+}

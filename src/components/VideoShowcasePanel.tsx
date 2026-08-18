@@ -19,6 +19,8 @@ import {
 type Props = {
   className?: string;
   examples?: VideoShowcaseExample[];
+  /** Tighter chrome for the split auth showcase card. */
+  compact?: boolean;
 };
 
 /**
@@ -27,6 +29,7 @@ type Props = {
 export function VideoShowcasePanel({
   className,
   examples = VIDEO_SHOWCASE_EXAMPLES,
+  compact = false,
 }: Props) {
   const { tr } = useMaster();
   const [index, setIndex] = useState(0);
@@ -113,21 +116,23 @@ export function VideoShowcasePanel({
         if (!dragging) setPaused(false);
       }}
     >
-      <header className="border-b border-nabi-border px-4 pb-3 pt-4 md:px-5">
-        <div className="flex items-start gap-2">
-          <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-nabi-neon/15 text-nabi-neon">
-            <Sparkles size={14} />
-          </span>
-          <div>
-            <h2 className="font-display text-base font-semibold tracking-tight text-nabi-ink md:text-lg">
-              {tr("video_showcase_title")}
-            </h2>
-            <p className="mt-0.5 text-xs leading-relaxed text-nabi-muted md:text-sm">
-              {tr("video_showcase_subtitle")}
-            </p>
+      {compact ? null : (
+        <header className="border-b border-nabi-border px-4 pb-3 pt-4 md:px-5">
+          <div className="flex items-start gap-2">
+            <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-nabi-neon/15 text-nabi-neon">
+              <Sparkles size={14} />
+            </span>
+            <div>
+              <h2 className="font-display text-base font-semibold tracking-tight text-nabi-ink md:text-lg">
+                {tr("video_showcase_title")}
+              </h2>
+              <p className="mt-0.5 text-xs leading-relaxed text-nabi-muted md:text-sm">
+                {tr("video_showcase_subtitle")}
+              </p>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <div className="relative px-3 pt-3 md:px-4">
         <div

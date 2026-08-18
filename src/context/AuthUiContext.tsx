@@ -9,11 +9,12 @@ import React, {
 } from "react";
 
 /**
- * `quick` — one-click social + magic link
- * `code`  — passwordless 6-digit email code
- * `reset` — password recovery
+ * `quick` / `signin` — Google + email/password sign-in
+ * `signup` — create account
+ * `code`   — passwordless 6-digit email code
+ * `reset`  — password recovery
  */
-export type AuthTab = "quick" | "code" | "reset";
+export type AuthTab = "quick" | "signin" | "signup" | "code" | "reset";
 
 type AuthUi = {
   open: boolean;

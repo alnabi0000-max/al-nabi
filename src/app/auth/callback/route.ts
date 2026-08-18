@@ -21,8 +21,8 @@ import {
 
 /** Only allow same-site relative paths — blocks `//evil.com`, `https://evil.com`, `\\evil.com`. */
 function safeNextPath(raw: string | null): string {
-  if (!raw) return "/profile?tab=kabinet";
-  if (!/^\/(?!\/)[a-zA-Z0-9/_?&=%.-]*$/.test(raw)) return "/profile?tab=kabinet";
+  if (!raw) return "/";
+  if (!/^\/(?!\/)[a-zA-Z0-9/_?&=%.-]*$/.test(raw)) return "/";
   return raw;
 }
 

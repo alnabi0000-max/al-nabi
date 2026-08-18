@@ -10,10 +10,9 @@ import { syncLocalUserToPrisma } from "@/lib/auth/sync-local";
 import { resolveUserByKey } from "@/lib/assets";
 import { getBearerIdentity, readRequestBearerToken, type HeaderSource } from "@/lib/auth/bearer";
 import { resolveAuthProvider } from "@/lib/auth/providers";
+import { DEV_GUEST_EMAIL } from "@/lib/auth/guest";
 import type { User } from "@prisma/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
-
-const DEV_GUEST_EMAIL = "dev@alnabiy.local";
 
 export type LedgerUser = Pick<
   User,

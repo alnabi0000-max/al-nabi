@@ -32,6 +32,7 @@ import {
 } from "@/lib/i18n/locales";
 import { shouldBypassLowDataMode } from "@/lib/security/client-mode";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
+import { isGuestEmail, isRealUserSession } from "@/lib/auth/guest";
 
 interface AiQueue {
   seedance: string;
@@ -114,6 +115,8 @@ interface MasterController extends MasterState {
   /** Serverdagi sessiyani qayta o'qish — OTP / OAuth kirishdan keyin */
   refreshSession: () => Promise<void>;
   authReady: boolean;
+  /** Real signed-in user — guest / missing email is false. */
+  isAuthenticated: boolean;
   authMode: "local" | "supabase";
   setOffline: (v: boolean) => void;
   persist: () => void;
@@ -281,13 +284,26 @@ export function MasterControllerProvider({
     []
   );
 
+  const clearGuestIdentity = useCallback(() => {
+    setState((s) => ({
+      ...s,
+      email: null,
+      alnabiyKey: null,
+      role: "USER",
+    }));
+  }, []);
+
   const syncSessionFromApi = useCallback(async () => {
     const res = await fetchWithTimeout(
       "/api/auth/me",
       { credentials: "include" },
       15_000
     );
-    const data = await res.json();
+    const data = (await res.json()) as Record<string, unknown>;
+
+    /* Server outage — keep whatever identity we already have. */
+    if (!res.ok && res.status >= 500) return data;
+
     let key: string | null = null;
     try {
       key = localStorage.getItem(LS_KEY);
@@ -295,48 +311,18 @@ export function MasterControllerProvider({
       /* soft */
     }
 
-    /* One ensure call — covers authenticated + local guest boot */
-    try {
-      const ens = await fetchWithTimeout(
-        "/api/auth/ensure",
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ alnabiyKey: key }),
-        },
-        15_000
-      );
-      const ensData = await ens.json();
-      if (ens.ok && ensData.authenticated) {
-        applyAuthPayload(
-          ensData.email || data.email || "dev@alnabiy.local",
-          {
-            ...(data as Record<string, unknown>),
-            ...(ensData as Record<string, unknown>),
-          },
-          (ensData.alnabiyKey ||
-            ensData.alnabiy_key ||
-            key ||
-            undefined) as string | undefined
-        );
-        return ensData;
-      }
-    } catch {
-      /* soft */
-    }
-
-    if (data.authenticated) {
+    if (isRealUserSession(data)) {
       applyAuthPayload(
-        data.email || "dev@alnabiy.local",
-        data as Record<string, unknown>,
+        String(data.email),
+        data,
         key || undefined
       );
-    } else {
-      setState((s) => ({ ...s, email: null, role: "USER" }));
+      return data;
     }
+
+    clearGuestIdentity();
     return data;
-  }, [applyAuthPayload]);
+  }, [applyAuthPayload, clearGuestIdentity]);
 
   /** OTP / OAuth kirishdan keyin serverdagi sessiyani qayta o'qish */
   const refreshSession = useCallback(async () => {
@@ -347,9 +333,9 @@ export function MasterControllerProvider({
     }
   }, [syncSessionFromApi]);
 
-  /** Generate oldidan — sessiya/guest kafolat */
+  /** Generate oldidan — faqat haqiqiy (guest emas) sessiya */
   const ensureAuthSession = useCallback(async () => {
-    if (state.email && state.alnabiyKey) {
+    if (state.email && !isGuestEmail(state.email)) {
       return { ok: true as const, alnabiyKey: state.alnabiyKey };
     }
     try {
@@ -367,16 +353,14 @@ export function MasterControllerProvider({
         },
         15_000
       );
-      const ensData = await ens.json();
-      if (ens.ok && ensData.authenticated) {
-        applyAuthPayload(
-          ensData.email || "dev@alnabiy.local",
-          ensData as Record<string, unknown>
-        );
+      const ensData = (await ens.json()) as Record<string, unknown>;
+      if (ens.ok && isRealUserSession(ensData)) {
+        applyAuthPayload(String(ensData.email), ensData);
         return {
           ok: true as const,
           alnabiyKey: (ensData.alnabiyKey ||
-            ensData.alnabiy_key) as string,
+            ensData.alnabiy_key ||
+            null) as string | null,
         };
       }
       return { ok: false as const, alnabiyKey: null };
@@ -828,17 +812,63 @@ export function MasterControllerProvider({
           },
           20_000
         );
-        const data = await res.json();
-        if (!res.ok) {
+        const data = (await res.json()) as Record<string, unknown>;
+        if (res.ok) {
+          if (data.mode === "local" || data.mode === "supabase") {
+            setAuthMode(data.mode);
+          }
+          applyAuthPayload(email, data);
           return {
-            ok: false,
-            message: data.error || t(state.locale, "error_generic"),
+            ok: true,
+            message: register
+              ? t(state.locale, "account_created")
+              : t(state.locale, "session_restored"),
           };
         }
-        if (data.mode === "local" || data.mode === "supabase") {
-          setAuthMode(data.mode);
+
+        /* Production / Supabase: local password route is disabled (410). */
+        if (res.status !== 410 && data.code !== "LOCAL_AUTH_DISABLED") {
+          return {
+            ok: false,
+            message:
+              (data.error as string) || t(state.locale, "error_generic"),
+          };
         }
-        applyAuthPayload(email, data);
+
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+        if (!supabase) {
+          return {
+            ok: false,
+            message: t(state.locale, "auth_supabase_required"),
+          };
+        }
+
+        if (register) {
+          const origin =
+            typeof window !== "undefined" ? window.location.origin : "";
+          const { data: signed, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: origin
+                ? `${origin}/auth/callback?next=${encodeURIComponent("/")}`
+                : undefined,
+            },
+          });
+          if (error) return { ok: false, message: error.message };
+          if (!signed.session) {
+            return { ok: true, message: t(state.locale, "auth_confirm_email") };
+          }
+        } else {
+          const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (error) return { ok: false, message: error.message };
+        }
+
+        await syncSessionFromApi();
         return {
           ok: true,
           message: register
@@ -849,7 +879,7 @@ export function MasterControllerProvider({
         return { ok: false, message: t(state.locale, "network_error") };
       }
     },
-    [state.locale, applyAuthPayload]
+    [state.locale, applyAuthPayload, syncSessionFromApi]
   );
 
   const signOut = useCallback(async () => {
@@ -898,6 +928,7 @@ export function MasterControllerProvider({
       ensureAuthSession,
       refreshSession,
       authReady,
+      isAuthenticated: Boolean(state.email && !isGuestEmail(state.email)),
       authMode,
       setOffline: (v) => setState((s) => ({ ...s, isOffline: v })),
       persist: persistNow,
