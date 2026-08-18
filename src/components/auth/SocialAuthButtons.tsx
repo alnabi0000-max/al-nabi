@@ -51,14 +51,15 @@ export function SocialAuthButtons({
       });
       if (error) {
         notify({ message: error.message, type: "error" });
-        setBusy(null);
       }
-      // On success the browser navigates away; keep the spinner until it does.
+      // On success the browser navigates away; spinner clears in `finally`
+      // if the page is still mounted.
     } catch (e) {
       notify({
         message: e instanceof Error ? e.message : tr("auth_error"),
         type: "error",
       });
+    } finally {
       setBusy(null);
     }
   }

@@ -21,8 +21,8 @@ export function assertProductionAuthConfiguration(): void {
   if (!shouldEnforceProductionSecrets()) return;
 
   const mode = configuredValue("AUTH_MODE").toLowerCase();
-  const url = configuredValue("NEXT_PUBLIC_SUPABASE_URL");
-  const anon = configuredValue("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  const url = publicSupabaseUrl();
+  const anon = publicSupabaseAnonKey();
   const problems: string[] = [];
 
   if (mode !== "supabase") {
@@ -56,9 +56,22 @@ export function getAuthMode(): AuthMode {
   return isSupabaseConfigured() ? "supabase" : "local";
 }
 
+/**
+ * Public Supabase values must be read as static `process.env.NEXT_PUBLIC_*`
+ * identifiers. Next.js inlines those into the browser bundle; `process.env[name]`
+ * is always empty on the client, which made Google/Apple look "unconfigured".
+ */
+function publicSupabaseUrl(): string {
+  return (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+}
+
+function publicSupabaseAnonKey(): string {
+  return (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
+}
+
 export function isSupabaseConfigured(): boolean {
-  const url = configuredValue("NEXT_PUBLIC_SUPABASE_URL");
-  const anon = configuredValue("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  const url = publicSupabaseUrl();
+  const anon = publicSupabaseAnonKey();
   if (isPlaceholderEnvValue(url) || isPlaceholderEnvValue(anon)) return false;
   return url.startsWith("https://") || url.startsWith("http://");
 }
