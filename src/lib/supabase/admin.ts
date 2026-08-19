@@ -14,3 +14,11 @@ export function createAdminClient() {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
+
+export function tryCreateAdminClient() {
+  try {
+    return createAdminClient();
+  } catch {
+    return null;
+  }
+}

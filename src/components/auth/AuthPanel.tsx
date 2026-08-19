@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Eye,
@@ -54,6 +55,7 @@ export function AuthPanel({
   className,
 }: Props) {
   const { tr, signInWithPassword, refreshSession, notify } = useMaster();
+  const router = useRouter();
 
   const [view, setView] = useState<AuthView>(() => tabToView(initialTab));
   const [email, setEmail] = useState("");
@@ -134,7 +136,11 @@ export function AuthPanel({
 
   const finishAuth = useCallback(() => {
     onAuthenticated?.();
-  }, [onAuthenticated]);
+    if (variant === "page") {
+      router.replace("/");
+      router.refresh();
+    }
+  }, [onAuthenticated, router, variant]);
 
   const onPasswordSubmit = (register: boolean) =>
     run(register ? "register" : "login", async () => {
@@ -142,7 +148,6 @@ export function AuthPanel({
       if (!res.ok) throw new Error(res.message);
       setMsg(res.message);
       notify({ message: res.message, type: "success" });
-      if (res.message === tr("auth_confirm_email")) return;
       finishAuth();
     });
 

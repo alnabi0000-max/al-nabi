@@ -375,6 +375,8 @@
   "auth_show_password": "Показать пароль",
   "auth_hide_password": "Скрыть пароль",
   "auth_provider_unavailable": "{provider} пока не настроен. Войдите по email.",
+  "auth_google_coming_soon": "Вход через Google скоро заработает. Пока войдите по email.",
+  "auth_apple_coming_soon": "Вход через Apple скоро заработает. Пока войдите по email.",
   "showcase_fantasy": "Фэнтези",
   "showcase_fantasy_prompt": "Кристальный дракон над лунными руинами",
   "showcase_comic": "Комикс",

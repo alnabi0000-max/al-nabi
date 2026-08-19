@@ -813,21 +813,7 @@ export function MasterControllerProvider({
           20_000
         );
         const data = (await res.json()) as Record<string, unknown>;
-        if (res.ok) {
-          if (data.mode === "local" || data.mode === "supabase") {
-            setAuthMode(data.mode);
-          }
-          applyAuthPayload(email, data);
-          return {
-            ok: true,
-            message: register
-              ? t(state.locale, "account_created")
-              : t(state.locale, "session_restored"),
-          };
-        }
-
-        /* Production / Supabase: local password route is disabled (410). */
-        if (res.status !== 410 && data.code !== "LOCAL_AUTH_DISABLED") {
+        if (!res.ok) {
           return {
             ok: false,
             message:
@@ -835,40 +821,10 @@ export function MasterControllerProvider({
           };
         }
 
-        const { createClient } = await import("@/lib/supabase/client");
-        const supabase = createClient();
-        if (!supabase) {
-          return {
-            ok: false,
-            message: t(state.locale, "auth_supabase_required"),
-          };
+        if (data.mode === "local" || data.mode === "supabase") {
+          setAuthMode(data.mode);
         }
-
-        if (register) {
-          const origin =
-            typeof window !== "undefined" ? window.location.origin : "";
-          const { data: signed, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              emailRedirectTo: origin
-                ? `${origin}/auth/callback?next=${encodeURIComponent("/")}`
-                : undefined,
-            },
-          });
-          if (error) return { ok: false, message: error.message };
-          if (!signed.session) {
-            return { ok: true, message: t(state.locale, "auth_confirm_email") };
-          }
-        } else {
-          const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          if (error) return { ok: false, message: error.message };
-        }
-
-        await syncSessionFromApi();
+        applyAuthPayload(email, data);
         return {
           ok: true,
           message: register
@@ -879,7 +835,7 @@ export function MasterControllerProvider({
         return { ok: false, message: t(state.locale, "network_error") };
       }
     },
-    [state.locale, applyAuthPayload, syncSessionFromApi]
+    [state.locale, applyAuthPayload]
   );
 
   const signOut = useCallback(async () => {

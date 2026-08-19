@@ -9,6 +9,9 @@ import {
 import { attachSessionCookie } from "@/lib/auth/session";
 import { getAuthMode } from "@/lib/auth/config";
 import { syncLocalUserToPrisma } from "@/lib/auth/sync-local";
+import { toSafePublicProfile } from "@/lib/auth/public-profile";
+import { completePasswordAuth } from "@/lib/auth/password-login";
+import { createRouteHandlerClient } from "@/lib/supabase/route-client";
 
 const schema = z.object({
   email: z.string().email(),
@@ -17,21 +20,42 @@ const schema = z.object({
   register: z.boolean().optional(),
 });
 
-/** Local development auth. Production uses Supabase-only authentication. */
+function jsonError(error: string, status: number) {
+  return NextResponse.json({ ok: false, error }, { status });
+}
+
+/** Email + password. Local store in AUTH_MODE=local; otherwise Supabase. */
 export async function POST(req: NextRequest) {
   try {
     const body = schema.parse(await req.json());
     const email = body.email.toLowerCase();
     const mode = getAuthMode();
 
-    if (mode !== "local") {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "LOCAL_AUTH_DISABLED",
-          error: "Password authentication is disabled; use Supabase sign-in.",
-        },
-        { status: 410 }
+    if (mode === "supabase") {
+      const route = createRouteHandlerClient(req);
+      if (!route) {
+        return jsonError("Auth unavailable", 503);
+      }
+
+      const result = await completePasswordAuth({
+        supabase: route.supabase,
+        email,
+        password: body.password,
+        register: Boolean(body.register),
+      });
+
+      if (!result.ok) {
+        return jsonError(result.error, result.status);
+      }
+
+      return route.applyCookies(
+        NextResponse.json({
+          ok: true,
+          mode,
+          authenticated: true,
+          ...toSafePublicProfile(result.user),
+          message: "Signed in",
+        })
       );
     }
 
@@ -39,19 +63,11 @@ export async function POST(req: NextRequest) {
 
     if (body.register) {
       if (user) {
-        return NextResponse.json(
-          { ok: false, error: "Email already registered" },
-          { status: 409 }
-        );
+        return jsonError("Email already registered", 409);
       }
       user = upsertLocalUser({ email, password: body.password });
     } else if (!user || !verifyPassword(user, body.password)) {
-      /* Same generic message whether the account exists or not — avoid
-       * leaking account existence, and never silently auto-register. */
-      return NextResponse.json(
-        { ok: false, error: "Invalid email or password" },
-        { status: 401 }
-      );
+      return jsonError("Invalid email or password", 401);
     }
 
     if (user.status === "BANNED") {
@@ -77,6 +93,7 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({
       ok: true,
       mode,
+      authenticated: true,
       ...payload,
       prismaSynced: Boolean(dbUser),
       message: "Signed in",
@@ -84,6 +101,6 @@ export async function POST(req: NextRequest) {
     return attachSessionCookie(res, user);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Login failed";
-    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+    return jsonError(msg, 400);
   }
 }

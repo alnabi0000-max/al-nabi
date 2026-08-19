@@ -1,9 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2 } from "lucide-react";
-import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
-import { createClient } from "@/lib/supabase/client";
 import { useMaster } from "@/context/MasterControllerContext";
 import clsx from "clsx";
 
@@ -13,91 +9,23 @@ type Props = {
   compact?: boolean;
 };
 
-type ProviderFlags = {
-  google?: boolean;
-  apple?: boolean;
-};
-
 /**
- * One-click Google & Apple. If a provider is off in GoTrue we toast instead
- * of sending the browser to a raw JSON 400. Probe only the clicked provider
- * with a timeout so Apple cannot freeze the Google button.
+ * Google / Apple stay visible, but do not start OAuth until those providers
+ * are enabled in Supabase. A click is a toast, never a spinner or JSON dump.
  */
-export function SocialAuthButtons({
-  next = "/",
-  className,
-  compact,
-}: Props) {
+export function SocialAuthButtons({ className, compact }: Props) {
   const { tr, notify } = useMaster();
-  const [busy, setBusy] = useState<"google" | "apple" | null>(null);
 
-  async function oauth(provider: "google" | "apple") {
-    setBusy(provider);
-    const label = provider === "google" ? "Google" : "Apple";
-    try {
-      const supabase = createClient();
-      if (!supabase) {
-        notify({
-          message: tr("auth_supabase_required"),
-          type: "error",
-        });
-        return;
-      }
-
-      const origin = window.location.origin;
-      const probePromise = fetchWithTimeout(
-        `/api/auth/oauth/providers?provider=${provider}`,
-        { credentials: "include" },
-        4000
-      );
-      const oauthPromise = supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
-          skipBrowserRedirect: true,
-          ...(provider === "apple" ? { scopes: "name email" } : {}),
-        },
-      });
-
-      const [probeRes, oauthResult] = await Promise.all([
-        probePromise,
-        oauthPromise,
-      ]);
-      const probe = (await probeRes.json().catch(() => null)) as
-        | ProviderFlags
-        | null;
-      const enabled = Boolean(probeRes.ok && probe && probe[provider] === true);
-      if (!enabled) {
-        notify({
-          message: tr("auth_provider_unavailable", { provider: label }),
-          type: "error",
-        });
-        return;
-      }
-
-      if (oauthResult.error) {
-        notify({ message: oauthResult.error.message, type: "error" });
-        return;
-      }
-      if (oauthResult.data?.url) {
-        window.location.assign(oauthResult.data.url);
-        return;
-      }
-      notify({ message: tr("auth_error"), type: "error" });
-    } catch (e) {
-      const timedOut =
-        e instanceof Error && /timed out/i.test(e.message);
-      notify({
-        message: timedOut
-          ? tr("auth_provider_unavailable", { provider: label })
-          : e instanceof Error
-            ? e.message
-            : tr("auth_error"),
-        type: "error",
-      });
-    } finally {
-      setBusy(null);
-    }
+  function comingSoon(provider: "google" | "apple") {
+    notify({
+      message: tr(
+        provider === "google"
+          ? "auth_google_coming_soon"
+          : "auth_apple_coming_soon"
+      ),
+      type: "info",
+      durationMs: 5200,
+    });
   }
 
   return (
@@ -110,27 +38,17 @@ export function SocialAuthButtons({
     >
       <button
         type="button"
-        onClick={() => oauth("google")}
-        disabled={busy !== null}
-        aria-busy={busy === "google"}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-nabi-border bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:opacity-50"
+        onClick={() => comingSoon("google")}
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-nabi-border bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
       >
-        {busy === "google" ? (
-          <Loader2 size={16} className="animate-spin" />
-        ) : null}
         <GoogleIcon />
         {tr("continue_google")}
       </button>
       <button
         type="button"
-        onClick={() => oauth("apple")}
-        disabled={busy !== null}
-        aria-busy={busy === "apple"}
-        className="glass-card flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+        onClick={() => comingSoon("apple")}
+        className="glass-card flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white"
       >
-        {busy === "apple" ? (
-          <Loader2 size={16} className="animate-spin" />
-        ) : null}
         <AppleIcon />
         {tr("continue_apple")}
       </button>
