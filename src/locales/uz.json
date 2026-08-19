@@ -296,6 +296,7 @@
   "auth_feature_3": "Bitta prompt. To‘liq nazorat.",
   "auth_boot": "Al-Nabi ochilmoqda…",
   "auth_confirm_email": "Emailni tasdiqlash uchun pochtangizni tekshiring, so‘ng kiring.",
+  "auth_provider_disabled": "{provider} Supabase’da yoqilmagan. Dashboard → Authentication → Providers ichida yoqing.",
   "otp_send": "6 xonali kod yuborish",
   "otp_hint": "Pochtangizga 6 xonali bir martalik kod yuboramiz. Parol kerak emas.",
   "otp_sent": "Kod {email} manziliga yuborildi",

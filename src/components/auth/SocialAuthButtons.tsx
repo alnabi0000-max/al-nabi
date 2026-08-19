@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useMaster } from "@/context/MasterControllerContext";
@@ -12,12 +12,21 @@ type Props = {
   compact?: boolean;
 };
 
+type ProviderFlags = {
+  google: boolean;
+  apple: boolean;
+};
+
 /**
  * One-click Google & Apple — parol talab qilinmaydi.
  *
  * The browser client runs the PKCE flow, so the authorization code is
  * exchanged for cookies by /auth/callback. Native builds reuse the same route
  * with `platform=mobile`, which forwards the code to `alnabi://auth/callback`.
+ *
+ * Buttons are shown only when GoTrue reports the provider as enabled. A
+ * disabled provider returns raw JSON 400 ("provider is not enabled"); we never
+ * send the browser there.
  */
 export function SocialAuthButtons({
   next = "/",
@@ -26,10 +35,48 @@ export function SocialAuthButtons({
 }: Props) {
   const { tr, notify } = useMaster();
   const [busy, setBusy] = useState<"google" | "apple" | null>(null);
+  const [available, setAvailable] = useState<ProviderFlags | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/oauth/providers", { credentials: "include" })
+      .then(async (res) => {
+        const json = (await res.json().catch(() => null)) as ProviderFlags | null;
+        if (cancelled) return;
+        setAvailable({
+          google: Boolean(res.ok && json?.google === true),
+          apple: Boolean(res.ok && json?.apple === true),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setAvailable({ google: false, apple: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function oauth(provider: "google" | "apple") {
     setBusy(provider);
     try {
+      const probeRes = await fetch("/api/auth/oauth/providers", {
+        credentials: "include",
+      });
+      const probe = (await probeRes.json().catch(() => null)) as ProviderFlags | null;
+      const enabled = Boolean(probeRes.ok && probe && probe[provider] === true);
+      if (!enabled) {
+        notify({
+          message:
+            probeRes.ok && probe && probe[provider] !== true
+              ? tr("auth_provider_disabled", {
+                  provider: provider === "google" ? "Google" : "Apple",
+                })
+              : tr("auth_error"),
+          type: "error",
+        });
+        return;
+      }
+
       const supabase = createClient();
       if (!supabase) {
         notify({
@@ -39,21 +86,23 @@ export function SocialAuthButtons({
         return;
       }
       const origin = window.location.origin;
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
-          skipBrowserRedirect: false,
-          // Apple only returns name/email on the very first consent, so always
-          // request the scopes rather than relying on a cached grant.
+          skipBrowserRedirect: true,
           ...(provider === "apple" ? { scopes: "name email" } : {}),
         },
       });
       if (error) {
         notify({ message: error.message, type: "error" });
+        return;
       }
-      // On success the browser navigates away; spinner clears in `finally`
-      // if the page is still mounted.
+      if (data?.url) {
+        window.location.assign(data.url);
+        return;
+      }
+      notify({ message: tr("auth_error"), type: "error" });
     } catch (e) {
       notify({
         message: e instanceof Error ? e.message : tr("auth_error"),
@@ -64,36 +113,52 @@ export function SocialAuthButtons({
     }
   }
 
+  if (!available || (!available.google && !available.apple)) {
+    return null;
+  }
+
+  const both = available.google && available.apple;
+
   return (
-    <div className={clsx("grid gap-2", compact ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2", className)}>
-      <button
-        type="button"
-        onClick={() => oauth("google")}
-        disabled={busy !== null}
-        aria-busy={busy === "google"}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-nabi-border bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:opacity-50"
-      >
-        {busy === "google" ? (
-          <Loader2 size={16} className="animate-spin" />
-        ) : (
-          <GoogleIcon />
-        )}
-        {busy === "google" ? tr("checking") : tr("continue_google")}
-      </button>
-      <button
-        type="button"
-        onClick={() => oauth("apple")}
-        disabled={busy !== null}
-        aria-busy={busy === "apple"}
-        className="glass-card flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
-      >
-        {busy === "apple" ? (
-          <Loader2 size={16} className="animate-spin" />
-        ) : (
-          <AppleIcon />
-        )}
-        {busy === "apple" ? tr("checking") : tr("continue_apple")}
-      </button>
+    <div
+      className={clsx(
+        "grid gap-2",
+        compact || !both ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2",
+        className
+      )}
+    >
+      {available.google ? (
+        <button
+          type="button"
+          onClick={() => oauth("google")}
+          disabled={busy !== null}
+          aria-busy={busy === "google"}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-nabi-border bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:opacity-50"
+        >
+          {busy === "google" ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <GoogleIcon />
+          )}
+          {busy === "google" ? tr("checking") : tr("continue_google")}
+        </button>
+      ) : null}
+      {available.apple ? (
+        <button
+          type="button"
+          onClick={() => oauth("apple")}
+          disabled={busy !== null}
+          aria-busy={busy === "apple"}
+          className="glass-card flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {busy === "apple" ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <AppleIcon />
+          )}
+          {busy === "apple" ? tr("checking") : tr("continue_apple")}
+        </button>
+      ) : null}
     </div>
   );
 }

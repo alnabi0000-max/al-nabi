@@ -160,14 +160,16 @@ export function ProfileUmumiyPanel() {
         </div>
       ) : (
         <>
-          <div className="space-y-2">
-            <p className="text-xs text-nabi-muted">{tr("auth_social_hint")}</p>
-            <SocialAuthButtons next={afterAuth} />
-          </div>
+          <div className="space-y-4 [&:not(:has(button))]:hidden">
+            <div className="space-y-2">
+              <p className="text-xs text-nabi-muted">{tr("auth_social_hint")}</p>
+              <SocialAuthButtons next={afterAuth} />
+            </div>
 
-          <div className="relative text-center text-[10px] uppercase tracking-widest text-nabi-muted">
-            <span className="relative z-10 bg-nabi-surface px-2">{tr("auth_or")}</span>
-            <div className="absolute inset-x-0 top-1/2 h-px bg-nabi-border" />
+            <div className="relative text-center text-[10px] uppercase tracking-widest text-nabi-muted">
+              <span className="relative z-10 bg-nabi-surface px-2">{tr("auth_or")}</span>
+              <div className="absolute inset-x-0 top-1/2 h-px bg-nabi-border" />
+            </div>
           </div>
 
           <div className="nabi-card space-y-4">

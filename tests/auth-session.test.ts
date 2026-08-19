@@ -133,6 +133,7 @@ describe("API route protection policy", () => {
       "/api/auth/otp/send",
       "/api/auth/otp/verify",
       "/api/auth/session",
+      "/api/auth/oauth/providers",
       "/api/pricing",
       "/api/templates",
       "/api/credits",

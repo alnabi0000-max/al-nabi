@@ -262,14 +262,14 @@ export function AuthPanel({
 
       <div className="space-y-4">
         {(view === "signin" || view === "signup") && (
-          <>
+          <div className="space-y-4 [&:not(:has(button))]:hidden">
             <SocialAuthButtons next="/" compact />
             <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-nabi-muted">
               <span className="h-px flex-1 bg-nabi-border" />
               {tr("auth_or")}
               <span className="h-px flex-1 bg-nabi-border" />
             </div>
-          </>
+          </div>
         )}
 
         {(view !== "code" || codeStage === "email") && (

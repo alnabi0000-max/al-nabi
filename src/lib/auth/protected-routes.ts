@@ -17,6 +17,7 @@ const PUBLIC_API_EXACT = new Set<string>([
   "/api/auth/session",
   "/api/auth/reset-password",
   "/api/auth/verify-key",
+  "/api/auth/oauth/providers",
   // Anonymous browsing surfaces (static catalogs, no user data).
   "/api/credits",
   "/api/pricing",

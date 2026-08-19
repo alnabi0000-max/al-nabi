@@ -296,6 +296,7 @@
   "auth_feature_3": "One prompt. Full control.",
   "auth_boot": "Opening Al-Nabi…",
   "auth_confirm_email": "Check your inbox to confirm your email, then sign in.",
+  "auth_provider_disabled": "{provider} is not enabled in Supabase. Open Authentication → Providers and turn it on.",
   "otp_send": "Send 6-digit code",
   "otp_hint": "We’ll email you a one-time 6-digit code. No password needed.",
   "otp_sent": "Code sent to {email}",

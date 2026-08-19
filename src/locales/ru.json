@@ -374,6 +374,7 @@
   "auth_feature_3": "Один промпт. Полный контроль.",
   "auth_boot": "Открываем Al-Nabi…",
   "auth_confirm_email": "Подтвердите email по письму, затем войдите.",
+  "auth_provider_disabled": "{provider} не включён в Supabase. Dashboard → Authentication → Providers.",
   "otp_send": "Отправить 6-значный код",
   "otp_hint": "Мы отправим на почту одноразовый 6-значный код. Пароль не нужен.",
   "otp_sent": "Код отправлен на {email}",
