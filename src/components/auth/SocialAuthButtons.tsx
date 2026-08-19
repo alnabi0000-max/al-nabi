@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import { createClient } from "@/lib/supabase/client";
 import { useMaster } from "@/context/MasterControllerContext";
 import clsx from "clsx";
@@ -19,7 +20,8 @@ type ProviderFlags = {
 
 /**
  * One-click Google & Apple. If a provider is off in GoTrue we toast instead
- * of sending the browser to a raw JSON 400.
+ * of sending the browser to a raw JSON 400. Probe only the clicked provider
+ * with a timeout so Apple cannot freeze the Google button.
  */
 export function SocialAuthButtons({
   next = "/",
@@ -31,22 +33,8 @@ export function SocialAuthButtons({
 
   async function oauth(provider: "google" | "apple") {
     setBusy(provider);
+    const label = provider === "google" ? "Google" : "Apple";
     try {
-      const probeRes = await fetch("/api/auth/oauth/providers", {
-        credentials: "include",
-      });
-      const probe = (await probeRes.json().catch(() => null)) as ProviderFlags | null;
-      const enabled = Boolean(probeRes.ok && probe && probe[provider] === true);
-      if (!enabled) {
-        notify({
-          message: tr("auth_provider_unavailable", {
-            provider: provider === "google" ? "Google" : "Apple",
-          }),
-          type: "error",
-        });
-        return;
-      }
-
       const supabase = createClient();
       if (!supabase) {
         notify({
@@ -55,8 +43,14 @@ export function SocialAuthButtons({
         });
         return;
       }
+
       const origin = window.location.origin;
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const probePromise = fetchWithTimeout(
+        `/api/auth/oauth/providers?provider=${provider}`,
+        { credentials: "include" },
+        4000
+      );
+      const oauthPromise = supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
@@ -64,18 +58,41 @@ export function SocialAuthButtons({
           ...(provider === "apple" ? { scopes: "name email" } : {}),
         },
       });
-      if (error) {
-        notify({ message: error.message, type: "error" });
+
+      const [probeRes, oauthResult] = await Promise.all([
+        probePromise,
+        oauthPromise,
+      ]);
+      const probe = (await probeRes.json().catch(() => null)) as
+        | ProviderFlags
+        | null;
+      const enabled = Boolean(probeRes.ok && probe && probe[provider] === true);
+      if (!enabled) {
+        notify({
+          message: tr("auth_provider_unavailable", { provider: label }),
+          type: "error",
+        });
         return;
       }
-      if (data?.url) {
-        window.location.assign(data.url);
+
+      if (oauthResult.error) {
+        notify({ message: oauthResult.error.message, type: "error" });
+        return;
+      }
+      if (oauthResult.data?.url) {
+        window.location.assign(oauthResult.data.url);
         return;
       }
       notify({ message: tr("auth_error"), type: "error" });
     } catch (e) {
+      const timedOut =
+        e instanceof Error && /timed out/i.test(e.message);
       notify({
-        message: e instanceof Error ? e.message : tr("auth_error"),
+        message: timedOut
+          ? tr("auth_provider_unavailable", { provider: label })
+          : e instanceof Error
+            ? e.message
+            : tr("auth_error"),
         type: "error",
       });
     } finally {
@@ -100,10 +117,9 @@ export function SocialAuthButtons({
       >
         {busy === "google" ? (
           <Loader2 size={16} className="animate-spin" />
-        ) : (
-          <GoogleIcon />
-        )}
-        {busy === "google" ? tr("checking") : tr("continue_google")}
+        ) : null}
+        <GoogleIcon />
+        {tr("continue_google")}
       </button>
       <button
         type="button"
@@ -114,10 +130,9 @@ export function SocialAuthButtons({
       >
         {busy === "apple" ? (
           <Loader2 size={16} className="animate-spin" />
-        ) : (
-          <AppleIcon />
-        )}
-        {busy === "apple" ? tr("checking") : tr("continue_apple")}
+        ) : null}
+        <AppleIcon />
+        {tr("continue_apple")}
       </button>
     </div>
   );

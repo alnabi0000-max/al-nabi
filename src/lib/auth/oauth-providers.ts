@@ -2,6 +2,8 @@ import { isPlaceholderEnvValue } from "@/lib/env";
 
 export type SocialOAuthProvider = "google" | "apple";
 
+const DEFAULT_PROBE_TIMEOUT_MS = 2500;
+
 function supabaseAuthOrigin(): { url: string; anon: string } | null {
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/\/$/, "");
   const anon = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
@@ -18,9 +20,11 @@ function supabaseAuthOrigin(): { url: string; anon: string } | null {
 /**
  * Probe GoTrue without sending the user away.
  * Disabled providers return HTTP 400 + "provider is not enabled".
+ * A hung Apple check must never block Google — callers pass a short timeout.
  */
 export async function isOAuthProviderEnabled(
-  provider: SocialOAuthProvider
+  provider: SocialOAuthProvider,
+  timeoutMs = DEFAULT_PROBE_TIMEOUT_MS
 ): Promise<boolean | null> {
   const cfg = supabaseAuthOrigin();
   if (!cfg) return false;
@@ -31,6 +35,7 @@ export async function isOAuthProviderEnabled(
       {
         method: "GET",
         redirect: "manual",
+        signal: AbortSignal.timeout(timeoutMs),
         headers: {
           apikey: cfg.anon,
           Authorization: `Bearer ${cfg.anon}`,
