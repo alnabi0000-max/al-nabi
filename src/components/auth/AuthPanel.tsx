@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Eye,
+  EyeOff,
   Loader2,
   ShieldCheck,
 } from "lucide-react";
@@ -56,6 +58,7 @@ export function AuthPanel({
   const [view, setView] = useState<AuthView>(() => tabToView(initialTab));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [codeStage, setCodeStage] = useState<CodeStage>("email");
   const [code, setCode] = useState("");
   const [pending, setPending] = useState<null | string>(null);
@@ -229,7 +232,7 @@ export function AuthPanel({
               if (!busy && emailValid && passwordOk) onPasswordSubmit(isSignup);
             }}
           >
-            <div className="space-y-4 [&:not(:has(button))]:hidden">
+            <div className="space-y-3">
               <SocialAuthButtons next="/" compact />
               <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-nabi-muted">
                 <span className="h-px flex-1 bg-nabi-border" />
@@ -283,16 +286,28 @@ export function AuthPanel({
                   </button>
                 ) : null}
               </div>
-              <input
-                id="auth-password"
-                className="nabi-input"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete={isSignup ? "new-password" : "current-password"}
-                minLength={6}
-                disabled={busy}
-              />
+              <div className="relative">
+                <input
+                  id="auth-password"
+                  className="nabi-input pr-11"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={isSignup ? "new-password" : "current-password"}
+                  minLength={6}
+                  disabled={busy}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-nabi-muted transition hover:text-nabi-ink"
+                  aria-label={
+                    showPassword ? tr("auth_hide_password") : tr("auth_show_password")
+                  }
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -325,6 +340,21 @@ export function AuthPanel({
                 {isSignup ? tr("login") : tr("register")}
               </button>
             </p>
+
+            {view === "signin" ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setView("code");
+                  setCodeStage("email");
+                  resetFeedback();
+                }}
+                className="flex w-full items-center justify-center gap-1.5 text-[12px] text-nabi-muted transition hover:text-nabi-ink"
+              >
+                <ShieldCheck size={13} />
+                {tr("auth_passwordless")}
+              </button>
+            ) : null}
           </form>
         )}
 
