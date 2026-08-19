@@ -14,37 +14,31 @@ const LanguageDropdown = dynamic(
 );
 
 /**
- * Full-viewport 50/50 auth for guests — video reel left, sign-in right.
+ * Full-bleed AI reel with a glass sign-in card floating on the right.
  */
 export function SplitAuthPage() {
   const { tr } = useMaster();
 
   return (
-    <div className="relative z-20 grid min-h-dvh lg:grid-cols-2">
-      <section
-        aria-label={tr("auth_split_badge")}
-        className="relative hidden min-h-dvh overflow-hidden lg:block"
-      >
-        <AuthHeroVideo />
-      </section>
+    <div className="relative min-h-dvh overflow-hidden">
+      <AuthHeroVideo />
 
-      <section className="relative flex min-h-dvh flex-col overflow-y-auto bg-[#07080d]">
-        <div className="flex items-center justify-between px-5 py-4 sm:px-8">
-          <p className="text-sm font-semibold tracking-tight text-nabi-ink lg:opacity-0">
-            Al-Nabi
+      <div className="relative z-10 flex min-h-dvh flex-col lg:flex-row lg:justify-end">
+        <header className="flex items-center justify-between px-5 py-4 lg:absolute lg:right-0 lg:top-0 lg:z-20 lg:w-[min(100%,34rem)] lg:px-10 lg:py-6">
+          <p className="text-sm font-semibold tracking-tight text-white drop-shadow lg:hidden">
+            {tr("auth_split_badge")}
           </p>
-          <LanguageDropdown />
-        </div>
+          <div className="ml-auto">
+            <LanguageDropdown />
+          </div>
+        </header>
 
-        <div className="flex flex-1 items-center justify-center px-5 py-6 sm:px-10">
-          <div className="w-full max-w-[400px]">
-            <div className="mb-6 overflow-hidden rounded-2xl border border-nabi-border lg:hidden">
-              <AuthHeroVideo compact />
-            </div>
+        <div className="flex flex-1 items-center justify-center px-4 pb-10 pt-2 lg:w-[34rem] lg:flex-none lg:px-10">
+          <div className="auth-glass-panel w-full max-w-[400px] rounded-3xl border border-white/20 p-6 sm:p-7">
             <AuthPanel variant="page" />
           </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 }

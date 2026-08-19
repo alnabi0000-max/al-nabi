@@ -101,7 +101,7 @@ export function VideoShowcasePanel({
   if (!active || count === 0) return null;
 
   const hasBefore = Boolean(active.beforeImage);
-  const hasAfter = Boolean(active.afterVideo);
+  const afterStill = active.afterPoster || active.beforeImage;
 
   return (
     <section
@@ -143,21 +143,28 @@ export function VideoShowcasePanel({
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
           role="img"
-          aria-label={active.prompt || active.title}
+          aria-label={tr(active.promptKey) || tr(active.titleKey)}
         >
           {/* After — full frame */}
           <div className="absolute inset-0">
-            {hasAfter ? (
+            {active.afterVideo ? (
               <video
                 key={active.afterVideo}
                 src={active.afterVideo}
-                poster={active.afterPoster || active.beforeImage}
+                poster={afterStill}
                 className="h-full w-full object-cover"
                 autoPlay
                 muted
                 loop
                 playsInline
                 preload="metadata"
+              />
+            ) : afterStill ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={afterStill}
+                alt=""
+                className="h-full w-full object-cover"
               />
             ) : (
               <PlaceholderSide
@@ -210,9 +217,9 @@ export function VideoShowcasePanel({
           </span>
 
           {/* Prompt overlay */}
-          {active.prompt ? (
+          {active.promptKey ? (
             <p className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-3 pt-10 text-xs leading-snug text-white/95 md:text-sm">
-              “{active.prompt}”
+              “{tr(active.promptKey)}”
             </p>
           ) : null}
         </div>
@@ -220,9 +227,9 @@ export function VideoShowcasePanel({
 
       <div className="flex items-start justify-between gap-3 px-4 py-4 md:px-5">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-nabi-ink">{active.title}</p>
+          <p className="text-sm font-semibold text-nabi-ink">{tr(active.titleKey)}</p>
           <p className="mt-0.5 text-xs leading-relaxed text-nabi-muted">
-            {active.description}
+            {tr(active.promptKey)}
           </p>
         </div>
 
@@ -265,7 +272,7 @@ export function VideoShowcasePanel({
             type="button"
             role="tab"
             aria-selected={i === index}
-            aria-label={ex.title}
+            aria-label={tr(ex.titleKey)}
             onClick={() => {
               setPaused(true);
               go(i);
