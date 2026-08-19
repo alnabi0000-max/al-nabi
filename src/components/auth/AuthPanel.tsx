@@ -6,7 +6,6 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Loader2,
-  Mail,
   ShieldCheck,
 } from "lucide-react";
 import { useMaster } from "@/context/MasterControllerContext";
@@ -43,7 +42,8 @@ type Props = {
 };
 
 /**
- * Sign in / Sign up form — Google, email, and password (plus optional OTP).
+ * World-standard auth: social (if enabled), email + password, one primary
+ * action. Magic link / OTP stay as secondary screens, not competing buttons.
  */
 export function AuthPanel({
   variant = "page",
@@ -143,16 +143,6 @@ export function AuthPanel({
       finishAuth();
     });
 
-  const onMagicLink = () =>
-    run("magic", async () => {
-      await post("/api/auth/magic-link", {
-        email: email.trim(),
-        next: "/",
-      });
-      setMsg(tr("magic_link_sent"));
-      notify({ message: tr("magic_link_sent"), type: "success" });
-    });
-
   const onSendCode = () =>
     run("send-code", async () => {
       await post("/api/auth/otp/send", { email: email.trim() });
@@ -215,7 +205,7 @@ export function AuthPanel({
         <p className="text-sm text-nabi-muted">{subtitle}</p>
       </div>
 
-      {view === "reset" || view === "code" ? (
+      {(view === "reset" || view === "code") && (
         <button
           type="button"
           onClick={() => {
@@ -228,51 +218,117 @@ export function AuthPanel({
           <ArrowLeft size={13} />
           {tr("auth_back")}
         </button>
-      ) : (
-        <div
-          role="tablist"
-          aria-label={tr("auth_modal_title")}
-          className="glass-card mb-6 grid grid-cols-2 gap-1 rounded-2xl p-1"
-        >
-          {(
-            [
-              ["signin", tr("auth_mode_signin")],
-              ["signup", tr("auth_mode_signup")],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              role="tab"
-              type="button"
-              aria-selected={view === id}
-              onClick={() => {
-                setView(id);
-                resetFeedback();
-              }}
-              className={clsx(
-                "nabi-select px-3 py-2.5 text-xs",
-                view === id && "nabi-select-on"
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
       )}
 
       <div className="space-y-4">
         {(view === "signin" || view === "signup") && (
-          <div className="space-y-4 [&:not(:has(button))]:hidden">
-            <SocialAuthButtons next="/" compact />
-            <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-nabi-muted">
-              <span className="h-px flex-1 bg-nabi-border" />
-              {tr("auth_or")}
-              <span className="h-px flex-1 bg-nabi-border" />
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!busy && emailValid && passwordOk) onPasswordSubmit(isSignup);
+            }}
+          >
+            <div className="space-y-4 [&:not(:has(button))]:hidden">
+              <SocialAuthButtons next="/" compact />
+              <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-nabi-muted">
+                <span className="h-px flex-1 bg-nabi-border" />
+                {tr("auth_or")}
+                <span className="h-px flex-1 bg-nabi-border" />
+              </div>
             </div>
-          </div>
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="auth-email"
+                className="text-[11px] font-medium text-nabi-muted"
+              >
+                {tr("email_placeholder")}
+              </label>
+              <input
+                ref={emailRef}
+                id="auth-email"
+                className="nabi-input"
+                type="email"
+                inputMode="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  resetFeedback();
+                }}
+                autoComplete="email"
+                disabled={busy}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <label
+                  htmlFor="auth-password"
+                  className="text-[11px] font-medium text-nabi-muted"
+                >
+                  {tr("password_placeholder")}
+                </label>
+                {view === "signin" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setView("reset");
+                      resetFeedback();
+                    }}
+                    className="text-[11px] text-nabi-muted transition hover:text-nabi-ink"
+                  >
+                    {tr("forgot_password")}?
+                  </button>
+                ) : null}
+              </div>
+              <input
+                id="auth-password"
+                className="nabi-input"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={isSignup ? "new-password" : "current-password"}
+                minLength={6}
+                disabled={busy}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={busy || !emailValid || !passwordOk}
+              className="nabi-btn-primary flex w-full items-center justify-center gap-2"
+            >
+              {pending === "login" || pending === "register" ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  {tr("checking")}
+                </>
+              ) : isSignup ? (
+                tr("register")
+              ) : (
+                tr("login")
+              )}
+            </button>
+
+            <p className="text-center text-sm text-nabi-muted">
+              {isSignup ? tr("auth_have_account") : tr("auth_no_account")}{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setView(isSignup ? "signin" : "signup");
+                  resetFeedback();
+                }}
+                className="font-semibold text-nabi-ink transition hover:underline"
+              >
+                {isSignup ? tr("login") : tr("register")}
+              </button>
+            </p>
+          </form>
         )}
 
-        {(view !== "code" || codeStage === "email") && (
+        {(view === "reset" || (view === "code" && codeStage === "email")) && (
           <div className="space-y-1.5">
             <label
               htmlFor="auth-email"
@@ -296,98 +352,6 @@ export function AuthPanel({
               disabled={busy}
             />
           </div>
-        )}
-
-        {(view === "signin" || view === "signup") && (
-          <>
-            <div className="space-y-1.5">
-              <label
-                htmlFor="auth-password"
-                className="text-[11px] font-medium text-nabi-muted"
-              >
-                {tr("password_placeholder")}
-              </label>
-              <input
-                id="auth-password"
-                className="nabi-input"
-                type="password"
-                placeholder={tr("password_placeholder")}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete={isSignup ? "new-password" : "current-password"}
-                disabled={busy}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && emailValid && passwordOk) {
-                    onPasswordSubmit(isSignup);
-                  }
-                }}
-              />
-            </div>
-
-            <button
-              type="button"
-              disabled={busy || !emailValid || !passwordOk}
-              onClick={() => onPasswordSubmit(isSignup)}
-              className="nabi-btn-primary flex w-full items-center justify-center gap-2"
-            >
-              {pending === "login" || pending === "register" ? (
-                <>
-                  <Loader2 size={15} className="animate-spin" />
-                  {tr("checking")}
-                </>
-              ) : isSignup ? (
-                tr("register")
-              ) : (
-                tr("login")
-              )}
-            </button>
-
-            {view === "signin" && (
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setView("reset");
-                    resetFeedback();
-                  }}
-                  className="text-[11px] text-nabi-neon underline underline-offset-2"
-                >
-                  {tr("forgot_password")}?
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setView("code");
-                    setCodeStage("email");
-                    resetFeedback();
-                  }}
-                  className="inline-flex items-center gap-1 text-[11px] text-nabi-muted transition hover:text-nabi-ink"
-                >
-                  <ShieldCheck size={12} />
-                  {tr("auth_tab_code")}
-                </button>
-              </div>
-            )}
-
-            <button
-              type="button"
-              disabled={busy || !emailValid}
-              onClick={onMagicLink}
-              className="nabi-btn-ghost flex w-full items-center justify-center gap-2 text-xs"
-            >
-              {pending === "magic" ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  {tr("checking")}
-                </>
-              ) : (
-                <>
-                  <Mail size={14} />
-                  {tr("send_magic_link")}
-                </>
-              )}
-            </button>
-          </>
         )}
 
         {view === "code" && codeStage === "email" && (
