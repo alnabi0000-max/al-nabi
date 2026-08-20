@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useMaster } from "@/context/MasterControllerContext";
 import { createClient } from "@/lib/supabase/client";
+import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import clsx from "clsx";
 
 type Props = {
@@ -20,14 +22,33 @@ export function SocialAuthButtons({
   compact,
 }: Props) {
   const { tr, notify } = useMaster();
+  const [busyGoogle, setBusyGoogle] = useState(false);
 
   async function handleGoogleSignIn() {
     try {
+      setBusyGoogle(true);
       const supabase = createClient();
       if (!supabase) {
         notify({
           message: tr("auth_supabase_required"),
           type: "error",
+          durationMs: 5200,
+        });
+        return;
+      }
+
+      const probeRes = await fetchWithTimeout(
+        "/api/auth/oauth/providers?provider=google",
+        { credentials: "include" },
+        4_000
+      );
+      const probe = (await probeRes.json().catch(() => null)) as
+        | { google?: boolean }
+        | null;
+      if (!probeRes.ok || probe?.google !== true) {
+        notify({
+          message: tr("auth_google_coming_soon"),
+          type: "info",
           durationMs: 5200,
         });
         return;
@@ -53,6 +74,8 @@ export function SocialAuthButtons({
         type: "error",
         durationMs: 5200,
       });
+    } finally {
+      setBusyGoogle(false);
     }
   }
 
@@ -79,6 +102,7 @@ export function SocialAuthButtons({
       <button
         type="button"
         onClick={handleGoogleSignIn}
+        disabled={busyGoogle}
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-nabi-border bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
       >
         <GoogleIcon />
