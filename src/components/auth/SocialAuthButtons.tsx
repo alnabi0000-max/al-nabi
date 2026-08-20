@@ -1,6 +1,7 @@
 "use client";
 
 import { useMaster } from "@/context/MasterControllerContext";
+import { createClient } from "@/lib/supabase/client";
 import clsx from "clsx";
 
 type Props = {
@@ -10,11 +11,50 @@ type Props = {
 };
 
 /**
- * Google / Apple stay visible, but do not start OAuth until those providers
- * are enabled in Supabase. A click is a toast, never a spinner or JSON dump.
+ * Google uses the shared browser Supabase client (`@supabase/ssr`).
+ * Apple remains "coming soon".
  */
-export function SocialAuthButtons({ className, compact }: Props) {
+export function SocialAuthButtons({
+  next = "/",
+  className,
+  compact,
+}: Props) {
   const { tr, notify } = useMaster();
+
+  async function handleGoogleSignIn() {
+    try {
+      const supabase = createClient();
+      if (!supabase) {
+        notify({
+          message: tr("auth_supabase_required"),
+          type: "error",
+          durationMs: 5200,
+        });
+        return;
+      }
+
+      const origin = window.location.origin;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        },
+      });
+      if (error) {
+        notify({
+          message: error.message || tr("auth_error"),
+          type: "error",
+          durationMs: 5200,
+        });
+      }
+    } catch {
+      notify({
+        message: tr("auth_error"),
+        type: "error",
+        durationMs: 5200,
+      });
+    }
+  }
 
   function comingSoon(provider: "google" | "apple") {
     notify({
@@ -38,7 +78,7 @@ export function SocialAuthButtons({ className, compact }: Props) {
     >
       <button
         type="button"
-        onClick={() => comingSoon("google")}
+        onClick={handleGoogleSignIn}
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-nabi-border bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
       >
         <GoogleIcon />
