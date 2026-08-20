@@ -79,13 +79,9 @@ export function SocialAuthButtons({
     }
   }
 
-  function comingSoon(provider: "google" | "apple") {
+  function comingSoon() {
     notify({
-      message: tr(
-        provider === "google"
-          ? "auth_google_coming_soon"
-          : "auth_apple_coming_soon"
-      ),
+      message: tr("auth_apple_coming_soon"),
       type: "info",
       durationMs: 5200,
     });
@@ -103,14 +99,14 @@ export function SocialAuthButtons({
         type="button"
         onClick={handleGoogleSignIn}
         disabled={busyGoogle}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-nabi-border bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-nabi-border bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:opacity-50"
       >
         <GoogleIcon />
         {tr("continue_google")}
       </button>
       <button
         type="button"
-        onClick={() => comingSoon("apple")}
+        onClick={comingSoon}
         className="glass-card flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white"
       >
         <AppleIcon />
