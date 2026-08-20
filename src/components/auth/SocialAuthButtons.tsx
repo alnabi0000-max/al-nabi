@@ -13,6 +13,18 @@ type Props = {
 };
 
 /**
+ * `0.0.0.0` is valid only as a server bind address. Browsers cannot use it as
+ * an OAuth return destination, so normalize a locally opened dev URL.
+ */
+function browserCallbackOrigin(): string {
+  const { protocol, hostname, port } = window.location;
+  if (hostname === "0.0.0.0" || hostname === "::") {
+    return `${protocol}//localhost${port ? `:${port}` : ""}`;
+  }
+  return window.location.origin;
+}
+
+/**
  * Google uses the shared browser Supabase client (`@supabase/ssr`).
  * Apple remains "coming soon".
  */
@@ -54,7 +66,7 @@ export function SocialAuthButtons({
         return;
       }
 
-      const origin = window.location.origin;
+      const origin = browserCallbackOrigin();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
