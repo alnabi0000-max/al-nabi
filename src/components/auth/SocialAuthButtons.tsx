@@ -12,16 +12,13 @@ type Props = {
   compact?: boolean;
 };
 
-/**
- * `0.0.0.0` is valid only as a server bind address. Browsers cannot use it as
- * an OAuth return destination, so normalize a locally opened dev URL.
- */
-function browserCallbackOrigin(): string {
-  const { protocol, hostname, port } = window.location;
+/** `0.0.0.0` is a server bind address, never a safe browser OAuth origin. */
+function canonicalLocalDevUrl(): string | null {
+  const { protocol, hostname, port, pathname, search, hash } = window.location;
   if (hostname === "0.0.0.0" || hostname === "::") {
-    return `${protocol}//localhost${port ? `:${port}` : ""}`;
+    return `${protocol}//localhost${port ? `:${port}` : ""}${pathname}${search}${hash}`;
   }
-  return window.location.origin;
+  return null;
 }
 
 /**
@@ -39,6 +36,17 @@ export function SocialAuthButtons({
   async function handleGoogleSignIn() {
     try {
       setBusyGoogle(true);
+      const canonicalUrl = canonicalLocalDevUrl();
+      if (canonicalUrl) {
+        /*
+         * PKCE state is stored in origin-scoped cookies. Starting OAuth on
+         * 0.0.0.0 and returning to localhost loses that state, so move the
+         * page first and let the user start the flow from the canonical URL.
+         */
+        window.location.replace(canonicalUrl);
+        return;
+      }
+
       const supabase = createClient();
       if (!supabase) {
         notify({
@@ -66,7 +74,7 @@ export function SocialAuthButtons({
         return;
       }
 
-      const origin = browserCallbackOrigin();
+      const origin = window.location.origin;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
