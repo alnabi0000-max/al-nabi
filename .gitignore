@@ -2,7 +2,8 @@ node_modules
 .next
 .env
 .env.local
-storage
+# Local media write dir (STORAGE_DIR). Do not ignore src/lib/storage/.
+/storage
 coverage
 *.log
 .DS_Store
