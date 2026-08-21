@@ -72,9 +72,9 @@ for:
   URLs. Configure and record a bucket lifecycle policy for the approved media
   retention window and incomplete/orphaned upload cleanup; the repository
   cannot create or validate that provider-side policy.
-- `ADMIN_API_SECRET`, `CRON_SECRET`, and `ALNABIY_OBFUSCATE_SECRET`. Vercel
-  cron calls `/api/cron/model-watch` every 12 hours and
-  `/api/cron/billing-reconcile` daily; both require `CRON_SECRET`.
+- `ADMIN_API_SECRET`, `CRON_SECRET`, and `ALNABIY_OBFUSCATE_SECRET`. Inngest
+  runs the model watch every 12 hours. Vercel cron calls only
+  `/api/cron/billing-reconcile` daily, using `CRON_SECRET`.
 - `SAFETY_FAIL_CLOSED=1` and `SAFETY_REFERENCE_MEDIA_MODE=review` or `block`.
   Production fails closed independently, but staging must set the intent
   explicitly. Do not configure `allow`.

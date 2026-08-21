@@ -104,8 +104,9 @@ Operational secrets (`ADMIN_API_SECRET`, `CRON_SECRET`,
 `ALNABIY_OBFUSCATE_SECRET`) and the safety flags may be generated locally and
 copied into the same secret store. Do not reuse production values.
 
-Vercel cron already invokes `/api/cron/model-watch` every 12 hours and
-`/api/cron/billing-reconcile` daily at 04:15 UTC. Both require `CRON_SECRET`.
+Inngest triggers the model watch every 12 hours. Vercel cron invokes only
+`/api/cron/billing-reconcile` daily at 04:15 UTC; that endpoint requires
+`CRON_SECRET`.
 
 ## Conditional settings
 
