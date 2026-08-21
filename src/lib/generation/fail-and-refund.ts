@@ -4,6 +4,10 @@ import {
   captureGenerationFailure,
   sanitizeGenerationError,
 } from "@/lib/generation/public-error";
+import {
+  releaseProjectReservation,
+  settleProjectRefund,
+} from "@/lib/projects/spend";
 
 export type FailAndRefundResult = {
   ok: true;
@@ -55,6 +59,16 @@ export async function failAndRefundGeneration(opts: {
     });
   }
 
+  await releaseProjectReservation(opts.generationId);
+  await prisma.renderVersion.updateMany({
+    where: { generationId: opts.generationId },
+    data: { status: "FAILED" },
+  });
+  await prisma.modelRun.updateMany({
+    where: { generationId: opts.generationId },
+    data: { status: "FAILED", failureCode: errorMessage.slice(0, 120) },
+  });
+
   let refunded = false;
   let balanceAfter: number | undefined;
 
@@ -69,6 +83,15 @@ export async function failAndRefundGeneration(opts: {
     });
     refunded = rb.ok && !rb.alreadyRefunded;
     balanceAfter = rb.balanceAfter;
+    if (rb.ok) {
+      await settleProjectRefund(opts.generationId).catch((projectError) => {
+        console.error(
+          "[Al-Nabi] project refund reconciliation failed",
+          opts.generationId,
+          projectError
+        );
+      });
+    }
   }
 
   return { ok: true, refunded, balanceAfter, errorMessage };

@@ -183,12 +183,6 @@ export const WATCHED_MODELS: Array<{
     defaultModelId: "wan-video/wan-2.2-t2v-fast",
     envKey: "REPLICATE_WAN_MODEL",
   },
-  {
-    slot: "runway",
-    displayName: "Cinema Sound",
-    defaultModelId: "kwaivgi/kling-v2.6",
-    envKey: "REPLICATE_RUNWAY_MODEL",
-  },
 ];
 
 export function currentModelIdForSlot(

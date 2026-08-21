@@ -18,6 +18,7 @@ import {
   estimateSpeechDurationSec,
 } from "@/lib/credits";
 import { scanHalol } from "@/lib/halol";
+import { enforceGenerationTrust } from "@/lib/trust/generation-gate";
 
 const schema = z.object({
   text: z.string().min(1).max(5000),
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
     const ensured = await ensureRequestLedgerUser({
       alnabiyKey: req.headers.get("x-alnabiy-key"),
       allowGuest: isSoftAuthEnabled(),
+      request: req,
     });
     if (!ensured) {
       return apiError("Sign in required", {
@@ -52,6 +54,28 @@ export async function POST(req: NextRequest) {
     }
 
     const body = schema.parse(await req.json());
+    const trustFailure = await enforceGenerationTrust({
+      userId: ensured.user.id,
+      surface: "audio-synthesize",
+      text: [body.text, body.visualPrompt].filter(Boolean).join("\n"),
+    });
+    if (trustFailure) {
+      return apiError(trustFailure.message, {
+        status:
+          trustFailure.code === "SAFETY_UNAVAILABLE" ||
+          trustFailure.code === "TRUST_UNAVAILABLE"
+            ? 503
+            : trustFailure.code === "CONSENT_REQUIRED"
+              ? 428
+              : trustFailure.code === "ENTITLEMENT_REQUIRED"
+                ? 403
+                : 422,
+        code: trustFailure.code,
+        extra: trustFailure.missingConsents
+          ? { missingConsents: trustFailure.missingConsents }
+          : undefined,
+      });
+    }
     if (scanHalol(body.text).blocked) {
       return apiError("Forbidden content", {
         status: 400,

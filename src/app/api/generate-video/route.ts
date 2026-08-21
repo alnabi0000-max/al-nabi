@@ -17,6 +17,13 @@ import {
   atomicRollbackCoins,
 } from "@/lib/ledger/atomic";
 import { prisma } from "@/lib/prisma";
+import {
+  assertPersistentObjectStorage,
+  ObjectStorageConfigurationError,
+  persistRemoteAsset,
+} from "@/lib/storage/object-storage";
+import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { enforceGenerationTrust } from "@/lib/trust/generation-gate";
 
 /**
  * Legacy sync video route — prefer POST /api/generate (ledger + queue + refund).
@@ -59,6 +66,7 @@ export async function POST(req: NextRequest) {
     const ensured = await ensureRequestLedgerUser({
       alnabiyKey: body.alnabiyKey,
       allowGuest: isSoftAuthEnabled(),
+      request: req,
     });
     if (!ensured) {
       return apiError(
@@ -67,6 +75,30 @@ export async function POST(req: NextRequest) {
       );
     }
     const user = ensured.user;
+    const trustFailure = await enforceGenerationTrust({
+      userId: user.id,
+      surface: "generate-video-legacy",
+      text: body.prompt,
+      hasReferenceMedia: Boolean(body.imageUrl),
+    });
+    if (trustFailure) {
+      return apiError(trustFailure.message, {
+        status:
+          trustFailure.code === "SAFETY_UNAVAILABLE" ||
+          trustFailure.code === "TRUST_UNAVAILABLE"
+            ? 503
+            : trustFailure.code === "CONSENT_REQUIRED"
+              ? 428
+              : trustFailure.code === "ENTITLEMENT_REQUIRED"
+                ? 403
+                : 422,
+        code: trustFailure.code,
+        extra: trustFailure.missingConsents
+          ? { missingConsents: trustFailure.missingConsents }
+          : undefined,
+      });
+    }
+    assertPersistentObjectStorage();
 
     const billableDuration = chargeableDurationSec(
       "prompt_to_video",
@@ -160,17 +192,31 @@ export async function POST(req: NextRequest) {
       imageUrl: body.imageUrl,
       cameraMove: body.cameraMove,
     });
+    const stored = await persistRemoteAsset({
+      sourceUrl: result.url,
+      userId: user.id,
+      generationId: generation.id,
+      kind: "video",
+    });
+    const deliveryUrl = stored.url || (await createSignedGetUrl(stored.key));
+    if (!deliveryUrl) {
+      throw new Error("Private media could not be signed for delivery");
+    }
 
     await prisma.generation.update({
       where: { id: generation.id },
-      data: { status: "COMPLETED", resultUrl: result.url },
+      data: {
+        status: "COMPLETED",
+        resultUrl: stored.url,
+        r2Key: stored.key,
+      },
     });
 
     return apiJson(
       sanitizePublicPayload({
         ok: true,
         success: true,
-        videoUrl: result.url,
+        videoUrl: deliveryUrl,
         provider: whiteLabelEngine(result.provider),
         model: whiteLabelModel(result.model),
         enhancedPrompt: prompt,
@@ -192,6 +238,9 @@ export async function POST(req: NextRequest) {
       await prisma.generation
         .update({ where: { id: generationId }, data: { status: "FAILED" } })
         .catch(() => undefined);
+    }
+    if (e instanceof ObjectStorageConfigurationError) {
+      return apiError(e.message, { status: 503, code: "MEDIA_UNAVAILABLE" });
     }
     const formatted = formatRouteError(e);
     return apiError(sanitizeGenerationError(e, formatted.message), {

@@ -8,6 +8,7 @@ import {
   ensureRequestLedgerUser,
   isSoftAuthEnabled,
 } from "@/lib/auth/ensure-request-user";
+import { enforceGenerationTrust } from "@/lib/trust/generation-gate";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
     const ensured = await ensureRequestLedgerUser({
       alnabiyKey: req.headers.get("x-alnabiy-key"),
       allowGuest: isSoftAuthEnabled(),
+      request: req,
     });
     if (!ensured) {
       return apiError("Sign in required", {
@@ -83,6 +85,30 @@ export async function POST(req: NextRequest) {
       return apiError("Image too large (max ~4MB)", {
         status: 413,
         code: "IMAGE_TOO_LARGE",
+      });
+    }
+
+    const trustFailure = await enforceGenerationTrust({
+      userId: ensured.user.id,
+      surface: "identity-face-match",
+      text: "Reference media identity verification request",
+      hasReferenceMedia: true,
+    });
+    if (trustFailure) {
+      return apiError(trustFailure.message, {
+        status:
+          trustFailure.code === "SAFETY_UNAVAILABLE" ||
+          trustFailure.code === "TRUST_UNAVAILABLE"
+            ? 503
+            : trustFailure.code === "CONSENT_REQUIRED"
+              ? 428
+              : trustFailure.code === "ENTITLEMENT_REQUIRED"
+                ? 403
+                : 422,
+        code: trustFailure.code,
+        extra: trustFailure.missingConsents
+          ? { missingConsents: trustFailure.missingConsents }
+          : undefined,
       });
     }
 

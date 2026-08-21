@@ -1,6 +1,6 @@
 /**
- * Ochish tekshiruvi — .env.local dagi kalitlar to‘liqmi?
- * Ishlatish: npm run launch:check
+ * Secretlarni chiqarmaydigan launch preflight.
+ * Ishlatish: npm run launch:check [-- --json]
  */
 
 import fs from "fs";
@@ -8,6 +8,7 @@ import path from "path";
 import {
   evaluateLaunchChecklist,
   missingLaunchChecks,
+  missingLaunchEnvNames,
 } from "../src/lib/launch/checklist";
 
 function loadEnvFile(filePath: string) {
@@ -38,24 +39,39 @@ loadEnvFile(path.join(root, ".env.local"));
 
 const checks = evaluateLaunchChecklist();
 const missing = missingLaunchChecks(checks);
+const missingEnv = missingLaunchEnvNames(checks);
+const json = process.argv.includes("--json");
 
-console.log("\nAl-Nabi — ochish tekshiruvi\n");
-for (const c of checks) {
-  const mark = c.ok ? "OK " : "YOQ";
-  console.log(`${mark}  ${c.title}`);
-  if (!c.ok) console.log(`     → ${c.hint}`);
-}
-
-console.log("");
-if (missing.length === 0) {
+if (json) {
   console.log(
-    "Kalitlar to‘liq. Qolgani: 2 ta qo‘lda ish — real video sinovi va support pochta."
+    JSON.stringify({
+      ready: missing.length === 0,
+      missingEnv,
+      checks: checks.map(({ id, ok, hint, env }) => ({ id, ok, hint, env })),
+    })
   );
-  process.exit(0);
+} else {
+  console.log("\nAl-Nabi — ochish tekshiruvi\n");
+  for (const c of checks) {
+    const mark = c.ok ? "OK " : "YOQ";
+    console.log(`${mark}  ${c.title}`);
+    if (!c.ok) console.log(`     → ${c.hint}`);
+    if (!c.ok && c.env.length) {
+      console.log(`     → ${c.env.join(", ")}`);
+    }
+  }
+
+  console.log("");
+  if (missing.length === 0) {
+    console.log(
+      "Preflight muvaffaqiyatli. Hali staging E2E va rollout dalillari talab qilinadi."
+    );
+  } else {
+    console.log(`Hali ${missing.length} ta reliz sozlamasi yetishmayapti.`);
+    console.log(
+      "Qiymatlarni faqat hostingning encrypted secret store'iga qo‘ying, keyin yana: npm run launch:check\n"
+    );
+  }
 }
 
-console.log(`Hali ${missing.length} ta kalit/sozlama yetishmayapti.`);
-console.log(
-  "Bularni .env.local (yoki hosting) ga qo‘ying, keyin yana: npm run launch:check\n"
-);
-process.exit(1);
+process.exitCode = missing.length === 0 ? 0 : 1;

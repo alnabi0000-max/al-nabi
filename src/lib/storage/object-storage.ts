@@ -1,21 +1,25 @@
 import {
+  DeleteObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { createHash, randomBytes } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, rm, writeFile } from "fs/promises";
 import path from "path";
 
 export type StoredObject = {
   key: string;
-  url: string;
+  /**
+   * A local development URL only. Persistent objects intentionally have no
+   * browser-reachable URL; callers must request an owner-authorized signed URL.
+   */
+  url: string | null;
   provider: "r2" | "s3" | "local";
 };
 
 type ObjectStorageClient = {
   client: S3Client;
   bucket: string;
-  publicBase: string;
   provider: "r2" | "s3";
 };
 
@@ -43,7 +47,6 @@ export function getObjectStorageClient(): ObjectStorageClient | null {
     return {
       provider: "r2",
       bucket: r2Bucket,
-      publicBase: (process.env.R2_PUBLIC_URL || "").replace(/\/$/, ""),
       client: new S3Client({
         region: "auto",
         endpoint: `https://${r2AccountId}.r2.cloudflarestorage.com`,
@@ -64,11 +67,6 @@ export function getObjectStorageClient(): ObjectStorageClient | null {
   return {
     provider: "s3",
     bucket,
-    publicBase: (
-      process.env.AWS_S3_PUBLIC_URL ||
-      process.env.S3_PUBLIC_URL ||
-      `https://${bucket}.s3.${region}.amazonaws.com`
-    ).replace(/\/$/, ""),
     client: new S3Client({
       region,
       credentials: { accessKeyId, secretAccessKey },
@@ -158,8 +156,50 @@ async function storeLocal(
   };
 }
 
+function normalizeObjectKey(key: string): string {
+  const normalized = key.replace(/\\/g, "/").replace(/^\/+/, "");
+  const parts = normalized.split("/");
+  if (
+    !normalized.startsWith("generations/") ||
+    parts.some((part) => !part || part === "." || part === "..")
+  ) {
+    throw new Error("Invalid stored object key");
+  }
+  return normalized;
+}
+
 /**
- * Provider URL → R2 / S3 / local disk.
+ * Physically removes a private generated asset. In production this operation
+ * only targets the configured R2/S3 bucket; it never falls back to a web URL.
+ */
+export async function deleteStoredObject(key: string): Promise<void> {
+  const normalizedKey = normalizeObjectKey(key);
+  const s3 = getObjectStorageClient();
+  if (s3) {
+    await s3.client.send(
+      new DeleteObjectCommand({
+        Bucket: s3.bucket,
+        Key: normalizedKey,
+      })
+    );
+    return;
+  }
+
+  if (isProductionRuntime()) {
+    throw new ObjectStorageConfigurationError();
+  }
+
+  const root = process.env.STORAGE_DIR || "./storage";
+  const filePath = path.resolve(process.cwd(), root, "objects", normalizedKey);
+  const objectRoot = path.resolve(process.cwd(), root, "objects");
+  if (filePath !== objectRoot && !filePath.startsWith(objectRoot + path.sep)) {
+    throw new Error("Invalid stored object key");
+  }
+  await rm(filePath, { force: true });
+}
+
+/**
+ * Provider URL → private R2 / S3 object or local development disk.
  */
 export async function persistRemoteAsset(opts: {
   sourceUrl: string;
@@ -211,10 +251,7 @@ export async function persistRemoteAsset(opts: {
         ContentType: contentType,
       })
     );
-    const url = s3.publicBase
-      ? `${s3.publicBase}/${key}`
-      : `s3://${s3.bucket}/${key}`;
-    return { key, url, provider: s3.provider };
+    return { key, url: null, provider: s3.provider };
   }
 
   return storeLocal(key, buffer);

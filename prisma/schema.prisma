@@ -88,6 +88,127 @@ enum PurchaseStatus {
   REFUNDED
 }
 
+/// Lifecycle of a creator-owned work area. Final export remains a later phase.
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+/// Stored private reference material. The object key is never a public URL.
+enum ProjectAssetKind {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+}
+
+enum RenderVersionStatus {
+  QUEUED
+  RENDERING
+  COMPLETED
+  FAILED
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalDecision {
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
+enum ModelRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+/// Canonical project editing timeline track type.
+enum TimelineTrackKind {
+  VIDEO
+  AUDIO
+}
+
+/// A project export is never treated as delivered until a compositor persists it.
+enum ProjectExportStatus {
+  QUEUED
+  CONFIGURATION_REQUIRED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+/// Versioned affirmative or withdrawal record. Rows are append-only in app code.
+enum ConsentDocument {
+  TERMS
+  PRIVACY
+  AI_MEDIA_PROCESSING
+  PRODUCT_IMPROVEMENT
+}
+
+enum ConsentAction {
+  GRANTED
+  WITHDRAWN
+}
+
+/// Outcome of a server-side policy decision before any paid work is queued.
+enum SafetyOutcome {
+  ALLOW
+  BLOCK
+  REVIEW
+  UNAVAILABLE
+}
+
+enum PrivacyRequestType {
+  DATA_EXPORT
+  ACCOUNT_ERASURE
+}
+
+enum PrivacyRequestStatus {
+  PENDING_CONFIRMATION
+  REQUESTED
+  HELD
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum BillingProvider {
+  STRIPE
+}
+
+enum BillingWebhookStatus {
+  PROCESSING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+enum BillingSubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  UNPAID
+}
+
+enum EntitlementSource {
+  SUBSCRIPTION
+  MANUAL
+  PROMOTIONAL
+}
+
+enum ReconciliationStatus {
+  OPEN
+  RESOLVED
+  IGNORED
+}
+
 // ─── User ─────────────────────────────────────────────────────────────────────
 /// App profile — `id` = Supabase `auth.users.id` (UUID)
 
@@ -121,6 +242,17 @@ model User {
   referredAs       Referral[]   @relation("Invitee")
   sessions         Session[]
   interestProfile  ProducerInterestProfile?
+  projects         Project[]
+  projectAssets    ProjectAsset[]
+  projectExports   ProjectExport[]
+  approvals        Approval[]
+  consents         UserConsent[]
+  safetyAudits     SafetyAudit[]
+  privacyRequests  PrivacyRequest[]
+  subscriptions    BillingSubscription[]
+  entitlements     Entitlement[]
+  billingEvents    BillingWebhookEvent[]
+  reconciliations  BillingReconciliation[]
 
   @@index([email])
   @@index([alnabiyKey])
@@ -175,6 +307,8 @@ model CoinLedger {
   @@index([generationId])
   @@index([purchaseId])
   @@index([jobId])
+  /// A generation can be debited at most once per ledger kind.
+  @@unique([generationId, type])
   @@map("coin_ledger")
 }
 
@@ -207,16 +341,306 @@ model Generation {
   /// Inngest event id (Phase 2+)
   inngestEventId String?          @map("inngest_event_id")
   deletedAt      DateTime?        @map("deleted_at")
+  /// Optional project workflow linkage. Standalone generations remain supported.
+  projectId      String?          @map("project_id")
+  project        Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  shotId         String?          @map("shot_id")
+  shot           Shot?            @relation(fields: [shotId], references: [id], onDelete: SetNull)
+  /// Project spend reserved at enqueue time; moved to spent on successful debit.
+  reservedCredits Int             @default(0) @map("reserved_credits")
+  projectChargeSettled Boolean    @default(false) @map("project_charge_settled")
+  projectRefundSettled Boolean    @default(false) @map("project_refund_settled")
   createdAt      DateTime         @default(now()) @map("created_at")
   updatedAt      DateTime         @updatedAt @map("updated_at")
 
   ledgerEntries CoinLedger[]
   sceneAssets   SceneAsset[]
+  projectAssets ProjectAsset[]    @relation("AssetSourceGeneration")
+  renderVersion RenderVersion?
+  modelRun      ModelRun?
+  projectExport ProjectExport?
 
   @@index([userId, status])
   @@index([userId, deletedAt])
   @@index([status, createdAt])
+  @@index([projectId, createdAt])
+  @@index([shotId, createdAt])
   @@map("generations")
+}
+
+// ─── Creator project workflow ─────────────────────────────────────────────────
+
+model Project {
+  id            String        @id @default(cuid())
+  userId        String        @map("user_id") @db.Uuid
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  brief         String?       @db.Text
+  aspect        String        @default("16:9")
+  status        ProjectStatus @default(DRAFT)
+  /// Null means no project-level spend cap.
+  spendCapNc    Int?          @map("spend_cap_nc")
+  spentNc       Int           @default(0) @map("spent_nc")
+  reservedNc    Int           @default(0) @map("reserved_nc")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  shots          Shot[]
+  assets         ProjectAsset[]
+  referencePacks ReferencePack[]
+  renderVersions RenderVersion[]
+  approvals      Approval[]
+  generations    Generation[]
+  modelRuns      ModelRun[]
+  timeline       ProjectTimeline?
+  exports        ProjectExport[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, status])
+  @@map("projects")
+}
+
+model Shot {
+  id              String   @id @default(cuid())
+  projectId       String   @map("project_id")
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  position        Int
+  title           String
+  prompt          String?  @db.Text
+  negativePrompt  String?  @map("negative_prompt") @db.Text
+  aspect          String?
+  quality         String?
+  durationSec     Int?     @map("duration_sec")
+  preferredEngine String?  @map("preferred_engine")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  generations    Generation[]
+  renderVersions RenderVersion[]
+  approvals      Approval[]
+
+  @@unique([projectId, position])
+  @@index([projectId, updatedAt])
+  @@map("shots")
+}
+
+model ProjectAsset {
+  id                 String           @id @default(cuid())
+  userId             String           @map("user_id") @db.Uuid
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId          String?          @map("project_id")
+  project            Project?         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label              String
+  kind               ProjectAssetKind
+  /// Existing generation can be attached without copying a private object.
+  sourceGenerationId String?          @map("source_generation_id")
+  sourceGeneration   Generation?      @relation("AssetSourceGeneration", fields: [sourceGenerationId], references: [id], onDelete: SetNull)
+  /// Private R2/S3 key only; delivery is still through signed media routes.
+  r2Key              String?          @map("r2_key")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  referencePacks ReferencePack[]
+  timelineClips  ProjectTimelineClip[] @relation("TimelineClipAsset")
+
+  @@index([userId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([sourceGenerationId])
+  @@map("project_assets")
+}
+
+model ReferencePack {
+  id        String         @id @default(cuid())
+  projectId String         @map("project_id")
+  project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title     String
+  notes     String?        @db.Text
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  assets ProjectAsset[]
+
+  @@index([projectId, updatedAt])
+  @@map("reference_packs")
+}
+
+model RenderVersion {
+  id               String              @id @default(cuid())
+  projectId        String              @map("project_id")
+  project          Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  shotId           String?             @map("shot_id")
+  shot             Shot?               @relation(fields: [shotId], references: [id], onDelete: SetNull)
+  generationId     String?             @unique @map("generation_id")
+  generation       Generation?         @relation(fields: [generationId], references: [id], onDelete: SetNull)
+  number           Int
+  status           RenderVersionStatus @default(QUEUED)
+  provider         String?
+  model            String?
+  outputR2Key      String?             @map("output_r2_key")
+  outputUrl        String?             @map("output_url")
+  estimatedCredits Int                 @default(0) @map("estimated_credits")
+  creditsCost      Int                 @default(0) @map("credits_cost")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  approvals Approval[]
+  modelRuns ModelRun[]
+  timelineClips ProjectTimelineClip[] @relation("TimelineClipRenderVersion")
+
+  @@index([projectId, createdAt])
+  @@index([shotId, createdAt])
+  @@map("render_versions")
+}
+
+/// Provider execution record retained with each project render version.
+model ModelRun {
+  id               String         @id @default(cuid())
+  projectId        String         @map("project_id")
+  project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  renderVersionId  String         @map("render_version_id")
+  renderVersion    RenderVersion  @relation(fields: [renderVersionId], references: [id], onDelete: Cascade)
+  generationId     String         @unique @map("generation_id")
+  generation       Generation     @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  provider         String
+  engineId         String         @map("engine_id")
+  /// Private upstream endpoint identifier for audit/debugging, never API output.
+  endpointModel    String?        @map("endpoint_model")
+  commercialRoute  String         @map("commercial_route")
+  status           ModelRunStatus @default(QUEUED)
+  estimatedCredits Int            @default(0) @map("estimated_credits")
+  expectedP50Sec   Int?           @map("expected_p50_sec")
+  expectedP90Sec   Int?           @map("expected_p90_sec")
+  requestMetadata  Json?          @map("request_metadata")
+  responseMetadata Json?          @map("response_metadata")
+  failureCode      String?        @map("failure_code")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  @@index([projectId, createdAt])
+  @@index([renderVersionId])
+  @@map("model_runs")
+}
+
+model Approval {
+  id              String           @id @default(cuid())
+  projectId       String           @map("project_id")
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  shotId          String?          @map("shot_id")
+  shot            Shot?            @relation(fields: [shotId], references: [id], onDelete: SetNull)
+  renderVersionId String?          @map("render_version_id")
+  renderVersion   RenderVersion?   @relation(fields: [renderVersionId], references: [id], onDelete: SetNull)
+  userId          String           @map("user_id") @db.Uuid
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  decision        ApprovalDecision @default(PENDING)
+  comment         String?          @db.Text
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  @@index([projectId, createdAt])
+  @@index([renderVersionId, createdAt])
+  @@map("approvals")
+}
+
+/// One canonical, revisioned edit decision list (EDL) per project.
+model ProjectTimeline {
+  id         String   @id @default(cuid())
+  projectId  String   @unique @map("project_id")
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// Optimistic concurrency token; every edit atomically increments this.
+  revision   Int      @default(1)
+  fps        Int      @default(24)
+  durationMs Int      @default(0) @map("duration_ms")
+  audioMix   Json     @default("{}") @map("audio_mix")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tracks  ProjectTimelineTrack[]
+  exports ProjectExport[]
+
+  @@index([projectId, updatedAt])
+  @@map("project_timelines")
+}
+
+model ProjectTimelineTrack {
+  id         String            @id @default(cuid())
+  timelineId String            @map("timeline_id")
+  timeline   ProjectTimeline   @relation(fields: [timelineId], references: [id], onDelete: Cascade)
+  kind       TimelineTrackKind
+  name       String
+  position   Int
+  muted      Boolean           @default(false)
+  volume     Float             @default(1)
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+
+  clips ProjectTimelineClip[]
+
+  @@unique([timelineId, position])
+  @@index([timelineId, kind])
+  @@map("project_timeline_tracks")
+}
+
+/// An EDL clip can refer only to a project-owned asset or render version.
+model ProjectTimelineClip {
+  id                    String                @id @default(cuid())
+  trackId               String                @map("track_id")
+  track                 ProjectTimelineTrack  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  position              Int
+  startMs               Int                   @map("start_ms")
+  durationMs            Int                   @map("duration_ms")
+  trimStartMs           Int                   @default(0) @map("trim_start_ms")
+  trimEndMs             Int                   @default(0) @map("trim_end_ms")
+  muted                 Boolean               @default(false)
+  volume                Float                 @default(1)
+  sourceAssetId         String?               @map("source_asset_id")
+  sourceAsset           ProjectAsset?         @relation("TimelineClipAsset", fields: [sourceAssetId], references: [id], onDelete: Cascade)
+  sourceRenderVersionId String?               @map("source_render_version_id")
+  sourceRenderVersion   RenderVersion?        @relation("TimelineClipRenderVersion", fields: [sourceRenderVersionId], references: [id], onDelete: Cascade)
+  metadata              Json?                 @map("metadata")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
+
+  @@unique([trackId, position])
+  @@index([trackId, startMs])
+  @@index([sourceAssetId])
+  @@index([sourceRenderVersionId])
+  @@map("project_timeline_clips")
+}
+
+/// Immutable export request + delivery lifecycle for a timeline revision.
+model ProjectExport {
+  id             String              @id @default(cuid())
+  projectId      String              @map("project_id")
+  project        Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId         String              @map("user_id") @db.Uuid
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timelineId     String              @map("timeline_id")
+  timeline       ProjectTimeline     @relation(fields: [timelineId], references: [id], onDelete: Restrict)
+  generationId   String?             @unique @map("generation_id")
+  generation     Generation?         @relation(fields: [generationId], references: [id], onDelete: SetNull)
+  timelineRevision Int               @map("timeline_revision")
+  idempotencyKey String              @map("idempotency_key")
+  status         ProjectExportStatus @default(QUEUED)
+  format         String              @default("mp4")
+  quality        String              @default("1080p")
+  frameRate      Int                 @default(24) @map("frame_rate")
+  audioMix       Json                @default("{}") @map("audio_mix")
+  /// Immutable, private EDL snapshot used by the worker.
+  timelineSnapshot Json              @map("timeline_snapshot")
+  outputR2Key    String?             @map("output_r2_key")
+  outputUrl      String?             @map("output_url")
+  errorCode      String?             @map("error_code")
+  errorMessage   String?             @map("error_message")
+  workerMetadata Json?               @map("worker_metadata")
+  startedAt      DateTime?           @map("started_at")
+  completedAt    DateTime?           @map("completed_at")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  @@unique([userId, idempotencyKey])
+  @@index([projectId, createdAt])
+  @@index([timelineId, timelineRevision])
+  @@index([status, updatedAt])
+  @@map("project_exports")
 }
 
 // ─── Purchase ─────────────────────────────────────────────────────────────────
@@ -239,6 +663,7 @@ model Purchase {
   updatedAt             DateTime       @updatedAt @map("updated_at")
 
   ledgerEntries CoinLedger[]
+  billingEvents BillingWebhookEvent[]
 
   @@index([userId, status])
   @@index([packId])
@@ -308,4 +733,160 @@ model SceneAsset {
 
   @@index([generationId])
   @@map("scene_assets")
+}
+
+/// Immutable record of a consent action for a particular legal-document version.
+/// A withdrawal adds another row; it never rewrites prior affirmative consent.
+model UserConsent {
+  id              String          @id @default(cuid())
+  userId          String          @map("user_id") @db.Uuid
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document        ConsentDocument
+  documentVersion String          @map("document_version")
+  action          ConsentAction
+  source          String          @default("self_service")
+  recordedAt      DateTime        @default(now()) @map("recorded_at")
+
+  @@index([userId, document, documentVersion, recordedAt])
+  @@index([document, documentVersion, action])
+  @@map("user_consents")
+}
+
+/// Immutable, minimized policy-decision audit. It deliberately stores a digest,
+/// not the prompt, script, data URL, provider payload, or media bytes.
+model SafetyAudit {
+  id             String        @id @default(cuid())
+  userId         String        @map("user_id") @db.Uuid
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  surface        String
+  policyVersion  String        @map("policy_version")
+  outcome        SafetyOutcome
+  inputDigest    String        @map("input_digest")
+  referenceMedia Boolean       @default(false) @map("reference_media")
+  evaluator      String
+  coverage       String
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([outcome, createdAt])
+  @@map("safety_audits")
+}
+
+/// Durable privacy-rights request. State is only advanced by validated request
+/// handling; an erasure cannot report completion until object deletion succeeds.
+model PrivacyRequest {
+  id             String               @id @default(cuid())
+  userId         String               @map("user_id") @db.Uuid
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           PrivacyRequestType
+  status         PrivacyRequestStatus @default(PENDING_CONFIRMATION)
+  scope          Json?
+  confirmationAt DateTime?            @map("confirmation_at")
+  holdReason     String?              @map("hold_reason")
+  errorCode      String?              @map("error_code")
+  exportedAt     DateTime?            @map("exported_at")
+  completedAt    DateTime?            @map("completed_at")
+  failedAt       DateTime?            @map("failed_at")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  @@index([userId, createdAt])
+  @@index([status, updatedAt])
+  @@map("privacy_requests")
+}
+
+/// Provider-neutral subscription snapshot. Provider webhook data is normalized
+/// into this table rather than being trusted from browser state.
+model BillingSubscription {
+  id                     String                    @id @default(cuid())
+  userId                 String                    @map("user_id") @db.Uuid
+  user                   User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider               BillingProvider
+  providerCustomerId     String                    @map("provider_customer_id")
+  providerSubscriptionId String                    @map("provider_subscription_id")
+  status                 BillingSubscriptionStatus
+  planCode               String                    @map("plan_code")
+  currentPeriodEnd       DateTime?                 @map("current_period_end")
+  cancelAtPeriodEnd      Boolean                   @default(false) @map("cancel_at_period_end")
+  createdAt              DateTime                  @default(now()) @map("created_at")
+  updatedAt              DateTime                  @updatedAt @map("updated_at")
+
+  entitlements Entitlement[]
+  billingEvents BillingWebhookEvent[]
+
+  @@unique([provider, providerSubscriptionId])
+  @@index([userId, status])
+  @@index([providerCustomerId])
+  @@map("billing_subscriptions")
+}
+
+/// Durable feature access derived from a verified billing event or a recorded
+/// administrative/promotion source. Frontend state is never authoritative.
+model Entitlement {
+  id              String            @id @default(cuid())
+  userId          String            @map("user_id") @db.Uuid
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code            String
+  source          EntitlementSource
+  sourceReference String            @map("source_reference")
+  subscriptionId  String?           @map("subscription_id")
+  subscription    BillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  startsAt        DateTime          @default(now()) @map("starts_at")
+  endsAt          DateTime?         @map("ends_at")
+  revokedAt       DateTime?         @map("revoked_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@unique([userId, code, source, sourceReference])
+  @@index([userId, code, endsAt])
+  @@index([subscriptionId])
+  @@map("entitlements")
+}
+
+/// One provider event can be claimed and processed exactly once. The original
+/// provider payload is intentionally not persisted because it can contain PII.
+model BillingWebhookEvent {
+  id               String               @id @default(cuid())
+  provider         BillingProvider
+  providerEventId  String               @map("provider_event_id")
+  eventType        String               @map("event_type")
+  providerObjectId String?              @map("provider_object_id")
+  payloadDigest    String               @map("payload_digest")
+  status           BillingWebhookStatus @default(PROCESSING)
+  userId           String?              @map("user_id") @db.Uuid
+  user             User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  purchaseId       String?              @map("purchase_id")
+  purchase         Purchase?            @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+  subscriptionId   String?              @map("subscription_id")
+  subscription     BillingSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  errorCode        String?              @map("error_code")
+  receivedAt       DateTime             @default(now()) @map("received_at")
+  processedAt      DateTime?            @map("processed_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  @@unique([provider, providerEventId])
+  @@index([status, receivedAt])
+  @@index([providerObjectId])
+  @@map("billing_webhook_events")
+}
+
+/// Reconciliation records flag mismatches without changing a financial balance
+/// or entitlement. Operators must resolve or explicitly ignore each finding.
+model BillingReconciliation {
+  id          String               @id @default(cuid())
+  provider    BillingProvider
+  fingerprint String               @unique
+  kind        String
+  subjectKey  String               @map("subject_key")
+  userId      String?              @map("user_id") @db.Uuid
+  user        User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status      ReconciliationStatus @default(OPEN)
+  details     Json?
+  firstSeenAt DateTime             @default(now()) @map("first_seen_at")
+  lastSeenAt  DateTime             @default(now()) @map("last_seen_at")
+  resolvedAt  DateTime?            @map("resolved_at")
+
+  @@index([provider, status, lastSeenAt])
+  @@index([userId, status])
+  @@map("billing_reconciliations")
 }

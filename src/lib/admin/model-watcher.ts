@@ -43,10 +43,6 @@ const KNOWN_UPSTREAM: Partial<
     { id: "wan-video/wan-2.2-t2v-fast", label: "Wan 2.2 Fast" },
     { id: "wan-video/wan-2.2-t2v-720p", label: "Wan 2.2 720p" },
   ],
-  runway: [
-    { id: "kwaivgi/kling-v2.6", label: "2.6 native audio" },
-    { id: "minimax/hailuo-02", label: "Hailuo 02" },
-  ],
   flux: [
     { id: "black-forest-labs/flux-2-pro", label: "FLUX.2 Pro" },
     { id: "black-forest-labs/flux-1.1-pro", label: "FLUX 1.1 Pro" },

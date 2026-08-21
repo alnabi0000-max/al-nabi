@@ -6,6 +6,7 @@ import { sanitizePublicPayload, whiteLabelEngine } from "@/lib/models";
 import { sanitizeGenerationError } from "@/lib/generation/public-error";
 import { reclaimStaleGeneration } from "@/lib/generation/fail-and-refund";
 import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
+import { createSignedGetUrl } from "@/lib/storage/signed-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -55,12 +56,16 @@ function hasCredentialInQuery(req: NextRequest): boolean {
   );
 }
 
-function toPayload(
+async function toPayload(
   generation: GenerationRow,
   balanceAfter?: number
 ) {
   const done = generation.status === "COMPLETED";
   const failed = generation.status === "FAILED";
+  const deliveryUrl =
+    done && generation.r2Key
+      ? await createSignedGetUrl(generation.r2Key)
+      : generation.resultUrl;
   return sanitizePublicPayload({
     ok: true as const,
     generationId: generation.id,
@@ -69,7 +74,7 @@ function toPayload(
     status: generation.status,
     done,
     failed,
-    resultUrl: generation.resultUrl,
+    resultUrl: deliveryUrl,
     r2Key: generation.r2Key,
     provider: whiteLabelEngine(generation.provider),
     creditsCost: generation.creditsCost,
@@ -83,9 +88,9 @@ function toPayload(
     createdAt: generation.createdAt.toISOString(),
     updatedAt: generation.updatedAt.toISOString(),
     videoUrl:
-      done && generation.type !== "IMAGE" ? generation.resultUrl : null,
+      done && generation.type !== "IMAGE" ? deliveryUrl : null,
     imageUrl:
-      done && generation.type === "IMAGE" ? generation.resultUrl : null,
+      done && generation.type === "IMAGE" ? deliveryUrl : null,
   });
 }
 
@@ -179,7 +184,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     }
 
     if (!stream) {
-      return apiJson({ success: true, ...toPayload(row, balanceAfter) });
+      return apiJson({ success: true, ...(await toPayload(row, balanceAfter)) });
     }
 
     const encoder = new TextEncoder();
@@ -194,7 +199,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
           );
         };
 
-        send(toPayload(row, balanceAfter));
+        send(await toPayload(row, balanceAfter));
 
         const started = Date.now();
         while (!closed && Date.now() - started < 120_000) {
@@ -214,7 +219,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
               where: { id: again.userId },
               select: { coins: true },
             });
-            const payload = toPayload(again, u?.coins);
+            const payload = await toPayload(again, u?.coins);
             send(payload);
             if (payload.done || payload.failed) break;
           } catch (e) {

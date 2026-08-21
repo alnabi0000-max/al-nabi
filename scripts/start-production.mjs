@@ -1,22 +1,17 @@
 /**
- * Production start: free preferred port, fall back to next free port.
+ * Production start: require a passing preflight and an unused requested port.
  * Usage: node scripts/start-production.mjs
  */
-import { spawn, execSync } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import net from "net";
+import path from "path";
 
-const PREFERRED = Number(process.env.PORT || 3000);
-const FALLBACKS = [PREFERRED, PREFERRED + 1, PREFERRED + 2, 3001, 3002];
-
-function killPort(port) {
-  try {
-    execSync(`npx --yes kill-port ${port}`, {
-      stdio: "inherit",
-      shell: true,
-    });
-  } catch {
-    /* already free or kill-port unavailable */
+function requestedPort() {
+  const port = Number(process.env.PORT || 3000);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid PORT value: ${process.env.PORT || ""}`);
   }
+  return port;
 }
 
 function isPortFree(port) {
@@ -31,30 +26,53 @@ function isPortFree(port) {
   });
 }
 
-async function pickPort() {
-  const tried = new Set();
-  for (const port of FALLBACKS) {
-    if (tried.has(port)) continue;
-    tried.add(port);
-    killPort(port);
-    // brief settle after kill
-    await new Promise((r) => setTimeout(r, 400));
-    if (await isPortFree(port)) return port;
+function runPreflight() {
+  const root = process.cwd();
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(root, "node_modules", "tsx", "dist", "cli.mjs"),
+      path.join(root, "scripts", "launch-check.ts"),
+    ],
+    {
+      cwd: process.cwd(),
+      env: process.env,
+      stdio: "inherit",
+    }
+  );
+  if (result.error) {
+    throw new Error(
+      `Could not run the launch preflight: ${result.error.message}`
+    );
   }
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
+}
+
+runPreflight();
+
+const port = requestedPort();
+if (!(await isPortFree(port))) {
   throw new Error(
-    `No free port among: ${[...tried].join(", ")}. Set PORT=... and retry.`
+    `PORT ${port} is already in use. Refusing to stop or replace an existing process.`
   );
 }
 
-const port = await pickPort();
 console.log(`[Alnabiy] Starting Next.js on http://localhost:${port}`);
 
 const child = spawn(
-  process.platform === "win32" ? "npx.cmd" : "npx",
-  ["next", "start", "-H", "0.0.0.0", "-p", String(port)],
+  process.execPath,
+  [
+    path.join(process.cwd(), "node_modules", "next", "dist", "bin", "next"),
+    "start",
+    "-H",
+    "0.0.0.0",
+    "-p",
+    String(port),
+  ],
   {
     stdio: "inherit",
-    shell: true,
     env: { ...process.env, PORT: String(port) },
   }
 );

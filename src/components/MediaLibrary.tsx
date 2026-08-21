@@ -46,13 +46,6 @@ function isVideo(kind: string, url?: string | null) {
   return kind !== "image";
 }
 
-function withSecureKey(url: string | null | undefined, key: string | null) {
-  if (!url) return null;
-  if (!key || !url.startsWith("/api/media/")) return url;
-  const join = url.includes("?") ? "&" : "?";
-  return `${url}${join}key=${encodeURIComponent(key)}`;
-}
-
 /**
  * Assets & History Gallery — Download 4K · Delete · Re-generate
  */
@@ -185,7 +178,7 @@ export function MediaLibrary({
   }
 
   function onDownload(asset: LibraryAsset) {
-    const url = withSecureKey(asset.mediaUrl, alnabiyKey);
+    const url = asset.mediaUrl;
     if (!url) return;
     const a = document.createElement("a");
     a.href = url;
@@ -280,7 +273,7 @@ export function MediaLibrary({
       ) : (
         <ul className="nabi-bento">
           {filtered.map((asset) => {
-            const url = withSecureKey(asset.mediaUrl, alnabiyKey);
+            const url = asset.mediaUrl;
             const video = isVideo(asset.kind, asset.mediaUrl);
             return (
               <li

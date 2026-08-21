@@ -8,6 +8,10 @@ import { prisma } from "@/lib/prisma";
 import { whiteLabelEngine } from "@/lib/models";
 import type { GenerationKind } from "@/lib/credits";
 import type { GenerationType } from "@prisma/client";
+import {
+  deleteStoredObject,
+} from "@/lib/storage/object-storage";
+import { createSignedGetUrl } from "@/lib/storage/signed-url";
 
 export type MediaAssetDto = {
   id: string;
@@ -38,6 +42,16 @@ function generationTypeFromKind(kind: GenerationKind): GenerationType {
   if (kind === "image") return "IMAGE";
   if (kind === "text_to_movie") return "SCRIPT_TO_MOVIE";
   return "TEXT_TO_VIDEO";
+}
+
+async function resolveAssetDeliveryUrl(opts: {
+  r2Key: string | null;
+  resultUrl: string | null;
+}): Promise<string | null> {
+  if (opts.r2Key) {
+    return createSignedGetUrl(opts.r2Key);
+  }
+  return opts.resultUrl;
 }
 
 export async function resolveUserByKey(alnabiyKey?: string | null) {
@@ -200,7 +214,7 @@ export async function persistJobAsset(opts: {
       kind: kindFromGenerationType(generation.type),
       title: (generation.prompt || generation.script || "Alnabiy").slice(0, 80),
       prompt: generation.prompt || generation.script,
-      mediaUrl: generation.resultUrl,
+      mediaUrl: await resolveAssetDeliveryUrl(generation),
       durationSec: generation.durationSec,
       emotionMode: generation.emotionMode || "neutral",
       creditsCost: generation.creditsCost,
@@ -227,20 +241,22 @@ export async function listUserAssets(
       orderBy: { createdAt: "desc" },
       take: 120,
     });
-    return generations.map((generation) => ({
-      id: generation.id,
-      kind: kindFromGenerationType(generation.type),
-      title: (generation.prompt || generation.script || "Alnabiy").slice(0, 80),
-      prompt: generation.prompt || generation.script,
-      mediaUrl: generation.resultUrl,
-      durationSec: generation.durationSec,
-      emotionMode: generation.emotionMode || "neutral",
-      creditsCost: generation.creditsCost,
-      provider: whiteLabelEngine(generation.provider),
-      quality: generation.quality,
-      createdAt: generation.createdAt.toISOString(),
-      source: "db" as const,
-    }));
+    return Promise.all(
+      generations.map(async (generation) => ({
+        id: generation.id,
+        kind: kindFromGenerationType(generation.type),
+        title: (generation.prompt || generation.script || "Alnabiy").slice(0, 80),
+        prompt: generation.prompt || generation.script,
+        mediaUrl: await resolveAssetDeliveryUrl(generation),
+        durationSec: generation.durationSec,
+        emotionMode: generation.emotionMode || "neutral",
+        creditsCost: generation.creditsCost,
+        provider: whiteLabelEngine(generation.provider),
+        quality: generation.quality,
+        createdAt: generation.createdAt.toISOString(),
+        source: "db" as const,
+      }))
+    );
   } catch {
     return [];
   }
@@ -270,8 +286,27 @@ export async function softDeleteAsset(
   try {
     const generation = await prisma.generation.findFirst({
       where: { id: assetId, userId: user.id, deletedAt: null },
+      select: { id: true, r2Key: true },
     });
     if (!generation) return { ok: false, code: "NOT_FOUND" };
+
+    /*
+     * Keep the database row accessible until the underlying object is gone.
+     * A failed deletion is retryable and must not merely hide private media
+     * while leaving it indefinitely in R2/S3.
+     */
+    if (!generation.r2Key) {
+      if (process.env.NODE_ENV === "production") {
+        return { ok: false, code: "STORAGE_KEY_MISSING" };
+      }
+      await fs.rm(path.join(storageRoot(), "jobs", assetId), {
+        recursive: true,
+        force: true,
+      });
+    } else {
+      await deleteStoredObject(generation.r2Key);
+    }
+
     await prisma.generation.update({
       where: { id: generation.id },
       data: { deletedAt: new Date() },

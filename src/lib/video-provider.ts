@@ -14,9 +14,11 @@ import type {
   VideoEngineId,
   FrameRate,
 } from "@/lib/ai/catalog";
+import type { CinematicControls } from "@/lib/ai/provider-registry";
 
 export type Quality = RenderQuality;
-export type ProviderId = "replicate" | "fal" | "kling" | "luma" | "runway" | "bfl" | "mock";
+/** Executable providers, not model-brand labels. */
+export type ProviderId = "replicate" | "mock";
 
 /** @deprecated use VideoEngineId from catalog — kept for script pipeline compat */
 export type VideoEngine =
@@ -60,6 +62,8 @@ export async function generateVideoClip(opts: {
   durationSec?: number;
   frameRate?: FrameRate | number;
   aspect?: "16:9" | "9:16" | "1:1";
+  sourceVideoId?: string;
+  cinematicControls?: CinematicControls;
 }): Promise<{ url: string; provider: string; model: string; engineId?: string }> {
   const quality = opts.quality || "1080p";
   const engine = opts.engine || resolveVideoEngine(quality);
@@ -73,5 +77,7 @@ export async function generateVideoClip(opts: {
     durationSec: opts.durationSec,
     frameRate: opts.frameRate,
     aspect: opts.aspect,
+    sourceVideoId: opts.sourceVideoId,
+    cinematicControls: opts.cinematicControls,
   });
 }

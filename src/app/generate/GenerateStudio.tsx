@@ -38,6 +38,7 @@ import { RecentGenerationsReel } from "@/components/studio/RecentGenerationsReel
 import { QuickCameraButtons } from "@/components/studio/QuickCameraButtons";
 import { ProModeToggle } from "@/components/studio/ProModeToggle";
 import { ProModePanel } from "@/components/studio/ProModePanel";
+import { ProjectWorkflowPanel } from "@/components/studio/ProjectWorkflowPanel";
 import { StudioGenerateCta } from "@/components/studio/StudioGenerateCta";
 import { StudioTimeline } from "@/components/studio/timeline";
 import { decodeWaveformPeaks } from "@/components/studio/timeline/decode-waveform";
@@ -103,6 +104,14 @@ const STUDIO_VIDEO_IDS: VideoEngineId[] = STUDIO_VIDEO_ENGINE_IDS;
 
 const STUDIO_IMAGE_IDS: ImageEngineId[] = ["flux-pro", "sd3.5-large", "auto"];
 
+type RoutingEstimate = {
+  configured: boolean;
+  effectiveDurationSec: number;
+  durationAdjusted: boolean;
+  estimatedCredits: number;
+  expectedLatencySeconds: { p50: number; p90: number };
+};
+
 export default function GenerateStudio() {
   const {
     tr,
@@ -147,6 +156,8 @@ export default function GenerateStudio() {
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [r2Key, setR2Key] = useState<string | null>(null);
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [shotId, setShotId] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const searchKey = searchParams.toString();
   const hydratedFromUrl = useRef(false);
@@ -168,6 +179,9 @@ export default function GenerateStudio() {
     time: number;
   } | null>(null);
   const [audioNc, setAudioNc] = useState(0);
+  const [routingEstimate, setRoutingEstimate] =
+    useState<RoutingEstimate | null>(null);
+  const [routingIssue, setRoutingIssue] = useState<string | null>(null);
 
   useEffect(() => {
     setProMode(readStoredProMode());
@@ -257,6 +271,67 @@ export default function GenerateStudio() {
       ? DRAFT_PREVIEW_SEC
       : duration;
 
+  useEffect(() => {
+    if (mediaKind !== "video") {
+      setRoutingEstimate(null);
+      setRoutingIssue(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const params = new URLSearchParams({
+      engine: videoEngine,
+      durationSec: String(requestDuration),
+      aspect,
+      quality,
+      ...(sourceImageUrl || (proMode && keyframes.startUrl)
+        ? { image: "1" }
+        : {}),
+      ...(proMode && keyframes.endUrl ? { endImage: "1" } : {}),
+    });
+    fetch(`/api/generation-capabilities?${params.toString()}`, {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const data = (await response.json()) as {
+          estimate?: RoutingEstimate;
+          ok?: boolean;
+          error?: string;
+        };
+        if (!response.ok || data.ok === false || !data.estimate) {
+          throw new Error(data.error || "Routing estimate unavailable");
+        }
+        return data.estimate;
+      })
+      .then((estimate) => {
+        setRoutingEstimate(estimate);
+        setRoutingIssue(null);
+      })
+      .catch((estimateError) => {
+        if (estimateError instanceof DOMException && estimateError.name === "AbortError") {
+          return;
+        }
+        setRoutingEstimate(null);
+        setRoutingIssue(
+          estimateError instanceof Error
+            ? estimateError.message
+            : "Routing estimate unavailable"
+        );
+      });
+    return () => controller.abort();
+  }, [
+    aspect,
+    keyframes.endUrl,
+    keyframes.startUrl,
+    mediaKind,
+    proMode,
+    quality,
+    requestDuration,
+    sourceImageUrl,
+    videoEngine,
+  ]);
+
   const cost = useMemo(
     () =>
       calculateGenerationCost(generationKind, requestDuration, {
@@ -275,7 +350,12 @@ export default function GenerateStudio() {
     ]
   );
 
-  const sessionCost = mediaKind === "video" ? cost + audioNc : cost;
+  const generationCost =
+    mediaKind === "video" && routingEstimate
+      ? routingEstimate.estimatedCredits
+      : cost;
+  const sessionCost =
+    mediaKind === "video" ? generationCost + audioNc : generationCost;
 
   const seekTimeline = useCallback((sec: number) => {
     setPlayheadSec(sec);
@@ -471,7 +551,7 @@ export default function GenerateStudio() {
       handleViolation();
       return;
     }
-    if (coins < cost) {
+    if (coins < generationCost) {
       setShowInsufficientModal(true);
       return;
     }
@@ -521,6 +601,8 @@ export default function GenerateStudio() {
             bgmTrackId: mediaKind === "video" ? bgmTrackId : null,
             alnabiyKey: key,
             clientBalance: coins,
+            projectId: projectId || undefined,
+            shotId: shotId || undefined,
             engine: mediaKind === "image" ? imageEngine : videoEngine,
             imageEngine,
             templateId: templateId ?? undefined,
@@ -673,7 +755,7 @@ export default function GenerateStudio() {
           mediaUrl: url,
           durationSec: 0,
           emotionMode,
-          creditsCost: (data.creditsCost as number) ?? cost,
+          creditsCost: (data.creditsCost as number) ?? generationCost,
           provider: data.provider as string,
           quality,
           receiptId: data.receiptId as string | undefined,
@@ -692,7 +774,7 @@ export default function GenerateStudio() {
           mediaUrl: url,
           durationSec: requestDuration,
           emotionMode,
-          creditsCost: (data.creditsCost as number) ?? cost,
+          creditsCost: (data.creditsCost as number) ?? generationCost,
           provider: data.provider as string,
           quality,
           receiptId: data.receiptId as string | undefined,
@@ -852,6 +934,25 @@ export default function GenerateStudio() {
             }}
           />
 
+          <ProjectWorkflowPanel
+            alnabiyKey={alnabiyKey}
+            prompt={prompt}
+            latestGenerationId={generationId}
+            onProjectChange={setProjectId}
+            onShotChange={setShotId}
+            onUseShot={(shot) => {
+              if (shot.prompt) setPrompt(shot.prompt);
+              if (shot.aspect) setAspect(shot.aspect);
+              if (shot.quality === "720p" || shot.quality === "1080p" || shot.quality === "4K") {
+                setQuality(shot.quality);
+              }
+              if (shot.durationSec) setDuration(shot.durationSec);
+              if (shot.preferredEngine && isVideoEngineId(shot.preferredEngine)) {
+                setVideoEngine(shot.preferredEngine);
+              }
+            }}
+          />
+
           <StudioAccordion title={tr("camera_motion")}>
             <div className="space-y-2">
               <p className="flex items-center gap-1.5 text-[11px] text-white/40">
@@ -957,7 +1058,7 @@ export default function GenerateStudio() {
 
           <InsufficientBalanceHint
             kind={generationKind}
-            cost={cost}
+            cost={generationCost}
             coins={coins}
             durationSec={requestDuration}
             costOpts={{
@@ -981,7 +1082,14 @@ export default function GenerateStudio() {
 
           <StudioGenerateCta
             loading={loading}
-            disabled={loading || !prompt.trim() || isOffline || coins < cost}
+            disabled={
+              loading ||
+              !prompt.trim() ||
+              isOffline ||
+              coins < generationCost ||
+              (mediaKind === "video" &&
+                (routingEstimate?.configured === false || Boolean(routingIssue)))
+            }
             label={
               mediaKind === "image"
                 ? tr("studio_create")
@@ -991,11 +1099,23 @@ export default function GenerateStudio() {
             }
             costLabel={
               mediaKind === "video" && audioNc > 0
-                ? `${formatCredits(cost)} + ${audioNc} NC`
-                : formatCredits(cost)
+                ? `${formatCredits(generationCost)} + ${audioNc} NC`
+                : formatCredits(generationCost)
             }
             onClick={generate}
           />
+
+          {mediaKind === "video" && routingEstimate && (
+            <p className="text-[11px] text-white/45">
+              {routingEstimate.configured
+                ? `Estimate: ${routingEstimate.effectiveDurationSec}s · ~${routingEstimate.expectedLatencySeconds.p50}s typical, up to ${routingEstimate.expectedLatencySeconds.p90}s`
+                : "Selected route is not commercially configured."}
+              {routingEstimate.durationAdjusted ? " Duration adjusted to supported limit." : ""}
+            </p>
+          )}
+          {mediaKind === "video" && routingIssue && (
+            <p className="text-[11px] text-amber-300">{routingIssue}</p>
+          )}
 
           {error && <p className="text-sm text-rose-400">{error}</p>}
           {provider && hasOutput && (
@@ -1026,7 +1146,7 @@ export default function GenerateStudio() {
             creditBreakdown={
               mediaKind === "video"
                 ? tr("studio_preview_nc")
-                    .replace("{video}", String(cost))
+                    .replace("{video}", String(generationCost))
                     .replace("{audio}", String(audioNc))
                     .replace("{total}", String(sessionCost))
                 : null

@@ -5,6 +5,7 @@ import {
   type CostOpts,
   type GenerationKind,
 } from "@/lib/credits";
+import { settleProjectSpend } from "@/lib/projects/spend";
 
 export type AtomicChargeResult =
   | {
@@ -131,6 +132,24 @@ export async function atomicChargeCoins(opts: {
         };
       }
 
+      const existingCharge = await tx.coinLedger.findFirst({
+        where: {
+          generationId: opts.generationId,
+          type: "CHARGE",
+        },
+        select: { id: true, delta: true },
+      });
+      if (existingCharge) {
+        return {
+          ok: true as const,
+          cost: Math.max(0, -existingCharge.delta),
+          balanceAfter: user.coins,
+          userId: user.id,
+          ledgerId: existingCharge.id,
+          receiptId: "",
+        };
+      }
+
       const updated = await tx.user.updateMany({
         where: {
           id: opts.userId,
@@ -168,9 +187,9 @@ export async function atomicChargeCoins(opts: {
         },
       });
 
-      await tx.generation.update({
-        where: { id: opts.generationId },
-        data: { creditsCost: cost },
+      await settleProjectSpend(tx, {
+        generationId: opts.generationId,
+        credits: cost,
       });
 
       return {
@@ -185,6 +204,33 @@ export async function atomicChargeCoins(opts: {
 
     return result;
   } catch (e) {
+    /*
+     * The unique `(generation_id, type)` constraint handles concurrent worker
+     * delivery. If another transaction committed the charge first, return its
+     * receipt instead of treating the idempotent retry as a provider failure.
+     */
+    if ((e as { code?: string } | null)?.code === "P2002") {
+      const [existing, user] = await Promise.all([
+        prisma.coinLedger.findFirst({
+          where: {
+            generationId: opts.generationId,
+            type: "CHARGE",
+          },
+          select: { id: true, delta: true },
+        }),
+        prisma.user.findUnique({ where: { id: opts.userId } }),
+      ]);
+      if (existing && user) {
+        return {
+          ok: true,
+          cost: Math.max(0, -existing.delta),
+          balanceAfter: user.coins,
+          userId: user.id,
+          ledgerId: existing.id,
+          receiptId: "",
+        };
+      }
+    }
     return {
       ok: false,
       code: "ERROR",

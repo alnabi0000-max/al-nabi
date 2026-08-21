@@ -6,6 +6,7 @@ export const inngest = new Inngest({
 });
 
 export const GENERATION_EVENT = "alnabiy/generation.requested" as const;
+export const PROJECT_EXPORT_EVENT = "alnabiy/project-export.requested" as const;
 
 export const isProductionRuntime = () => process.env.NODE_ENV === "production";
 
@@ -17,6 +18,13 @@ export type GenerationRequestedEvent = {
   name: typeof GENERATION_EVENT;
   data: {
     generationId: string;
+  };
+};
+
+export type ProjectExportRequestedEvent = {
+  name: typeof PROJECT_EXPORT_EVENT;
+  data: {
+    exportId: string;
   };
 };
 

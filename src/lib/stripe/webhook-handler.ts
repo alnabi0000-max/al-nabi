@@ -12,6 +12,13 @@ import {
   getStripeSecretKey,
   getStripeWebhookSecret,
 } from "@/lib/stripe/server";
+import {
+  claimBillingWebhookEvent,
+  completeBillingWebhookEvent,
+  failBillingWebhookEvent,
+} from "@/lib/billing/webhook-events";
+import { syncStripeSubscription } from "@/lib/billing/entitlements";
+import { BillingProvider } from "@prisma/client";
 
 /**
  * Stripe webhook — checkout.session.completed → Purchase PAID + CoinLedger PURCHASE
@@ -22,16 +29,25 @@ export async function handleStripeWebhook(req: NextRequest) {
 
   if (!stripeKey) {
     return NextResponse.json(
-      { ok: false, error: "Stripe not configured" },
+      {
+        ok: false,
+        error: "Billing webhook is unavailable until Stripe is configured.",
+        code: "BILLING_CONFIGURATION_REQUIRED",
+      },
       { status: 503 }
     );
   }
 
+  let claimedEventId: string | null = null;
   try {
     const stripe = createStripeClient(stripeKey);
     if (!stripe) {
       return NextResponse.json(
-        { ok: false, error: "Stripe not configured" },
+        {
+          ok: false,
+          error: "Billing webhook is unavailable until Stripe is configured.",
+          code: "BILLING_CONFIGURATION_REQUIRED",
+        },
         { status: 503 }
       );
     }
@@ -44,8 +60,9 @@ export async function handleStripeWebhook(req: NextRequest) {
       return NextResponse.json(
         {
           ok: false,
-          error: "STRIPE_WEBHOOK_SECRET not configured",
-          code: "WEBHOOK_SECRET_REQUIRED",
+          error:
+            "Billing webhook is unavailable until its signing secret is configured.",
+          code: "BILLING_CONFIGURATION_REQUIRED",
         },
         { status: 503 }
       );
@@ -56,25 +73,94 @@ export async function handleStripeWebhook(req: NextRequest) {
     }
     try {
       event = stripe.webhooks.constructEvent(raw, sig, whSecret);
-    } catch (sigError) {
-      const msg =
-        sigError instanceof Error ? sigError.message : "Invalid signature";
-      console.error(
-        "[Alnabiy] Stripe webhook signature verification failed",
-        msg
+    } catch {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Webhook signature verification failed.",
+          code: "WEBHOOK_SIGNATURE_INVALID",
+        },
+        { status: 400 }
       );
-      return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+    }
+
+    const object = event.data.object as {
+      id?: string;
+    };
+    const claimed = await claimBillingWebhookEvent({
+      provider: BillingProvider.STRIPE,
+      providerEventId: event.id,
+      eventType: event.type,
+      providerObjectId: object.id || null,
+      rawPayload: raw,
+    });
+    claimedEventId = claimed.eventId;
+    if (!claimed.claimed) {
+      return NextResponse.json({
+        ok: true,
+        received: true,
+        duplicate: claimed.duplicate,
+        processing: claimed.inProgress,
+      });
     }
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as {
         id?: string;
+        mode?: string;
+        customer?: string | { id?: string } | null;
+        subscription?: string | { id?: string } | null;
         payment_intent?: string | { id?: string };
         metadata?: Record<string, string>;
         customer_details?: { address?: { country?: string } };
         amount_total?: number;
       };
       const meta = session.metadata || {};
+      const customerId =
+        typeof session.customer === "string"
+          ? session.customer
+          : session.customer?.id || null;
+      const subscriptionId =
+        typeof session.subscription === "string"
+          ? session.subscription
+          : session.subscription?.id || null;
+
+      if (session.mode === "subscription" || subscriptionId) {
+        const user =
+          (meta.user_id
+            ? await prisma.user.findUnique({ where: { id: meta.user_id } })
+            : null) ||
+          (customerId
+            ? await prisma.user.findUnique({
+                where: { stripeCustomerId: customerId },
+              })
+            : null);
+        if (!user || !customerId || !subscriptionId) {
+          throw new Error("SUBSCRIPTION_OWNER_UNRESOLVED");
+        }
+        if (!user.stripeCustomerId) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { stripeCustomerId: customerId },
+          });
+        }
+        const synced = await syncStripeSubscription({
+          userId: user.id,
+          customerId,
+          subscriptionId,
+          planCode: meta.plan_code || meta.price_id || "subscription",
+          status: meta.subscription_status || "active",
+          currentPeriodEnd: null,
+          cancelAtPeriodEnd: false,
+        });
+        await completeBillingWebhookEvent({
+          eventId: claimed.eventId,
+          userId: user.id,
+          subscriptionId: synced.subscription.id,
+        });
+        return NextResponse.json({ ok: true, received: true });
+      }
+
       const geoTier = (meta.geo_tier || "T1") as GeoTier;
       const geoCountry = meta.geo_country || "XX";
       const packId = meta.pack_id || "unknown";
@@ -107,6 +193,10 @@ export async function handleStripeWebhook(req: NextRequest) {
             })
             .catch(() => undefined);
         }
+        await completeBillingWebhookEvent({
+          eventId: claimed.eventId,
+          ignored: true,
+        });
         return NextResponse.json({
           ok: false,
           code: "GEO_MISMATCH",
@@ -116,6 +206,10 @@ export async function handleStripeWebhook(req: NextRequest) {
 
       const credit = coins + bonus;
       if (credit <= 0 || !session.id) {
+        await completeBillingWebhookEvent({
+          eventId: claimed.eventId,
+          ignored: true,
+        });
         return NextResponse.json({ ok: true, received: true, skipped: true });
       }
 
@@ -128,15 +222,6 @@ export async function handleStripeWebhook(req: NextRequest) {
           : null);
 
       if (!user) {
-        console.error(
-          "[Alnabiy] Stripe webhook: user not found — payment captured, no credit issued",
-          {
-            sessionId: session.id,
-            userIdMeta,
-            alnabiyKey,
-            purchaseIdMeta,
-          }
-        );
         if (purchaseIdMeta) {
           await prisma.purchase
             .updateMany({
@@ -145,10 +230,7 @@ export async function handleStripeWebhook(req: NextRequest) {
             })
             .catch(() => undefined);
         }
-        return NextResponse.json(
-          { ok: false, error: "User not found for credit" },
-          { status: 500 }
-        );
+        throw new Error("PURCHASE_OWNER_UNRESOLVED");
       }
 
       const pi =
@@ -184,6 +266,11 @@ export async function handleStripeWebhook(req: NextRequest) {
         );
       }
 
+      await completeBillingWebhookEvent({
+        eventId: claimed.eventId,
+        userId: user.id,
+        purchaseId: result.purchaseId,
+      });
       return NextResponse.json({
         ok: true,
         received: true,
@@ -192,10 +279,71 @@ export async function handleStripeWebhook(req: NextRequest) {
       });
     }
 
+    if (
+      event.type === "customer.subscription.updated" ||
+      event.type === "customer.subscription.deleted"
+    ) {
+      const subscription = event.data.object as {
+        id?: string;
+        customer?: string | { id?: string };
+        status?: string;
+        cancel_at_period_end?: boolean;
+        current_period_end?: number;
+        items?: { data?: Array<{ price?: { id?: string } }> };
+      };
+      const customerId =
+        typeof subscription.customer === "string"
+          ? subscription.customer
+          : subscription.customer?.id || null;
+      const user = customerId
+        ? await prisma.user.findUnique({
+            where: { stripeCustomerId: customerId },
+          })
+        : null;
+      if (!user || !customerId || !subscription.id || !subscription.status) {
+        throw new Error("SUBSCRIPTION_OWNER_UNRESOLVED");
+      }
+      const synced = await syncStripeSubscription({
+        userId: user.id,
+        customerId,
+        subscriptionId: subscription.id,
+        planCode: subscription.items?.data?.[0]?.price?.id || "subscription",
+        status: subscription.status,
+        currentPeriodEnd: subscription.current_period_end
+          ? new Date(subscription.current_period_end * 1000)
+          : null,
+        cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+      });
+      await completeBillingWebhookEvent({
+        eventId: claimed.eventId,
+        userId: user.id,
+        subscriptionId: synced.subscription.id,
+      });
+      return NextResponse.json({ ok: true, received: true });
+    }
+
+    await completeBillingWebhookEvent({
+      eventId: claimed.eventId,
+      ignored: true,
+    });
     return NextResponse.json({ ok: true, received: true });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Webhook error";
-    console.error("[Alnabiy] Stripe webhook error", msg);
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    if (claimedEventId) {
+      await failBillingWebhookEvent({
+        eventId: claimedEventId,
+        errorCode:
+          e instanceof Error && /^[A-Z_]+$/.test(e.message)
+            ? e.message
+            : "WEBHOOK_PROCESSING_FAILED",
+      }).catch(() => undefined);
+    }
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Billing event processing failed and will require reconciliation.",
+        code: "BILLING_EVENT_PROCESSING_FAILED",
+      },
+      { status: 500 }
+    );
   }
 }

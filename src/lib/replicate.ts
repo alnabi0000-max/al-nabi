@@ -37,7 +37,6 @@ const REPLICATE_MODEL_DEFAULTS = {
   kling25: "kwaivgi/kling-v2.5-turbo-pro",
   kling3: "kwaivgi/kling-v3-video",
   lumaRay2: "luma/ray",
-  runway: "kwaivgi/kling-v2.6",
   wan: "wan-video/wan-2.2-t2v-fast",
   minimax: "minimax/hailuo-02",
 } as const;
@@ -48,7 +47,6 @@ export type ReplicateModelSlot =
   | "kling25"
   | "kling3"
   | "lumaRay2"
-  | "runway"
   | "wan"
   | "minimax";
 
@@ -88,13 +86,6 @@ export const REPLICATE_MODELS = {
       REPLICATE_MODEL_DEFAULTS.lumaRay2
     );
   },
-  get runway() {
-    return modelSlot(
-      "runway",
-      "REPLICATE_RUNWAY_MODEL",
-      REPLICATE_MODEL_DEFAULTS.runway
-    );
-  },
   get wan() {
     return modelSlot("wan", "REPLICATE_WAN_MODEL", REPLICATE_MODEL_DEFAULTS.wan);
   },
@@ -106,6 +97,31 @@ export const REPLICATE_MODELS = {
     );
   },
 };
+
+/**
+ * The exact Replicate endpoint selected for a supported public engine.
+ * `runway-gen3` intentionally returns null: it must never be silently routed
+ * to a Kling model under a Runway label.
+ */
+export function getReplicateVideoModel(
+  engine: VideoEngineId
+): string | null {
+  switch (engine) {
+    case "auto":
+    case "kling-v3":
+      return REPLICATE_MODELS.kling3;
+    case "kling-v2.5":
+      return REPLICATE_MODELS.kling25;
+    case "luma-ray2":
+      return REPLICATE_MODELS.lumaRay2;
+    case "wan-2.5":
+      return REPLICATE_MODELS.wan;
+    case "minimax":
+      return REPLICATE_MODELS.minimax;
+    case "runway-gen3":
+      return null;
+  }
+}
 
 /** @deprecated use VideoEngineId — kept for callers */
 export type VideoEngine = VideoEngineId | "wan-2.5" | "minimax" | "auto";
@@ -317,17 +333,15 @@ export async function generateSd35Image(opts: {
 
 async function generateKlingVideo(
   opts: VideoOpts,
-  version: "v2.5" | "v3" | "v2.6"
+  version: "v2.5" | "v3"
 ): Promise<{ url: string; provider: "replicate"; model: string }> {
   requireReplicateClient();
   const model =
     version === "v3"
       ? REPLICATE_MODELS.kling3
-      : version === "v2.6"
-        ? REPLICATE_MODELS.runway
-        : REPLICATE_MODELS.kling25;
+      : REPLICATE_MODELS.kling25;
 
-  const nativeAudio = version === "v3" || version === "v2.6";
+  const nativeAudio = version === "v3";
   const input = klingShared(opts, nativeAudio);
 
   if (version === "v3") {
@@ -436,7 +450,9 @@ export async function generateReplicateVideo(opts: {
       case "luma-ray2":
         return { id: "luma-ray2", run: () => generateLumaRay2Video(base) };
       case "runway-gen3":
-        return { id: "runway-gen3", run: () => generateKlingVideo(base, "v2.6") };
+        throw new Error(
+          "PROVIDER_ADAPTER_UNAVAILABLE: runway-gen3 requires a direct Runway adapter"
+        );
       case "minimax":
         return { id: "minimax", run: () => generateMiniMaxVideo(base) };
       case "wan-2.5":

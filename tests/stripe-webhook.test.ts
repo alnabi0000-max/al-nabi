@@ -20,7 +20,7 @@ describe("Stripe webhook", () => {
 
     await expect(response.json()).resolves.toMatchObject({
       ok: false,
-      error: "Stripe not configured",
+      code: "BILLING_CONFIGURATION_REQUIRED",
     });
     expect(response.status).toBe(503);
   });

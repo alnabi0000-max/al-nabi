@@ -26,6 +26,8 @@ import {
   ObjectStorageConfigurationError,
   persistRemoteAsset,
 } from "@/lib/storage/object-storage";
+import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { enforceGenerationTrust } from "@/lib/trust/generation-gate";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -65,6 +67,7 @@ export async function POST(req: NextRequest) {
     const ensured = await ensureRequestLedgerUser({
       alnabiyKey: body.alnabiyKey,
       allowGuest: isSoftAuthEnabled(),
+      request: req,
     });
     if (!ensured) {
       return apiError(
@@ -73,6 +76,28 @@ export async function POST(req: NextRequest) {
       );
     }
     const user = ensured.user;
+    const trustFailure = await enforceGenerationTrust({
+      userId: user.id,
+      surface: "producer-render",
+      text: [body.brief, body.voiceScript].filter(Boolean).join("\n"),
+    });
+    if (trustFailure) {
+      return apiError(trustFailure.message, {
+        status:
+          trustFailure.code === "SAFETY_UNAVAILABLE" ||
+          trustFailure.code === "TRUST_UNAVAILABLE"
+            ? 503
+            : trustFailure.code === "CONSENT_REQUIRED"
+              ? 428
+              : trustFailure.code === "ENTITLEMENT_REQUIRED"
+                ? 403
+                : 422,
+        code: trustFailure.code,
+        extra: trustFailure.missingConsents
+          ? { missingConsents: trustFailure.missingConsents }
+          : undefined,
+      });
+    }
     const durationSec = body.durationSec || 8;
 
     const preflight = await assertSufficientCoins({
@@ -166,6 +191,10 @@ export async function POST(req: NextRequest) {
       generationId: generation.id,
       kind: "video",
     });
+    const deliveryUrl = stored.url || (await createSignedGetUrl(stored.key));
+    if (!deliveryUrl) {
+      throw new Error("Private media could not be signed for delivery");
+    }
     await prisma.generation.update({
       where: { id: generation.id },
       data: {
@@ -194,7 +223,7 @@ export async function POST(req: NextRequest) {
       success: true,
       ok: true,
       jobId: result.jobId,
-      videoUrl: stored.url,
+      videoUrl: deliveryUrl,
       foleyCount: result.foleyCount,
       bgmMood: result.bgmMood,
       bgmTrackId: result.bgmTrackId,

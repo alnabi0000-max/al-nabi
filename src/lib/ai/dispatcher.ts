@@ -17,11 +17,14 @@ import {
 import {
   CLIP_DURATION_SEC,
   generateReplicateImage,
-  generateReplicateVideo,
   isReplicateConfigured,
 } from "@/lib/replicate";
 import { expandPromptForVideoGeneration } from "@/lib/ai/prompt-expander";
 import { whiteLabelEngine, whiteLabelModel } from "@/lib/models";
+import {
+  dispatchVideoWithProvider,
+  type CinematicControls,
+} from "@/lib/ai/provider-registry";
 
 export type DispatchResult = {
   url: string;
@@ -40,6 +43,8 @@ export type DispatchVideoInput = {
   frameRate?: FrameRate | number;
   durationSec?: number;
   aspect?: "16:9" | "9:16" | "1:1";
+  sourceVideoId?: string;
+  cinematicControls?: CinematicControls;
 };
 
 export type DispatchImageInput = {
@@ -62,9 +67,7 @@ function publicize(
   };
 }
 
-/**
- * Video — Replicate only (Kling / Luma Ray-2 / Wan / MiniMax)
- */
+/** Video — capability-checked provider route (currently Replicate-backed). */
 export async function dispatchVideo(
   opts: DispatchVideoInput
 ): Promise<DispatchResult> {
@@ -75,12 +78,7 @@ export async function dispatchVideo(
     frameRate: opts.frameRate as FrameRate | undefined,
   });
 
-  if (!isReplicateConfigured()) {
-    /* Never charge a user for a placeholder — caller must fail + refund. */
-    throw new Error("REPLICATE_NOT_CONFIGURED");
-  }
-
-  const raw = await generateReplicateVideo({
+  const raw = await dispatchVideoWithProvider({
     prompt,
     imageUrl: opts.imageUrl,
     endImageUrl: opts.endImageUrl,
@@ -89,9 +87,11 @@ export async function dispatchVideo(
     durationSec: opts.durationSec,
     aspect: opts.aspect,
     quality: opts.quality,
+    sourceVideoId: opts.sourceVideoId,
+    cinematicControls: opts.cinematicControls,
   });
 
-  return publicize(raw, engine);
+  return publicize(raw, raw.engineId || engine);
 }
 
 /**

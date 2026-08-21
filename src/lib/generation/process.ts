@@ -8,6 +8,7 @@ import {
   assertPersistentObjectStorage,
   persistRemoteAsset,
 } from "@/lib/storage/object-storage";
+import { createSignedGetUrl } from "@/lib/storage/signed-url";
 import type { GenerationType } from "@prisma/client";
 import {
   isImageEngineId,
@@ -30,6 +31,7 @@ import { resolveBgmSelection, muxVideoWithAmbientBgm } from "@/lib/bgm";
 import type { BgmMode } from "@/lib/bgm/types";
 import { recordInterestFromGeneration } from "@/lib/producer/interest-profile";
 import { isFfmpegAvailable } from "@/lib/ffmpeg-worker";
+import type { CinematicControls } from "@/lib/ai/provider-registry";
 
 function isImageType(type: GenerationType): boolean {
   return type === "IMAGE";
@@ -49,6 +51,8 @@ type ScenesMeta = {
   bgmMode?: "ai" | "manual" | "off";
   bgmTrackId?: string | null;
   endImageUrl?: string | null;
+  sourceVideoId?: string | null;
+  cinematicControls?: CinematicControls | null;
 };
 
 /**
@@ -71,10 +75,16 @@ export async function processGenerationJob(generationId: string): Promise<{
   if (!generation) {
     return { ok: false, error: "Generation not found" };
   }
-  if (generation.status === "COMPLETED" && generation.resultUrl) {
+  if (
+    generation.status === "COMPLETED" &&
+    (generation.resultUrl || generation.r2Key)
+  ) {
     return {
       ok: true,
-      resultUrl: generation.resultUrl,
+      resultUrl:
+        generation.r2Key
+          ? (await createSignedGetUrl(generation.r2Key)) || undefined
+          : generation.resultUrl || undefined,
       creditsCost: generation.creditsCost,
     };
   }
@@ -115,6 +125,10 @@ export async function processGenerationJob(generationId: string): Promise<{
         errorMessage: null,
       },
     });
+    await prisma.modelRun.updateMany({
+      where: { generationId },
+      data: { status: "RUNNING", failureCode: null },
+    });
 
     /* Debit only once, right before paid work (provider or billed mock). */
     if (creditsCost <= 0) {
@@ -137,12 +151,10 @@ export async function processGenerationJob(generationId: string): Promise<{
       });
 
       if (!charge.ok) {
-        await prisma.generation.update({
-          where: { id: generationId },
-          data: {
-            status: "FAILED",
-            errorMessage: charge.message,
-          },
+        await failAndRefundGeneration({
+          generationId,
+          error: charge.message,
+          area: "project-charge-preflight",
         });
         return {
           ok: false,
@@ -167,6 +179,23 @@ export async function processGenerationJob(generationId: string): Promise<{
           r2Key: null,
           provider: "Al-Nabi Studio",
           errorMessage: null,
+        },
+      });
+      await prisma.renderVersion.updateMany({
+        where: { generationId },
+        data: {
+          status: "COMPLETED",
+          outputUrl: resultUrl,
+          outputR2Key: null,
+          creditsCost,
+        },
+      });
+      await prisma.modelRun.updateMany({
+        where: { generationId },
+        data: {
+          status: "COMPLETED",
+          responseMetadata: { mock: true, delivered: true },
+          failureCode: null,
         },
       });
       return { ok: true, resultUrl, balanceAfter, creditsCost };
@@ -221,6 +250,8 @@ export async function processGenerationJob(generationId: string): Promise<{
           CLIP_DURATION_SEC,
           generation.durationSec || CLIP_DURATION_SEC
         ),
+        sourceVideoId: meta.sourceVideoId || undefined,
+        cinematicControls: meta.cinematicControls || undefined,
       });
       providerUrl = clip.url;
       provider = whiteLabelEngine(clip.provider);
@@ -287,6 +318,11 @@ export async function processGenerationJob(generationId: string): Promise<{
     });
 
     const publicProvider = whiteLabelEngine(engineId) || provider;
+    const deliveryUrl =
+      stored.url || (await createSignedGetUrl(stored.key));
+    if (!deliveryUrl) {
+      throw new Error("Private media could not be signed for delivery");
+    }
 
     await prisma.generation.update({
       where: { id: generationId },
@@ -296,6 +332,30 @@ export async function processGenerationJob(generationId: string): Promise<{
         r2Key: stored.key,
         provider: `${publicProvider} · ${model}`,
         errorMessage: null,
+      },
+    });
+    await prisma.renderVersion.updateMany({
+      where: { generationId },
+      data: {
+        status: "COMPLETED",
+        provider,
+        model,
+        outputUrl: stored.url,
+        outputR2Key: stored.key,
+        creditsCost,
+      },
+    });
+    await prisma.modelRun.updateMany({
+      where: { generationId },
+      data: {
+        status: "COMPLETED",
+        responseMetadata: {
+          delivered: true,
+          provider,
+          model,
+          durationSec: generation.durationSec,
+        },
+        failureCode: null,
       },
     });
 
@@ -309,7 +369,7 @@ export async function processGenerationJob(generationId: string): Promise<{
 
     return {
       ok: true,
-      resultUrl: stored.url,
+      resultUrl: deliveryUrl,
       balanceAfter,
       creditsCost,
     };

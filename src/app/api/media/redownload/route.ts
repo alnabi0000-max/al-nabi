@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { apiError, apiJson } from "@/lib/api/json-response";
 import { ARCHIVE_REDOWNLOAD_FEE_NC } from "@/lib/credits";
 import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
+import { createSignedGetUrl } from "@/lib/storage/signed-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,10 +41,22 @@ export async function POST(req: NextRequest) {
         status: "COMPLETED",
       },
     });
-    if (!generation?.resultUrl) {
+    if (!generation || (!generation.r2Key && !generation.resultUrl)) {
       return apiError("Asset not found in Cloud Vault", {
         status: 404,
         code: "NOT_FOUND",
+      });
+    }
+
+    const deliveryUrl = generation.r2Key
+      ? await createSignedGetUrl(generation.r2Key)
+      : process.env.NODE_ENV === "production"
+        ? null
+        : generation.resultUrl;
+    if (!deliveryUrl) {
+      return apiError("Private media is unavailable for signed delivery", {
+        status: 503,
+        code: "PRIVATE_MEDIA_UNAVAILABLE",
       });
     }
 
@@ -111,8 +124,8 @@ export async function POST(req: NextRequest) {
     return apiJson({
       success: true,
       ok: true,
-      url: generation.resultUrl,
-      signedUrl: generation.resultUrl,
+      url: deliveryUrl,
+      signedUrl: deliveryUrl,
       feeNc: fee,
       balanceAfter,
       currency: "NC",

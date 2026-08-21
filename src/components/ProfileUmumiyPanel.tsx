@@ -8,6 +8,7 @@ import { KeyRound, LogOut, Sparkles, UserRound } from "lucide-react";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import { profileHref } from "@/lib/profile-tabs";
 import clsx from "clsx";
+import { AccountTrustPanel } from "@/components/AccountTrustPanel";
 
 type AuthTab = "password" | "key" | "magic";
 
@@ -24,6 +25,7 @@ export function ProfileUmumiyPanel() {
     signInWithPassword,
     signOut,
     authReady,
+    isAuthenticated,
     authMode,
     notify,
   } = useMaster();
@@ -36,7 +38,7 @@ export function ProfileUmumiyPanel() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const signedIn = Boolean(email && alnabiyKey);
+  const signedIn = Boolean(isAuthenticated && email);
   const afterAuth = profileHref("kabinet");
 
   useEffect(() => {
@@ -133,31 +135,34 @@ export function ProfileUmumiyPanel() {
       </div>
 
       {signedIn ? (
-        <div className="nabi-card space-y-4">
-          <h3 className="flex items-center gap-2 text-sm font-semibold text-nabi-muted">
-            <UserRound size={16} /> {tr("profile_account_title")}
-          </h3>
-          <div className="space-y-1 text-sm">
-            <p>
-              <span className="text-nabi-muted">Email:</span> {email}
-            </p>
-            <p className="break-all font-mono text-xs text-nabi-neon">
-              {alnabiyKey}
-            </p>
-            <p className="text-[10px] text-nabi-muted">
-              {tr("balance_line", { n: coins.toLocaleString() })}
-            </p>
+        <>
+          <div className="nabi-card space-y-4">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-nabi-muted">
+              <UserRound size={16} /> {tr("profile_account_title")}
+            </h3>
+            <div className="space-y-1 text-sm">
+              <p>
+                <span className="text-nabi-muted">Email:</span> {email}
+              </p>
+              <p className="break-all font-mono text-xs text-nabi-neon">
+                {alnabiyKey}
+              </p>
+              <p className="text-[10px] text-nabi-muted">
+                {tr("balance_line", { n: coins.toLocaleString() })}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onLogout}
+              disabled={loading}
+              className="nabi-btn-ghost flex w-full items-center justify-center gap-2"
+            >
+              <LogOut size={16} />
+              {tr("logout")}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onLogout}
-            disabled={loading}
-            className="nabi-btn-ghost flex w-full items-center justify-center gap-2"
-          >
-            <LogOut size={16} />
-            {tr("logout")}
-          </button>
-        </div>
+          <AccountTrustPanel />
+        </>
       ) : (
         <>
           <div className="space-y-4 [&:not(:has(button))]:hidden">

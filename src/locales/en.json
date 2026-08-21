@@ -636,5 +636,14 @@
   "admin_kind_bonus": "Bonus",
   "admin_kind_referral": "Referral",
   "admin_kind_rollback": "Rollback",
-  "admin_kind_adjustment": "Adjustment"
+  "admin_kind_adjustment": "Adjustment",
+  "trust_title": "Trust, safety & privacy",
+  "trust_required_notice": "Required notices must be accepted before new generations or media processing.",
+  "trust_accept_required": "Accept required notices",
+  "trust_entitlement": "Current entitlement",
+  "trust_no_entitlement": "No paid entitlement is active. Available free usage is determined securely by your account.",
+  "trust_safety_outcomes": "Recent safety outcomes",
+  "trust_export": "Download account export",
+  "trust_erasure": "Account erasure",
+  "trust_erasure_hint": "This removes eligible private media and project data. Billing or legal retention holds are reported honestly and prevent deletion."
 }

@@ -38,7 +38,9 @@ export const STUDIO_VIDEO_ENGINE_IDS: VideoEngineId[] = [
   "auto",
   "kling-v3",
   "kling-v2.5",
-  "runway-gen3",
+  "luma-ray2",
+  "wan-2.5",
+  "minimax",
 ];
 
 export type ModelMedia = "video" | "image" | "audio";
@@ -62,7 +64,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
     media: "video",
     label: "Auto",
     vendor: "Al-Nabi",
-    description: "Strongest route: 15s, native sound, up to 4K",
+    description: "Capability-checked 15s Replicate route, up to 4K",
     coinMultiplier: 1.55,
   },
   {
@@ -70,7 +72,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
     media: "video",
     label: "Flagship",
     vendor: "Al-Nabi",
-    description: "15s cinematic video with native audio",
+    description: "15s Replicate-hosted cinematic route with audio support",
     coinMultiplier: 1.55,
   },
   {
@@ -78,15 +80,15 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
     media: "video",
     label: "Cinematic",
     vendor: "Al-Nabi",
-    description: "Fast high-motion cinematic clips",
+    description: "Replicate-hosted 10s high-motion cinematic route",
     coinMultiplier: 1.25,
   },
   {
     id: "runway-gen3",
     media: "video",
-    label: "Cinema Sound",
-    vendor: "Al-Nabi",
-    description: "Lip-sync dialogue and scene audio in one pass",
+    label: "Runway direct (unconfigured)",
+    vendor: "Unavailable",
+    description: "Requires a configured direct Runway commercial adapter",
     coinMultiplier: 1.45,
   },
   {
@@ -94,7 +96,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
     media: "video",
     label: "Motion Pro",
     vendor: "Al-Nabi",
-    description: "Fluid dreamlike motion",
+    description: "Replicate-hosted motion route; input capabilities are checked",
     coinMultiplier: 1.35,
   },
   {
@@ -102,7 +104,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
     media: "video",
     label: "Stream",
     vendor: "Al-Nabi",
-    description: "Fast draft video route",
+    description: "Fast Replicate-hosted 5s text-only draft route",
     coinMultiplier: 1.0,
   },
   {
@@ -110,7 +112,7 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
     media: "video",
     label: "Pulse",
     vendor: "Al-Nabi",
-    description: "Real-world physics, short-form motion",
+    description: "Replicate-hosted short-form route (6–10s by resolution)",
     coinMultiplier: 1.0,
   },
 ];
@@ -172,9 +174,7 @@ export function normalizeRenderQuality(
 
 /** Engines that emit dialogue / Foley in the video file itself. */
 export function engineHasNativeAudio(engine?: string | null): boolean {
-  return (
-    engine === "auto" || engine === "kling-v3" || engine === "runway-gen3"
-  );
+  return engine === "auto" || engine === "kling-v3";
 }
 
 export function videoEngineMultiplier(engine?: string | null): number {

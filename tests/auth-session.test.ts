@@ -151,10 +151,10 @@ describe("API route protection policy", () => {
     expect(requiresSessionToken("/api/auth/otpx")).toBe(true);
   });
 
-  it("exempts secret-guarded surfaces from the user-session gate", () => {
-    expect(isSecretGuardedApiPath("/api/admin/system")).toBe(true);
+  it("keeps role-admin endpoints behind the user-session gate", () => {
+    expect(isSecretGuardedApiPath("/api/admin/system")).toBe(false);
     expect(isSecretGuardedApiPath("/api/cron/model-watch")).toBe(true);
-    expect(requiresSessionToken("/api/admin/system")).toBe(false);
+    expect(requiresSessionToken("/api/admin/system")).toBe(true);
   });
 
   it("ignores non-API paths", () => {

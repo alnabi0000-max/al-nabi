@@ -12,7 +12,8 @@ const schema = z.object({
 });
 
 /**
- * POST — R2/S3 signed URL yoki lokal media URL qaytaradi.
+ * POST — owner-authorized R2/S3 signed URL.
+ * Persistent media is never returned through a public bucket URL.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -107,20 +108,28 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Local media uses the authenticated session cookie; never append a
-    // reusable bearer key to the URL.
-    if (fallbackUrl) {
+    // Local development media uses the authenticated application route. Never
+    // return an arbitrary provider/public URL as a "signed" delivery URL.
+    if (
+      fallbackUrl &&
+      process.env.NODE_ENV !== "production" &&
+      fallbackUrl.startsWith("/api/media/")
+    ) {
       return NextResponse.json({
         ok: true,
-        mode: "direct",
+        mode: "local",
         signedUrl: fallbackUrl,
         url: fallbackUrl,
       });
     }
 
     return NextResponse.json(
-      { ok: false, error: "No media key or URL" },
-      { status: 400 }
+      {
+        ok: false,
+        code: "PRIVATE_MEDIA_REQUIRED",
+        error: "No private media object is available for signed delivery.",
+      },
+      { status: 409 }
     );
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Sign failed";

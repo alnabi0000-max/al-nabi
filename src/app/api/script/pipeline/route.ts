@@ -27,12 +27,13 @@ import { WATERMARK, formatInsufficientFundsMessage } from "@/lib/credits";
 import type { VideoStyle } from "@/lib/types";
 import type { WordTiming } from "@/lib/audio";
 import { guardSensitiveRequest } from "@/lib/security/request-guard";
-import { moderateText } from "@/lib/security/moderation";
 import {
   assertPersistentObjectStorage,
   ObjectStorageConfigurationError,
   persistRemoteAsset,
 } from "@/lib/storage/object-storage";
+import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { enforceGenerationTrust } from "@/lib/trust/generation-gate";
 
 const schema = z.object({
   script: z.string().min(40).max(50000),
@@ -92,41 +93,13 @@ export async function POST(req: NextRequest) {
     if (blocked) return blocked;
 
     const body = schema.parse(await req.json());
-    await assertFfmpegAvailable();
-    assertPersistentObjectStorage();
-
-    const gate = AlnabiySentinelEngine.processInput(body.script);
-    if (!gate.isSafe) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "SENTINEL_BLOCKED",
-          error: gate.rejectionReason,
-          brandTag: gate.brandTag,
-        },
-        { status: 422 }
-      );
-    }
-
-    const moderation = await moderateText(body.script);
-    if (!moderation.allowed) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "MODERATION_BLOCKED",
-          error: moderation.reason || "Content rejected by moderation",
-          categories: moderation.categories,
-        },
-        { status: 422 }
-      );
-    }
-
     const { ensureRequestLedgerUser, isSoftAuthEnabled } = await import(
       "@/lib/auth/ensure-request-user"
     );
     const ensured = await ensureRequestLedgerUser({
       alnabiyKey: body.alnabiyKey,
       allowGuest: isSoftAuthEnabled(),
+      request: req,
     });
     if (!ensured) {
       return NextResponse.json(
@@ -134,6 +107,37 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+    const trustFailure = await enforceGenerationTrust({
+      userId: ensured.user.id,
+      surface: "script-pipeline",
+      text: body.script,
+    });
+    if (trustFailure) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: trustFailure.code,
+          error: trustFailure.message,
+          missingConsents: trustFailure.missingConsents,
+        },
+        {
+          status:
+            trustFailure.code === "SAFETY_UNAVAILABLE" ||
+            trustFailure.code === "TRUST_UNAVAILABLE"
+              ? 503
+              : trustFailure.code === "CONSENT_REQUIRED"
+                ? 428
+                : trustFailure.code === "ENTITLEMENT_REQUIRED"
+                  ? 403
+                  : 422,
+        }
+      );
+    }
+    await assertFfmpegAvailable();
+    assertPersistentObjectStorage();
+
+    /* Trust enforcement has already made the deterministic safety decision. */
+    const gate = AlnabiySentinelEngine.processInput(body.script);
     ledgerKey = ensured.user.alnabiyKey || body.alnabiyKey;
 
     const costOpts = {
@@ -366,7 +370,10 @@ export async function POST(req: NextRequest) {
       kind: "video",
     });
     const sceneCount = enriched.length;
-    const resultUrl = stored.url;
+    const resultUrl = stored.url || (await createSignedGetUrl(stored.key));
+    if (!resultUrl) {
+      throw new Error("Private media could not be signed for delivery");
+    }
 
     await persistJobAsset({
       jobId,
@@ -377,7 +384,7 @@ export async function POST(req: NextRequest) {
       prompt: analysis.title,
       script: body.script,
       enhancedPrompt: analysis.title,
-      resultUrl,
+      resultUrl: stored.url,
       durationSec: body.durationSec,
       emotionMode: body.emotionMode,
       style: body.style,
@@ -396,7 +403,6 @@ export async function POST(req: NextRequest) {
         creditsCost: charge?.cost || expectedCost,
         balanceAfter: charge?.balanceAfter,
         receiptId: charge?.receiptId,
-        resultPath,
         resultUrl,
         clipDurationSec: CLIP_DURATION_SEC,
         analysis: {
