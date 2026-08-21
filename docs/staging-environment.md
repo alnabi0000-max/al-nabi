@@ -21,6 +21,13 @@ print values.
    [staging release verification](./staging-release-e2e.md), then record every
    smoke-flow result.
 
+## Git deployment branch
+
+The `al-nabi-staging` Vercel project tracks
+`cursor/admin-analytics-dashboard` as its Production branch. Do not point that
+project at `main` while staging the current release: `main` intentionally does
+not yet include the staged project, trust, and billing features.
+
 ## Redacted variable manifest
 
 ```dotenv
