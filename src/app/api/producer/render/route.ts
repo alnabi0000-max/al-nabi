@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
       message:
         "Final cut ready — picture, voice, sound design, and ambient score in one file.",
     });
-  } catch (e) {
+  } catch (e: unknown) {
     if (chargedUserId && generationId) {
       await atomicRollbackCoins({
         userId: chargedUserId,
