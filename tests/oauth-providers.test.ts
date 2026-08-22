@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { isOAuthProviderEnabled } from "@/lib/auth/oauth-providers";
+import {
+  isOAuthProviderEnabled,
+  shouldOfferGoogleOAuth,
+} from "@/lib/auth/oauth-providers";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -16,6 +19,21 @@ function stubSupabase() {
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test"
   );
 }
+
+describe("shouldOfferGoogleOAuth", () => {
+  it("hides Google only when the probe says the provider is off", () => {
+    expect(shouldOfferGoogleOAuth({ google: false })).toBe(false);
+  });
+
+  it("starts Google when the probe confirms the provider", () => {
+    expect(shouldOfferGoogleOAuth({ google: true })).toBe(true);
+  });
+
+  it("starts Google when the probe is down or rate-limited", () => {
+    expect(shouldOfferGoogleOAuth(null)).toBe(true);
+    expect(shouldOfferGoogleOAuth({})).toBe(true);
+  });
+});
 
 describe("isOAuthProviderEnabled", () => {
   it("returns false when GoTrue says the provider is not enabled", async () => {

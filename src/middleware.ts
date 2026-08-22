@@ -11,7 +11,10 @@ import {
   withPersistentCookieOptions,
 } from "@/lib/auth/session-ttl";
 import { inspectAccessToken } from "@/lib/auth/jwt";
-import { requiresSessionToken } from "@/lib/auth/protected-routes";
+import {
+  isPublicApiPath,
+  requiresSessionToken,
+} from "@/lib/auth/protected-routes";
 import { isPlaceholderEnvValue } from "@/lib/env";
 import { isAdminUiPath } from "@/lib/admin/gate-path";
 import {
@@ -110,26 +113,30 @@ export async function middleware(request: NextRequest) {
       const limited = await rateLimitApi(id);
       if (!limited.success) {
         const unavailable = limited.source === "unavailable";
-        return NextResponse.json(
-          {
-            ok: false,
-            code: unavailable ? "RATE_LIMIT_UNAVAILABLE" : "RATE_LIMITED",
-            error: unavailable
-              ? "Request protection is temporarily unavailable"
-              : "Too many requests",
-          },
-          {
-            status: unavailable ? 503 : 429,
-            headers: {
-              ...rateLimitHeaders(limited),
-              "Retry-After": String(
-                unavailable
-                  ? 60
-                  : Math.max(1, Math.ceil((limited.reset - Date.now()) / 1000))
-              ),
+        // Login/OAuth probes must still work if Redis is down. Generation and
+        // other session APIs stay fail-closed.
+        if (!(unavailable && isPublicApiPath(pathname))) {
+          return NextResponse.json(
+            {
+              ok: false,
+              code: unavailable ? "RATE_LIMIT_UNAVAILABLE" : "RATE_LIMITED",
+              error: unavailable
+                ? "Request protection is temporarily unavailable"
+                : "Too many requests",
             },
-          }
-        );
+            {
+              status: unavailable ? 503 : 429,
+              headers: {
+                ...rateLimitHeaders(limited),
+                "Retry-After": String(
+                  unavailable
+                    ? 60
+                    : Math.max(1, Math.ceil((limited.reset - Date.now()) / 1000))
+                ),
+              },
+            }
+          );
+        }
       }
     }
   }

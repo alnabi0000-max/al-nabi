@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMaster } from "@/context/MasterControllerContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
+import { shouldOfferGoogleOAuth } from "@/lib/auth/oauth-providers";
 import clsx from "clsx";
 
 type Props = {
@@ -65,7 +66,7 @@ export function SocialAuthButtons({
       const probe = (await probeRes.json().catch(() => null)) as
         | { google?: boolean }
         | null;
-      if (!probeRes.ok || probe?.google !== true) {
+      if (!shouldOfferGoogleOAuth(probe)) {
         notify({
           message: tr("auth_google_coming_soon"),
           type: "info",

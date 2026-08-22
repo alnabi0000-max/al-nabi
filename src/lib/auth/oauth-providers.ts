@@ -4,6 +4,15 @@ export type SocialOAuthProvider = "google" | "apple";
 
 const DEFAULT_PROBE_TIMEOUT_MS = 2500;
 
+/**
+ * The Google button must only hide itself when GoTrue says the provider is
+ * disabled. A 503 from our own rate limiter, a timeout, or a malformed probe
+ * must not be treated as "coming soon".
+ */
+export function shouldOfferGoogleOAuth(probe: { google?: boolean } | null): boolean {
+  return probe?.google !== false;
+}
+
 function supabaseAuthOrigin(): { url: string; anon: string } | null {
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/\/$/, "");
   const anon = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
