@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+import { createRouteHandlerClient } from "@/lib/supabase/route-client";
 import { onboardNewUser } from "@/lib/auth/onboarding";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { resolveAuthProvider } from "@/lib/auth/providers";
@@ -17,6 +17,10 @@ import {
  * get the authorization code forwarded to the app's custom scheme instead: the
  * PKCE verifier lives on the device, so only the app can complete the
  * exchange.
+ *
+ * Web clients must copy session cookies onto the redirect response. Next.js 15
+ * `cookies().set()` can be a no-op here; `createRouteHandlerClient` attaches
+ * Set-Cookie the same way email/password login does.
  */
 
 /** Only allow same-site relative paths — blocks `//evil.com`, `https://evil.com`, `\\evil.com`. */
@@ -26,7 +30,7 @@ function safeNextPath(raw: string | null): string {
   return raw;
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = safeNextPath(searchParams.get("next"));
@@ -52,32 +56,44 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/profile?auth=local`);
   }
 
-  if (code) {
-    const supabase = await createClient();
-    if (!supabase) {
-      return NextResponse.redirect(`${origin}/profile?auth=error`);
-    }
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error && data.user) {
-      try {
-        await onboardNewUser(
-          {
-            id: data.user.id,
-            email: data.user.email || `${data.user.id}@users.alnabiy.local`,
-            name:
-              (data.user.user_metadata?.full_name as string | undefined) ||
-              (data.user.user_metadata?.name as string | undefined) ||
-              null,
-            authProvider: resolveAuthProvider(data.user),
-          },
-          { source: "auth_callback", sendEmail: true }
-        );
-      } catch (e) {
-        console.warn("[Alnabiy] onboardNewUser failed", e);
-      }
-      return NextResponse.redirect(`${origin}${next}`);
-    }
+  if (!code) {
+    console.warn("[Alnabiy] auth callback missing code", {
+      error: searchParams.get("error"),
+      errorDescription: searchParams.get("error_description"),
+    });
+    return NextResponse.redirect(`${origin}/profile?auth=error`);
   }
 
-  return NextResponse.redirect(`${origin}/profile?auth=error`);
+  const route = createRouteHandlerClient(request);
+  if (!route) {
+    console.warn("[Alnabiy] auth callback: route client unavailable");
+    return NextResponse.redirect(`${origin}/profile?auth=error`);
+  }
+
+  const { data, error } = await route.supabase.auth.exchangeCodeForSession(code);
+  if (error || !data.user) {
+    console.warn("[Alnabiy] exchangeCodeForSession failed", error);
+    return route.applyCookies(
+      NextResponse.redirect(`${origin}/profile?auth=error`)
+    );
+  }
+
+  try {
+    await onboardNewUser(
+      {
+        id: data.user.id,
+        email: data.user.email || `${data.user.id}@users.alnabiy.local`,
+        name:
+          (data.user.user_metadata?.full_name as string | undefined) ||
+          (data.user.user_metadata?.name as string | undefined) ||
+          null,
+        authProvider: resolveAuthProvider(data.user),
+      },
+      { source: "auth_callback", sendEmail: true }
+    );
+  } catch (e) {
+    console.warn("[Alnabiy] onboardNewUser failed", e);
+  }
+
+  return route.applyCookies(NextResponse.redirect(`${origin}${next}`));
 }
