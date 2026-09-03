@@ -21,17 +21,23 @@ export interface AuthIdentity {
   touchLogin?: boolean;
 }
 
-type IdentityLike = Pick<
-  SupabaseUser,
-  "id" | "email" | "user_metadata" | "identities" | "app_metadata"
->;
+type IdentityLike = {
+  id?: string;
+  email?: string | null;
+  app_metadata?: { provider?: string } | null;
+  user_metadata?: Record<string, unknown> | null;
+  identities?: Array<{
+    provider?: string;
+    identity_data?: Record<string, unknown> | null;
+  }> | null;
+};
 
 function readString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
 function identityData(
-  identity: NonNullable<SupabaseUser["identities"]>[number] | undefined
+  identity: NonNullable<IdentityLike["identities"]>[number] | undefined
 ): Record<string, unknown> {
   const data = identity?.identity_data;
   return data && typeof data === "object" ? (data as Record<string, unknown>) : {};
@@ -54,7 +60,7 @@ export function resolveAuthEmail(user: IdentityLike): string {
     if (fromIdentity) return fromIdentity.toLowerCase();
   }
 
-  return fallbackAuthEmail(user.id);
+  return fallbackAuthEmail(user.id || "unknown");
 }
 
 export function resolveAuthName(user: IdentityLike): string | null {
@@ -104,6 +110,8 @@ export function extractSupabaseIdentity(
     email: resolveAuthEmail(user),
     name: resolveAuthName(user),
     avatarUrl: resolveAuthAvatar(user),
-    authProvider: resolveAuthProvider(user),
+    authProvider: resolveAuthProvider(
+      user as Pick<SupabaseUser, "app_metadata" | "identities">
+    ),
   };
 }
