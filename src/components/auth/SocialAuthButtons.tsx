@@ -4,6 +4,11 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useMaster } from "@/context/MasterControllerContext";
+import {
+  googleOAuthQueryParams,
+  oauthBrowserCallbackUrl,
+  setOAuthNextCookie,
+} from "@/lib/auth/oauth-redirect";
 import clsx from "clsx";
 
 type Props = {
@@ -24,7 +29,7 @@ export function SocialAuthButtons({
   className,
   compact,
 }: Props) {
-  const { tr, notify } = useMaster();
+  const { tr, notify, locale } = useMaster();
   const [busy, setBusy] = useState<"google" | "apple" | null>(null);
 
   async function oauth(provider: "google" | "apple") {
@@ -36,17 +41,24 @@ export function SocialAuthButtons({
           message: tr("auth_supabase_required"),
           type: "error",
         });
+        setBusy(null);
         return;
       }
+      // Keep `/auth/callback` query-free so it matches the Supabase allow-list
+      // exactly. The in-app destination is stored in a short-lived cookie.
+      setOAuthNextCookie(next);
       const origin = window.location.origin;
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          redirectTo: oauthBrowserCallbackUrl(origin),
           skipBrowserRedirect: false,
-          // Apple only returns name/email on the very first consent, so always
-          // request the scopes rather than relying on a cached grant.
-          ...(provider === "apple" ? { scopes: "name email" } : {}),
+          queryParams:
+            provider === "google" ? googleOAuthQueryParams(locale) : undefined,
+          // Google must return email + profile or Prisma onboarding has no
+          // address. Apple only returns name/email on the first consent.
+          scopes:
+            provider === "google" ? "openid email profile" : "name email",
         },
       });
       if (error) {

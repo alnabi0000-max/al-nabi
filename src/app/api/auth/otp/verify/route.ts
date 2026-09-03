@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createStatelessClient } from "@/lib/supabase/stateless";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { onboardNewUser } from "@/lib/auth/onboarding";
+import { extractSupabaseIdentity } from "@/lib/auth/identity";
 import { toSafePublicProfile } from "@/lib/auth/public-profile";
 import {
   rateLimitSensitive,
@@ -80,14 +81,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const extracted = extractSupabaseIdentity(data.user);
     const { user } = await onboardNewUser(
       {
         id: data.user.id,
-        email: data.user.email || email.toLowerCase(),
-        name:
-          (data.user.user_metadata?.full_name as string | undefined) ||
-          (data.user.user_metadata?.name as string | undefined) ||
-          null,
+        email:
+          extracted?.email && !extracted.email.endsWith("@users.alnabiy.local")
+            ? extracted.email
+            : email.toLowerCase(),
+        name: extracted?.name || null,
+        avatarUrl: extracted?.avatarUrl || null,
         authProvider: "EMAIL_OTP",
       },
       { source: "email_otp", sendEmail: true }

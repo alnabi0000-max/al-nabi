@@ -32,9 +32,13 @@ for:
   and a random 32+ character `AUTH_SECRET`.
 - Supabase Auth providers: Google and Apple enabled (Apple is required for iOS
   App Store review), plus the email provider with `{{ .Token }}` in the Magic
-  Link template so the 6-digit code flow can deliver a code. Redirect URLs must
-  list `https://<domain>/auth/callback` and the native `alnabi://auth/callback`
-  deep link.
+  Link template so the 6-digit code flow can deliver a code. Follow
+  `docs/google-oauth-setup.md` for the Google Cloud client: the only Authorized
+  redirect URI is `https://<project-ref>.supabase.co/auth/v1/callback`. Supabase
+  Redirect URLs must list `https://<domain>/auth/callback`, the localhost
+  callback for staging, and the native `alnabi://auth/callback` deep link.
+  Enable Automatic account linking so a Gmail used first via OTP is the same
+  user when they later tap Google.
 - Optional `SUPABASE_JWT_SECRET`: lets the Edge middleware reject forged bearer
   tokens before they reach a route handler. Without it the middleware still
   enforces token expiry and every route still verifies the token against

@@ -12,6 +12,10 @@ npx prisma generate
 npm run dev
 ```
 
+Google orqali ro‘yxatdan o‘tish: `docs/google-oauth-setup.md` (Google Cloud
+OAuth client + Supabase Google provider + Redirect URL). Client ID/Secret
+faqat Supabase dashboardga yoziladi.
+
 ## 31–60 Qadamlar — Fayl xaritasi
 
 ### Blok 1 — Database, Keys, i18n, Store

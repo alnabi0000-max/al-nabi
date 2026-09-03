@@ -46,7 +46,7 @@ export function buildContentSecurityPolicy(isProd: boolean): string {
     "frame-src 'self' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://*.stripe.com",
     "object-src 'none'",
     "base-uri 'self'",
-    "form-action 'self' https://checkout.stripe.com",
+    "form-action 'self' https://checkout.stripe.com https://accounts.google.com https://appleid.apple.com https://*.supabase.co",
     "frame-ancestors 'none'",
     ...(isProd ? ["upgrade-insecure-requests"] : []),
   ].join("; ");

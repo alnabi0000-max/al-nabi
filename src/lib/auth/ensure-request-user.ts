@@ -9,7 +9,7 @@ import { getLocalSessionUser } from "@/lib/auth/session";
 import { syncLocalUserToPrisma } from "@/lib/auth/sync-local";
 import { resolveUserByKey } from "@/lib/assets";
 import { getBearerIdentity, readRequestBearerToken, type HeaderSource } from "@/lib/auth/bearer";
-import { resolveAuthProvider } from "@/lib/auth/providers";
+import { extractSupabaseIdentity } from "@/lib/auth/identity";
 import type { User } from "@prisma/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -78,19 +78,12 @@ async function ledgerUserFromIdentity(
   identity: SupabaseUser,
   source: string
 ): Promise<LedgerUser | null> {
-  if (!identity.id || !identity.email) return null;
+  const extracted = extractSupabaseIdentity(identity);
+  if (!extracted) return null;
 
   const { onboardNewUser } = await import("@/lib/auth/onboarding");
   const { user } = await onboardNewUser(
-    {
-      id: identity.id,
-      email: identity.email,
-      name:
-        (identity.user_metadata?.full_name as string | undefined) ||
-        (identity.user_metadata?.name as string | undefined) ||
-        null,
-      authProvider: resolveAuthProvider(identity),
-    },
+    { ...extracted, touchLogin: false },
     { sendEmail: false, source }
   );
 

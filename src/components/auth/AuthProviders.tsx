@@ -34,6 +34,14 @@ const CheckoutReturnHandler = dynamic(
   { ssr: false }
 );
 
+const AuthReturnHandler = dynamic(
+  () =>
+    import("@/components/auth/AuthReturnHandler").then((m) => ({
+      default: m.AuthReturnHandler,
+    })),
+  { ssr: false }
+);
+
 /** Global auth + NC top-up modals */
 export function AuthProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -41,6 +49,7 @@ export function AuthProviders({ children }: { children: React.ReactNode }) {
       <TopUpUiProvider>
         {children}
         <AuthModal />
+        <AuthReturnHandler />
         <TopUpModal />
         <PaymentCelebration />
         <CheckoutReturnHandler />
