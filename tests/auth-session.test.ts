@@ -151,9 +151,13 @@ describe("API route protection policy", () => {
   });
 
   it("exempts secret-guarded surfaces from the user-session gate", () => {
-    expect(isSecretGuardedApiPath("/api/admin/system")).toBe(true);
     expect(isSecretGuardedApiPath("/api/cron/model-watch")).toBe(true);
-    expect(requiresSessionToken("/api/admin/system")).toBe(false);
+    expect(requiresSessionToken("/api/cron/model-watch")).toBe(false);
+  });
+
+  it("requires a live admin session for role-gated admin surfaces", () => {
+    expect(isSecretGuardedApiPath("/api/admin/system")).toBe(false);
+    expect(requiresSessionToken("/api/admin/system")).toBe(true);
   });
 
   it("ignores non-API paths", () => {
