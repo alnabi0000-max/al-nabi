@@ -6,6 +6,10 @@ import { useAuthUi } from "@/context/AuthUiContext";
 import { SocialAuthButtons } from "@/components/auth/SocialAuthButtons";
 import { KeyRound, LogOut, Sparkles, UserRound } from "lucide-react";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
+import {
+  isOAuthErrorReason,
+  oauthErrorMessageKey,
+} from "@/lib/auth/oauth-errors";
 import { profileHref } from "@/lib/profile-tabs";
 import clsx from "clsx";
 
@@ -24,6 +28,7 @@ export function ProfileUmumiyPanel() {
     signInWithPassword,
     signOut,
     authReady,
+    authenticated,
     authMode,
     notify,
   } = useMaster();
@@ -36,7 +41,8 @@ export function ProfileUmumiyPanel() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const signedIn = Boolean(email && alnabiyKey);
+  const signedIn =
+    authenticated || Boolean(email && (authMode === "supabase" || alnabiyKey));
   const afterAuth = profileHref("kabinet");
 
   useEffect(() => {
@@ -47,8 +53,18 @@ export function ProfileUmumiyPanel() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const q = new URLSearchParams(window.location.search);
-    if (q.get("auth") === "error") setErr(tr("auth_error"));
+    if (q.get("auth") === "error") {
+      const reason = q.get("reason");
+      setErr(
+        tr(
+          isOAuthErrorReason(reason)
+            ? oauthErrorMessageKey(reason)
+            : "auth_oauth_error"
+        )
+      );
+    }
     if (q.get("auth") === "local") setMsg(tr("auth_local_hint"));
+    if (q.get("auth") === "ok") setMsg(tr("auth_oauth_success"));
   }, [tr]);
 
   async function onPasswordAuth(register: boolean) {
@@ -141,9 +157,11 @@ export function ProfileUmumiyPanel() {
             <p>
               <span className="text-nabi-muted">Email:</span> {email}
             </p>
-            <p className="break-all font-mono text-xs text-nabi-neon">
-              {alnabiyKey}
-            </p>
+            {authMode === "local" && alnabiyKey ? (
+              <p className="break-all font-mono text-xs text-nabi-neon">
+                {alnabiyKey}
+              </p>
+            ) : null}
             <p className="text-[10px] text-nabi-muted">
               {tr("balance_line", { n: coins.toLocaleString() })}
             </p>
@@ -237,7 +255,11 @@ export function ProfileUmumiyPanel() {
                 >
                   {tr("forgot_password")}?
                 </button>
-                <p className="text-[10px] text-nabi-muted">{tr("auth_local_hint")}</p>
+                  {authMode === "local" ? (
+                    <p className="text-[10px] text-nabi-muted">
+                      {tr("auth_local_hint")}
+                    </p>
+                  ) : null}
               </>
             ) : tab === "magic" ? (
               <>

@@ -114,6 +114,8 @@ interface MasterController extends MasterState {
   /** Serverdagi sessiyani qayta o'qish — OTP / OAuth kirishdan keyin */
   refreshSession: () => Promise<void>;
   authReady: boolean;
+  /** True after `/api/auth/me` or `/api/auth/ensure` confirms a live session. */
+  authenticated: boolean;
   authMode: "local" | "supabase";
   setOffline: (v: boolean) => void;
   persist: () => void;
@@ -213,6 +215,7 @@ export function MasterControllerProvider({
   const [state, setState] = useState<MasterState>(safeInitial);
   const [hydrated, setHydrated] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
   const [authMode, setAuthMode] = useState<"local" | "supabase">("local");
   const [showCyberToast, setShowCyberToast] = useState(false);
   const [showHalolModal, setShowHalolModal] = useState(false);
@@ -262,6 +265,7 @@ export function MasterControllerProvider({
           ? (data.mode as "local" | "supabase")
           : null;
       if (mode) setAuthMode(mode);
+      setAuthenticated(true);
       setState((s) => ({
         ...s,
         email,
@@ -333,6 +337,7 @@ export function MasterControllerProvider({
         key || undefined
       );
     } else {
+      setAuthenticated(false);
       setState((s) => ({ ...s, email: null, role: "USER" }));
     }
     return data;
@@ -349,6 +354,9 @@ export function MasterControllerProvider({
 
   /** Generate oldidan — sessiya/guest kafolat */
   const ensureAuthSession = useCallback(async () => {
+    if (authMode === "supabase" && authenticated && state.email) {
+      return { ok: true as const, alnabiyKey: state.alnabiyKey };
+    }
     if (state.email && state.alnabiyKey) {
       return { ok: true as const, alnabiyKey: state.alnabiyKey };
     }
@@ -383,7 +391,7 @@ export function MasterControllerProvider({
     } catch {
       return { ok: false as const, alnabiyKey: null };
     }
-  }, [state.email, state.alnabiyKey, applyAuthPayload]);
+  }, [authMode, authenticated, state.email, state.alnabiyKey, applyAuthPayload]);
 
   /* Hydration: LS + server session (/api/auth/me) + soft ensure */
   useEffect(() => {
@@ -424,6 +432,7 @@ export function MasterControllerProvider({
             void syncSessionFromApi();
           }
           if (event === "SIGNED_OUT") {
+            setAuthenticated(false);
             setState((s) => ({
               ...s,
               email: null,
@@ -860,6 +869,7 @@ export function MasterControllerProvider({
         10_000
       );
     } catch {}
+    setAuthenticated(false);
     setState((s) => ({
       ...s,
       email: null,
@@ -898,6 +908,7 @@ export function MasterControllerProvider({
       ensureAuthSession,
       refreshSession,
       authReady,
+      authenticated,
       authMode,
       setOffline: (v) => setState((s) => ({ ...s, isOffline: v })),
       persist: persistNow,
@@ -932,6 +943,7 @@ export function MasterControllerProvider({
       ensureAuthSession,
       refreshSession,
       authReady,
+      authenticated,
       authMode,
       persistNow,
       showCyberToast,
