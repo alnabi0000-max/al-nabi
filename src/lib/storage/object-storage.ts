@@ -206,28 +206,39 @@ export async function persistRemoteAsset(opts: {
   userId: string;
   generationId: string;
   kind: "image" | "video";
+  /** Instant mock: never download HTTP and never upload to R2/S3. */
+  forceLocal?: boolean;
 }): Promise<StoredObject> {
-  assertPersistentObjectStorage();
+  if (!opts.forceLocal) {
+    assertPersistentObjectStorage();
+  }
 
   let downloaded: Awaited<ReturnType<typeof fetchBytes>>;
   try {
     downloaded = await fetchBytes(opts.sourceUrl);
   } catch (error) {
-    if (isProductionRuntime()) {
+    if (opts.forceLocal) {
+      const { mockAssetBytes, mockContentType } = await import(
+        "@/lib/generation/mock-assets"
+      );
+      downloaded = {
+        buffer: mockAssetBytes(opts.kind),
+        contentType: mockContentType(opts.kind),
+      };
+    } else if (isProductionRuntime()) {
       throw error;
+    } else {
+      // Placeholder/mock URLs can fail in local development. Never persist a
+      // marker in production because it would masquerade as a completed asset.
+      downloaded = {
+        buffer: Buffer.from(
+          `alnabiy-stub:${opts.generationId}:${opts.sourceUrl}`,
+          "utf8"
+        ),
+        contentType:
+          opts.kind === "image" ? "text/plain" : "application/octet-stream",
+      };
     }
-
-    // Placeholder/mock URLs can fail in local development. Never persist a
-    // marker in production because it would masquerade as a completed asset.
-    downloaded = {
-      // placehold / mock URLs sometimes fail CORS-less — store stub marker
-      buffer: Buffer.from(
-        `alnabiy-stub:${opts.generationId}:${opts.sourceUrl}`,
-        "utf8"
-      ),
-      contentType:
-        opts.kind === "image" ? "text/plain" : "application/octet-stream",
-    };
   }
   const { buffer, contentType } = downloaded;
 
@@ -241,7 +252,7 @@ export async function persistRemoteAsset(opts: {
   );
   const key = `generations/${opts.userId}/${opts.generationId}/${hash}.${ext}`;
 
-  const s3 = getObjectStorageClient();
+  const s3 = opts.forceLocal ? null : getObjectStorageClient();
   if (s3) {
     await s3.client.send(
       new PutObjectCommand({

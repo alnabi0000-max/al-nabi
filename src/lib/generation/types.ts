@@ -39,6 +39,7 @@ export type GenerateQueuedResponse = {
   balanceAfter?: number;
   receiptId?: string;
   error?: string;
+  errorMessage?: string;
   code?: string;
   provider?: string;
   alnabiyKey?: string;

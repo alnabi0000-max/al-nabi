@@ -1,6 +1,14 @@
 /**
  * Local / test — darhol o‘ynaydigan mock media (Replicate kutmasdan).
+ * Preview bytes live in mock-assets.ts — never fetch GCS or placehold.co.
  */
+
+export {
+  ensureMockAssetPath,
+  mockAssetBytes,
+  mockContentType,
+  mockPublicPath,
+} from "@/lib/generation/mock-assets";
 
 export function shouldInstantMockGenerate(): boolean {
   if (process.env.ALNABIY_FORCE_MOCK === "0") return false;
@@ -14,10 +22,3 @@ export function shouldInstantMockGenerate(): boolean {
   if (process.env.NEXT_PUBLIC_ALNABIY_MODE === "development") return true;
   return true;
 }
-
-/** Brauzerda ishonchli o‘ynaydigan qisqa namuna mp4 */
-export const MOCK_VIDEO_URL =
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4";
-
-export const MOCK_IMAGE_URL =
-  "https://placehold.co/1280x720/0d0f12/00d4ff/png?text=Alnabiy+Dev+Preview";

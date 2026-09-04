@@ -46,6 +46,9 @@ export function sanitizeGenerationError(
   if (/unauthorized|forbidden|401|403|not configured|missing key/i.test(raw)) {
     return "Studio engine unavailable. Credits refunded.";
   }
+  if (/econnreset|econnaborted|epipe|socket hang up|network reset/i.test(raw)) {
+    return "Network reset while saving media. Credits refunded.";
+  }
   if (/timeout|etimedout|aborted/i.test(raw)) {
     return "Generation timed out. Credits refunded.";
   }

@@ -196,7 +196,9 @@ export function StudioHub() {
               balanceAfter: data.balanceAfter as number,
             });
           }
-          throw new Error((data.error as string) || tr("generate_failed"));
+          throw new Error(
+            data.error || data.errorMessage || tr("generate_failed")
+          );
         }
         applyServerCharge({
           ok: true,

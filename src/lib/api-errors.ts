@@ -6,7 +6,7 @@ export function friendlyApiError(
   err: unknown,
   tr: (key: string, vars?: Record<string, string | number>) => string
 ): string {
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
     return tr("network_error");
   }
 
@@ -18,6 +18,15 @@ export function friendlyApiError(
         : "";
 
   if (!msg) return tr("error_generic");
+
+  /* Server already sanitized this generation error — show it verbatim. */
+  if (
+    /credits (were )?refunded|network reset while saving media|generation timed out/i.test(
+      msg
+    )
+  ) {
+    return msg.length > 280 ? `${msg.slice(0, 277)}...` : msg;
+  }
 
   if (
     /failed to fetch|networkerror|load failed|econnrefused|etimedout|abort/i.test(

@@ -19,8 +19,7 @@ import {
   type RenderQuality,
 } from "@/lib/ai/catalog";
 import {
-  MOCK_IMAGE_URL,
-  MOCK_VIDEO_URL,
+  ensureMockAssetPath,
   shouldInstantMockGenerate,
 } from "@/lib/generation/dev-mock";
 import { failAndRefundGeneration } from "@/lib/generation/fail-and-refund";
@@ -185,9 +184,9 @@ export async function processGenerationJob(generationId: string): Promise<{
     const instantMock = shouldInstantMockGenerate();
 
     if (instantMock) {
-      providerUrl = isImageType(generation.type)
-        ? MOCK_IMAGE_URL
-        : MOCK_VIDEO_URL;
+      providerUrl = ensureMockAssetPath(
+        isImageType(generation.type) ? "image" : "video"
+      );
       provider = "Al-Nabi Studio";
       model = "Dev Preview";
       engineId = String(costEngine);
@@ -302,6 +301,7 @@ export async function processGenerationJob(generationId: string): Promise<{
       userId: generation.userId,
       generationId,
       kind: isImageType(generation.type) ? "image" : "video",
+      forceLocal: instantMock,
     });
 
     const publicProvider = whiteLabelEngine(engineId) || provider;

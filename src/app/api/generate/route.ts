@@ -33,6 +33,8 @@ import {
 } from "@/lib/api/json-response";
 import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
 import { enforceGenerationTrust } from "@/lib/trust/generation-gate";
+import { sanitizeGenerationError } from "@/lib/generation/public-error";
+
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
@@ -508,6 +510,7 @@ export async function POST(req: NextRequest) {
     let balanceAfter: number = user.coins;
     let creditsCost = 0;
     let receiptId: string | undefined;
+    let publicError: string | null = null;
 
     if (instant) {
       /* Test/local: sync — charge happens inside processGenerationJob
@@ -529,6 +532,9 @@ export async function POST(req: NextRequest) {
           resultUrl = done.resultUrl;
         } else {
           status = "FAILED";
+          publicError = sanitizeGenerationError(
+            done.error || "Generation failed. Credits were refunded if charged."
+          );
         }
       } catch (syncErr) {
         console.warn("[Alnabiy] sync mock generate failed", syncErr);
@@ -544,6 +550,7 @@ export async function POST(req: NextRequest) {
           balanceAfter = refunded.balanceAfter;
         }
         status = "FAILED";
+        publicError = refunded.errorMessage;
       }
     } else {
       try {
@@ -554,13 +561,25 @@ export async function POST(req: NextRequest) {
         balanceAfter = user.coins;
       } catch (queueErr) {
         console.warn("[Alnabiy] enqueue failed — no charge applied", queueErr);
-        await failAndRefundGeneration({
+        const refunded = await failAndRefundGeneration({
           generationId: generation.id,
           error: queueErr,
           area: "generate-enqueue",
         });
         status = "FAILED";
+        publicError = refunded.errorMessage;
       }
+    }
+
+    if (status === "FAILED" && !publicError) {
+      const failedRow = await prisma.generation.findUnique({
+        where: { id: generation.id },
+        select: { errorMessage: true },
+      });
+      publicError = sanitizeGenerationError(
+        failedRow?.errorMessage ||
+          "Generation failed. Credits were refunded if charged."
+      );
     }
 
     if (status === "COMPLETED" && resultUrl) {
@@ -581,10 +600,13 @@ export async function POST(req: NextRequest) {
       success: status !== "FAILED",
       ok: status !== "FAILED",
       queued: status === "QUEUED",
+      failed: status === "FAILED",
       generationId: generation.id,
       jobId: generation.id,
       status,
       done: status === "COMPLETED",
+      error: status === "FAILED" ? publicError : undefined,
+      errorMessage: status === "FAILED" ? publicError : undefined,
       resultUrl,
       videoUrl:
         status === "COMPLETED" && body.mediaKind !== "image" ? resultUrl : null,

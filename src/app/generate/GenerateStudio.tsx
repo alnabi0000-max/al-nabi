@@ -502,7 +502,9 @@ export default function GenerateStudio() {
         return null;
       }
       if (!res.ok || data.ok === false) {
-        throw new Error(String(data.error || tr("generate_failed")));
+        throw new Error(
+          String(data.error || data.errorMessage || tr("generate_failed"))
+        );
       }
       if (typeof data.creditsCost === "number" && data.creditsCost > 0) {
         applyServerCharge({
@@ -571,7 +573,9 @@ export default function GenerateStudio() {
         return null;
       }
       if (!res.ok || data.ok === false) {
-        throw new Error(String(data.error || tr("generate_failed")));
+        throw new Error(
+          String(data.error || data.errorMessage || tr("generate_failed"))
+        );
       }
       if (typeof data.creditsCost === "number" && data.creditsCost > 0) {
         applyServerCharge({
@@ -733,7 +737,9 @@ export default function GenerateStudio() {
           });
         }
         setRenderStage("failed");
-        throw new Error(String(data.error || tr("generate_failed")));
+        throw new Error(
+          String(data.error || data.errorMessage || tr("generate_failed"))
+        );
       }
       if (data.alnabiyKey || data.alnabiy_key) {
         try {
@@ -781,7 +787,7 @@ export default function GenerateStudio() {
         return;
       }
 
-      throw new Error(data.error || tr("generate_failed"));
+      throw new Error(data.error || data.errorMessage || tr("generate_failed"));
     } catch (e) {
       showApiError(e);
       setRenderStage("failed");
