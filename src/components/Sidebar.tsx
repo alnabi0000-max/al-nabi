@@ -38,6 +38,12 @@ export function Sidebar() {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("alnabiy:sidebar", { detail: { collapsed } })
+    );
+  }, [collapsed]);
+
   function toggle() {
     setCollapsed((c) => {
       const next = !c;
@@ -46,9 +52,6 @@ export function Sidebar() {
       } catch {
         /* soft */
       }
-      window.dispatchEvent(
-        new CustomEvent("alnabiy:sidebar", { detail: { collapsed: next } })
-      );
       return next;
     });
   }

@@ -16,7 +16,9 @@ export function MainShell({ children }: { children: ReactNode }) {
     }
     const onSidebar = (e: Event) => {
       const detail = (e as CustomEvent<{ collapsed?: boolean }>).detail;
-      if (typeof detail?.collapsed === "boolean") setCollapsed(detail.collapsed);
+      if (typeof detail?.collapsed !== "boolean") return;
+      const next = detail.collapsed;
+      queueMicrotask(() => setCollapsed(next));
     };
     window.addEventListener("alnabiy:sidebar", onSidebar as EventListener);
     return () =>
