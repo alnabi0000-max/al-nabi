@@ -3,6 +3,7 @@ import { createRouteHandlerClient } from "@/lib/supabase/route-client";
 import { onboardNewUser } from "@/lib/auth/onboarding";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { resolveAuthProvider } from "@/lib/auth/providers";
+import { safeOAuthNextPath } from "@/lib/auth/oauth-origin";
 import {
   appendDeepLinkParams,
   isMobilePlatform,
@@ -23,11 +24,9 @@ import {
  * Set-Cookie the same way email/password login does.
  */
 
-/** Only allow same-site relative paths — blocks `//evil.com`, `https://evil.com`, `\\evil.com`. */
+/** Only allow same-site relative paths — blocks `//evil.com`, `https://evil.com`. */
 function safeNextPath(raw: string | null): string {
-  if (!raw) return "/";
-  if (!/^\/(?!\/)[a-zA-Z0-9/_?&=%.-]*$/.test(raw)) return "/";
-  return raw;
+  return safeOAuthNextPath(raw);
 }
 
 export async function GET(request: NextRequest) {
@@ -78,21 +77,31 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const identity = {
+    id: data.user.id,
+    email: data.user.email || `${data.user.id}@users.alnabiy.local`,
+    name:
+      (data.user.user_metadata?.full_name as string | undefined) ||
+      (data.user.user_metadata?.name as string | undefined) ||
+      null,
+    authProvider: resolveAuthProvider(data.user),
+  };
+
   try {
-    await onboardNewUser(
-      {
-        id: data.user.id,
-        email: data.user.email || `${data.user.id}@users.alnabiy.local`,
-        name:
-          (data.user.user_metadata?.full_name as string | undefined) ||
-          (data.user.user_metadata?.name as string | undefined) ||
-          null,
-        authProvider: resolveAuthProvider(data.user),
-      },
-      { source: "auth_callback", sendEmail: true }
-    );
+    await onboardNewUser(identity, {
+      source: "auth_callback",
+      sendEmail: true,
+    });
   } catch (e) {
     console.warn("[Alnabiy] onboardNewUser failed", e);
+    try {
+      await onboardNewUser(identity, {
+        source: "auth_callback_retry",
+        sendEmail: false,
+      });
+    } catch (retry) {
+      console.warn("[Alnabiy] onboardNewUser retry failed", retry);
+    }
   }
 
   return route.applyCookies(NextResponse.redirect(`${origin}${next}`));

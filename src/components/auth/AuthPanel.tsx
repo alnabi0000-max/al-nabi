@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Eye,
@@ -56,6 +56,8 @@ export function AuthPanel({
 }: Props) {
   const { tr, signInWithPassword, refreshSession, notify } = useMaster();
   const router = useRouter();
+  const pathname = usePathname() || "/";
+  const oauthNext = pathname.startsWith("/auth") ? "/" : pathname;
 
   const [view, setView] = useState<AuthView>(() => tabToView(initialTab));
   const [email, setEmail] = useState("");
@@ -238,7 +240,7 @@ export function AuthPanel({
             }}
           >
             <div className="space-y-3">
-              <SocialAuthButtons next="/" compact />
+              <SocialAuthButtons next={oauthNext} compact />
               <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-nabi-muted">
                 <span className="h-px flex-1 bg-nabi-border" />
                 {tr("auth_or")}

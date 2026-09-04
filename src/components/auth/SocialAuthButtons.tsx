@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMaster } from "@/context/MasterControllerContext";
 import { createClient } from "@/lib/supabase/client";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import { shouldOfferGoogleOAuth } from "@/lib/auth/oauth-providers";
+import {
+  canonicalOAuthHref,
+  canonicalOAuthOrigin,
+  GOOGLE_OAUTH_RESUME_KEY,
+  safeOAuthNextPath,
+} from "@/lib/auth/oauth-origin";
 import clsx from "clsx";
 
 type Props = {
@@ -12,15 +18,6 @@ type Props = {
   className?: string;
   compact?: boolean;
 };
-
-/** `0.0.0.0` is a server bind address, never a safe browser OAuth origin. */
-function canonicalLocalDevUrl(): string | null {
-  const { protocol, hostname, port, pathname, search, hash } = window.location;
-  if (hostname === "0.0.0.0" || hostname === "::") {
-    return `${protocol}//localhost${port ? `:${port}` : ""}${pathname}${search}${hash}`;
-  }
-  return null;
-}
 
 /**
  * Google uses the shared browser Supabase client (`@supabase/ssr`).
@@ -33,18 +30,24 @@ export function SocialAuthButtons({
 }: Props) {
   const { tr, notify } = useMaster();
   const [busyGoogle, setBusyGoogle] = useState(false);
+  const nextPath = safeOAuthNextPath(next);
 
-  async function handleGoogleSignIn() {
+  async function startGoogleOAuth(returnTo: string) {
     try {
       setBusyGoogle(true);
-      const canonicalUrl = canonicalLocalDevUrl();
-      if (canonicalUrl) {
+      const rewriteTo = canonicalOAuthHref(window.location);
+      if (rewriteTo) {
         /*
-         * PKCE state is stored in origin-scoped cookies. Starting OAuth on
-         * 0.0.0.0 and returning to localhost loses that state, so move the
-         * page first and let the user start the flow from the canonical URL.
+         * PKCE cookies are host-scoped. Starting on 0.0.0.0 / 127.0.0.1 and
+         * returning to localhost drops the verifier, so hop to localhost first
+         * and resume the click automatically.
          */
-        window.location.replace(canonicalUrl);
+        try {
+          sessionStorage.setItem(GOOGLE_OAUTH_RESUME_KEY, returnTo);
+        } catch {
+          /* private mode */
+        }
+        window.location.replace(rewriteTo);
         return;
       }
 
@@ -82,11 +85,11 @@ export function SocialAuthButtons({
         return;
       }
 
-      const origin = window.location.origin;
+      const { origin } = canonicalOAuthOrigin(window.location);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(returnTo)}`,
           queryParams: {
             access_type: "offline",
             prompt: "select_account",
@@ -111,6 +114,19 @@ export function SocialAuthButtons({
     }
   }
 
+  useEffect(() => {
+    try {
+      const resume = sessionStorage.getItem(GOOGLE_OAUTH_RESUME_KEY);
+      if (!resume) return;
+      sessionStorage.removeItem(GOOGLE_OAUTH_RESUME_KEY);
+      void startGoogleOAuth(safeOAuthNextPath(resume));
+    } catch {
+      /* private mode */
+    }
+    // Resume at most once after a loopback rewrite.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function comingSoon() {
     notify({
       message: tr("auth_apple_coming_soon"),
@@ -129,7 +145,7 @@ export function SocialAuthButtons({
     >
       <button
         type="button"
-        onClick={handleGoogleSignIn}
+        onClick={() => void startGoogleOAuth(nextPath)}
         disabled={busyGoogle}
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-nabi-border bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 disabled:opacity-50"
       >

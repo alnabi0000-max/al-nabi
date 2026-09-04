@@ -12,11 +12,14 @@ export async function onboardNewUser(
   identity: AuthIdentity,
   opts?: { sendEmail?: boolean; source?: string }
 ) {
+  const email = identity.email.toLowerCase();
   let existing = null as Awaited<
     ReturnType<typeof prisma.user.findUnique>
   > | null;
   try {
-    existing = await prisma.user.findUnique({ where: { id: identity.id } });
+    existing =
+      (await prisma.user.findUnique({ where: { id: identity.id } })) ||
+      (await prisma.user.findUnique({ where: { email } }));
   } catch {
     existing = null;
   }
