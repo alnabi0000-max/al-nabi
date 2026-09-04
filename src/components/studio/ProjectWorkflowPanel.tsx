@@ -573,7 +573,7 @@ export function ProjectWorkflowPanel({
   }
 
   return (
-    <StudioAccordion title="Project workflow" defaultOpen>
+    <StudioAccordion title="Project workflow">
       <div className="space-y-3">
         <div className="flex flex-wrap gap-2">
           <select

@@ -35,8 +35,8 @@ type Props = {
 
 const ASPECT_CLASS = {
   "16:9": "aspect-video",
-  "9:16": "aspect-[9/16] max-h-[70vh] mx-auto",
-  "1:1": "aspect-square max-h-[70vh] mx-auto",
+  "9:16": "aspect-[9/16] max-h-[78vh] mx-auto",
+  "1:1": "aspect-square max-h-[78vh] mx-auto",
 } as const;
 
 export function StudioPreviewCanvas({
@@ -65,7 +65,7 @@ export function StudioPreviewCanvas({
       id="media-viewer"
       className={clsx(
         CINEMA_GLASS,
-        "group relative scroll-mt-24 overflow-hidden p-2 md:p-3"
+        "group relative scroll-mt-24 overflow-hidden p-1.5 md:p-2"
       )}
     >
       <div
@@ -103,10 +103,12 @@ export function StudioPreviewCanvas({
             onPlayingChange={onPlayingChange}
           />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-            <span className="h-px w-16 bg-white/15" />
-            <p className="max-w-xs text-sm text-white/40">{emptyLabel}</p>
-            <span className="h-px w-16 bg-white/15" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-6 text-center">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-nabi-gold/70">
+              Al-Nabi
+            </span>
+            <p className="max-w-sm text-sm leading-relaxed text-white/45">{emptyLabel}</p>
+            <span className="h-px w-12 bg-white/15" />
           </div>
         )}
 

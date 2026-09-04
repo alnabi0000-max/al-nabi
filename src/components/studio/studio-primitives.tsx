@@ -92,21 +92,31 @@ const ASPECTS: Array<{
   label: string;
   box: string;
 }> = [
-  { id: "16:9", label: "16:9 Landscape", box: "h-6 w-10" },
-  { id: "9:16", label: "9:16 Vertical", box: "h-9 w-5" },
-  { id: "1:1", label: "1:1 Square", box: "h-7 w-7" },
+  { id: "16:9", label: "16:9", box: "h-5 w-8" },
+  { id: "9:16", label: "9:16", box: "h-8 w-5" },
+  { id: "1:1", label: "1:1", box: "h-6 w-6" },
 ];
 
 export function AspectRatioPicker({
   value,
   onChange,
+  variants = "primary",
 }: {
   value: "16:9" | "9:16" | "1:1";
   onChange: (v: "16:9" | "9:16" | "1:1") => void;
+  /** Primary studio: widescreen + vertical. Square stays in Advanced. */
+  variants?: "primary" | "all";
 }) {
+  const options =
+    variants === "primary" ? ASPECTS.filter((a) => a.id !== "1:1") : ASPECTS;
   return (
-    <div className="grid grid-cols-3 gap-2">
-      {ASPECTS.map((a) => {
+    <div
+      className={clsx(
+        "grid gap-2",
+        options.length === 2 ? "grid-cols-2" : "grid-cols-3"
+      )}
+    >
+      {options.map((a) => {
         const active = value === a.id;
         return (
           <button

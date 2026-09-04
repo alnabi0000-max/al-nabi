@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { ImageIcon, MoveHorizontal, Video, ZoomIn } from "lucide-react";
+import { ImageIcon, Video } from "lucide-react";
 import clsx from "clsx";
 import { scrollToMediaViewer } from "@/lib/media-viewer-scroll";
 import {
@@ -25,6 +25,7 @@ import { useMaster } from "@/context/MasterControllerContext";
 import { shouldBypassLowDataMode } from "@/lib/security/client-mode";
 import {
   AspectRatioPicker,
+  CINEMA_GLASS,
   GlassCard,
   StudioAccordion,
   StylePresets,
@@ -56,14 +57,9 @@ import {
   type StudioKeyframePair,
 } from "@/lib/studio/pro-controls";
 import {
-  IMAGE_MODEL_CARDS,
-  VIDEO_MODEL_CARDS,
-  STUDIO_VIDEO_ENGINE_IDS,
-  isVideoEngineId,
+  PUBLIC_RENDER_QUALITIES,
   type FrameRate,
-  type ImageEngineId,
   type RenderQuality,
-  type VideoEngineId,
 } from "@/lib/ai/catalog";
 import {
   composeTemplatePrompt,
@@ -100,9 +96,7 @@ const NcReceiptHistory = dynamic(
   { ssr: false }
 );
 
-const STUDIO_VIDEO_IDS: VideoEngineId[] = STUDIO_VIDEO_ENGINE_IDS;
-
-const STUDIO_IMAGE_IDS: ImageEngineId[] = ["flux-pro", "sd3.5-large", "auto"];
+const ALNABI_ENGINE = "auto" as const;
 
 type RoutingEstimate = {
   configured: boolean;
@@ -137,8 +131,6 @@ export default function GenerateStudio() {
   const style = styleFromPreset(stylePreset);
   const [quality, setQuality] = useState<RenderQuality>("1080p");
   const [frameRate] = useState<FrameRate>(24);
-  const [videoEngine, setVideoEngine] = useState<VideoEngineId>("auto");
-  const [imageEngine, setImageEngine] = useState<ImageEngineId>("flux-pro");
   const [aspect, setAspect] = useState<"16:9" | "9:16" | "1:1">("16:9");
   const [cameraMove, setCameraMove] = useState<CameraMovement>("static");
   const [templateId, setTemplateId] = useState<number | null>(null);
@@ -197,9 +189,6 @@ export default function GenerateStudio() {
       setTemplateBasePrompt(transfer.basePrompt);
       setMediaKind("video");
       setAspect(transfer.aspect);
-      if (isVideoEngineId(transfer.videoEngine)) {
-        setVideoEngine(transfer.videoEngine);
-      }
       setCameraMove(transfer.cameraMove);
       setPrompt(transfer.prompt);
       notify({
@@ -223,7 +212,6 @@ export default function GenerateStudio() {
           setTemplateBasePrompt(resolved.basePrompt);
           setMediaKind("video");
           setAspect(resolved.aspect);
-          setVideoEngine(resolved.videoEngine);
           setCameraMove(resolved.cameraMove);
           setPrompt(fillTemplatePrompt(tpl, subject));
         })
@@ -249,20 +237,6 @@ export default function GenerateStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot URL/transfer hydrate
   }, [searchKey]);
 
-  const modelCards = useMemo(() => {
-    if (mediaKind === "image") {
-      return IMAGE_MODEL_CARDS.filter((c) =>
-        STUDIO_IMAGE_IDS.includes(c.id as ImageEngineId)
-      );
-    }
-    return VIDEO_MODEL_CARDS.filter((c) =>
-      STUDIO_VIDEO_IDS.includes(c.id as VideoEngineId)
-    );
-  }, [mediaKind]);
-
-  const selectedEngine =
-    mediaKind === "image" ? imageEngine : videoEngine;
-
   const generationKind =
     mediaKind === "image" ? "image" : ("prompt_to_video" as const);
 
@@ -280,7 +254,7 @@ export default function GenerateStudio() {
 
     const controller = new AbortController();
     const params = new URLSearchParams({
-      engine: videoEngine,
+      engine: ALNABI_ENGINE,
       durationSec: String(requestDuration),
       aspect,
       quality,
@@ -329,13 +303,12 @@ export default function GenerateStudio() {
     quality,
     requestDuration,
     sourceImageUrl,
-    videoEngine,
   ]);
 
   const cost = useMemo(
     () =>
       calculateGenerationCost(generationKind, requestDuration, {
-        engine: mediaKind === "image" ? imageEngine : videoEngine,
+        engine: ALNABI_ENGINE,
         quality,
         frameRate: mediaKind === "video" ? frameRate : undefined,
       }),
@@ -343,8 +316,6 @@ export default function GenerateStudio() {
       generationKind,
       requestDuration,
       mediaKind,
-      imageEngine,
-      videoEngine,
       quality,
       frameRate,
     ]
@@ -534,11 +505,10 @@ export default function GenerateStudio() {
     setTemplateBasePrompt(resolved.basePrompt);
     setMediaKind("video");
     setAspect(resolved.aspect);
-    setVideoEngine(resolved.videoEngine);
     setCameraMove(resolved.cameraMove);
     setPrompt(fillTemplatePrompt(template, template.subject_placeholder || ""));
     notify({
-      message: `${template.title} · ${resolved.publicModelLabel}`,
+      message: template.title,
       type: "success",
       title: tr("templates"),
     });
@@ -603,8 +573,8 @@ export default function GenerateStudio() {
             clientBalance: coins,
             projectId: projectId || undefined,
             shotId: shotId || undefined,
-            engine: mediaKind === "image" ? imageEngine : videoEngine,
-            imageEngine,
+            engine: ALNABI_ENGINE,
+            imageEngine: ALNABI_ENGINE,
             templateId: templateId ?? undefined,
             endImageUrl:
               mediaKind === "video" && proMode && keyframes.endUrl
@@ -819,57 +789,54 @@ export default function GenerateStudio() {
     notify({ message: tr("studio_upscale_ready"), type: "info" });
   }
 
-  const cameraChoices: Array<{ id: typeof cameraMove; label: string }> = [
-    { id: "static", label: "Static" },
-    { id: "pan_left", label: "Pan L" },
-    { id: "pan_right", label: "Pan R" },
-    { id: "zoom_in", label: "Zoom +" },
-    { id: "zoom_out", label: "Zoom −" },
-    { id: "tilt_up", label: "Tilt ↑" },
-    { id: "tilt_down", label: "Tilt ↓" },
-    { id: "orbit", label: "Orbit" },
-    { id: "slow_mo", label: "Slow-mo" },
-  ];
-
   return (
-    <div key={locale} className="space-y-5 bg-transparent">
+    <div key={locale} className="flex flex-col gap-5 bg-transparent">
       {isOffline && (
         <div className="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/50">
           {tr("offline")}
         </div>
       )}
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <section className="space-y-4">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+        <section className="w-full shrink-0 space-y-4 lg:w-[22rem] xl:w-[24rem]">
           <GlassCard className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setMediaKind("video")}
-                className={clsx(
-                  "nabi-select px-3 py-1.5 text-xs",
-                  mediaKind === "video" && "nabi-select-on"
-                )}
-              >
-                <Video size={12} />
-                Video
-              </button>
-              <button
-                type="button"
-                onClick={() => setMediaKind("image")}
-                className={clsx(
-                  "nabi-select px-3 py-1.5 text-xs",
-                  mediaKind === "image" && "nabi-select-on"
-                )}
-              >
-                <ImageIcon size={12} />
-                Image
-              </button>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex rounded-full border border-white/10 bg-white/[0.03] p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setMediaKind("video")}
+                  className={clsx(
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                    mediaKind === "video"
+                      ? "bg-white/10 text-white"
+                      : "text-white/45 hover:text-white/80"
+                  )}
+                >
+                  <Video size={12} />
+                  Video
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMediaKind("image")}
+                  className={clsx(
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition",
+                    mediaKind === "image"
+                      ? "bg-white/10 text-white"
+                      : "text-white/45 hover:text-white/80"
+                  )}
+                >
+                  <ImageIcon size={12} />
+                  Image
+                </button>
+              </div>
+              <span className="rounded-full border border-nabi-gold/25 bg-nabi-gold/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-nabi-gold">
+                {tr("studio_engine_badge")}
+              </span>
             </div>
 
             <textarea
               id="studio-prompt"
-              className="nabi-input min-h-[160px] resize-y rounded-xl px-3 py-3 text-base leading-relaxed"
+              className="nabi-input min-h-[180px] resize-y rounded-xl px-3 py-3 text-base leading-relaxed"
               placeholder={tr("prompt_placeholder")}
               value={prompt}
               maxLength={2000}
@@ -877,32 +844,147 @@ export default function GenerateStudio() {
               aria-label={tr("prompt_label")}
             />
 
-            {mediaKind === "video" && (
-              <StudioDropzone
-                preview={sourceImageUrl}
-                onFile={(_f, dataUrl) => setSourceImageUrl(dataUrl)}
-                onClear={() => setSourceImageUrl(null)}
-                title={tr("drag_drop_zone")}
-                hint={tr("drag_drop_hint")}
-                tooLarge="Max 5MB"
-              />
-            )}
-
-            <AspectRatioPicker value={aspect} onChange={setAspect} />
+            <AspectRatioPicker value={aspect} onChange={setAspect} variants="primary" />
 
             {mediaKind === "video" && (
-              <QuickCameraButtons
-                value={cameraMove}
-                onChange={setCameraMove}
-              />
+              <div className="flex flex-wrap gap-2">
+                {[5, 10, 15].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDuration(d)}
+                    className={clsx(
+                      "nabi-select px-3 py-1 text-xs",
+                      duration === d && "nabi-select-on"
+                    )}
+                  >
+                    {d}s
+                  </button>
+                ))}
+              </div>
             )}
-
-            <ProModeToggle
-              enabled={proMode}
-              onChange={setProModePersisted}
-              label={tr("studio_pro_mode")}
-            />
           </GlassCard>
+
+          <InsufficientBalanceHint
+            kind={generationKind}
+            cost={generationCost}
+            coins={coins}
+            durationSec={requestDuration}
+            costOpts={{
+              engine: ALNABI_ENGINE,
+              quality,
+              frameRate: mediaKind === "video" ? frameRate : undefined,
+            }}
+            durationCandidates={[5, 10, 15]}
+            onSelectDuration={setDuration}
+            onSelectQuality={(q) => setQuality(q as RenderQuality)}
+            currentQuality={quality}
+            storeLabel={tr("store")}
+            tryDurationLabel={(sec, nc) =>
+              tr("try_shorter_duration")
+                .replace("{duration}", `${sec}s`)
+                .replace("{cost}", String(nc))
+            }
+            tryQualityLabel={tr("try_quality_720p")}
+            tr={tr}
+          />
+
+          <StudioGenerateCta
+            loading={loading}
+            disabled={
+              loading ||
+              !prompt.trim() ||
+              isOffline ||
+              coins < generationCost ||
+              (mediaKind === "video" &&
+                (routingEstimate?.configured === false || Boolean(routingIssue)))
+            }
+            label={
+              mediaKind === "image"
+                ? tr("studio_create")
+                : draftMode && proMode
+                  ? tr("studio_generate_draft")
+                  : tr("studio_generate_video")
+            }
+            costLabel={
+              mediaKind === "video" && audioNc > 0
+                ? `${formatCredits(generationCost)} + ${audioNc} NC`
+                : formatCredits(generationCost)
+            }
+            onClick={generate}
+          />
+
+          {mediaKind === "video" && routingEstimate?.configured && (
+            <p className="text-[11px] text-white/40">
+              {`~${routingEstimate.expectedLatencySeconds.p50}s typical`}
+              {routingEstimate.durationAdjusted
+                ? " · duration adjusted to the supported limit."
+                : ""}
+            </p>
+          )}
+          {mediaKind === "video" && routingIssue && (
+            <p className="text-[11px] text-amber-300">{routingIssue}</p>
+          )}
+          {error && <p className="text-sm text-rose-400">{error}</p>}
+
+          <StudioAccordion title={tr("studio_advanced")} defaultOpen={showAdvanced}>
+            <div className="space-y-4">
+              {mediaKind === "video" && (
+                <StudioDropzone
+                  preview={sourceImageUrl}
+                  onFile={(_f, dataUrl) => setSourceImageUrl(dataUrl)}
+                  onClear={() => setSourceImageUrl(null)}
+                  title={tr("drag_drop_zone")}
+                  hint={tr("drag_drop_hint")}
+                  tooLarge="Max 5MB"
+                />
+              )}
+              <AspectRatioPicker value={aspect} onChange={setAspect} variants="all" />
+              {mediaKind === "video" && (
+                <QuickCameraButtons
+                  value={cameraMove}
+                  onChange={setCameraMove}
+                />
+              )}
+              <div>
+                <p className="mb-2 text-[11px] uppercase tracking-wider text-white/40">
+                  {tr("quality")}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {PUBLIC_RENDER_QUALITIES.map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => setQuality(q)}
+                      className={clsx(
+                        "nabi-select px-3 py-1 text-xs",
+                        quality === q && "nabi-select-on"
+                      )}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <StylePresets
+                value={stylePreset}
+                onChange={setStylePreset}
+                labels={{
+                  cinematic: tr("studio_style_cinematic"),
+                  photorealistic: tr("studio_style_photoreal"),
+                  anime: tr("studio_style_anime"),
+                  vintage: tr("studio_style_vintage"),
+                }}
+              />
+              <ProModeToggle
+                enabled={proMode}
+                onChange={setProModePersisted}
+                label={tr("studio_pro_mode")}
+              />
+              <TemplatePicker selectedId={templateId} onSelect={applyTemplate} />
+              <NcReceiptHistory variant="compact" />
+            </div>
+          </StudioAccordion>
 
           <ProModePanel
             open={proMode}
@@ -947,187 +1029,11 @@ export default function GenerateStudio() {
                 setQuality(shot.quality);
               }
               if (shot.durationSec) setDuration(shot.durationSec);
-              if (shot.preferredEngine && isVideoEngineId(shot.preferredEngine)) {
-                setVideoEngine(shot.preferredEngine);
-              }
             }}
           />
-
-          <StudioAccordion title={tr("camera_motion")}>
-            <div className="space-y-2">
-              <p className="flex items-center gap-1.5 text-[11px] text-white/40">
-                <MoveHorizontal size={12} />
-                <ZoomIn size={12} />
-                Pan · Zoom · Tilt
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {cameraChoices.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setCameraMove(c.id)}
-                    className={clsx(
-                      "nabi-select px-2.5 py-1 text-[11px]",
-                      cameraMove === c.id && "nabi-select-on"
-                    )}
-                  >
-                    {c.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </StudioAccordion>
-
-          <StudioAccordion title={tr("studio_audio_tts")}>
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                {EMOTION_MODES.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setEmotionMode(m.id)}
-                    className={clsx(
-                      "nabi-select px-2.5 py-1 text-[11px]",
-                      emotionMode === m.id && "nabi-select-on"
-                    )}
-                  >
-                    {tr(`emotion_${m.id}`)}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[11px] text-white/35">{tr("studio_tts_hint")}</p>
-            </div>
-          </StudioAccordion>
-
-          <StudioAccordion title={tr("studio_advanced")} defaultOpen={showAdvanced}>
-            <div className="space-y-4">
-              <StylePresets
-                value={stylePreset}
-                onChange={setStylePreset}
-                labels={{
-                  cinematic: tr("studio_style_cinematic"),
-                  photorealistic: tr("studio_style_photoreal"),
-                  anime: tr("studio_style_anime"),
-                  vintage: tr("studio_style_vintage"),
-                }}
-              />
-              {mediaKind === "video" && (
-                <div className="flex flex-wrap gap-2">
-                  {[5, 10, 15].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setDuration(d)}
-                      className={clsx(
-                        "nabi-select px-3 py-1 text-xs",
-                        duration === d && "nabi-select-on"
-                      )}
-                    >
-                      {d}s
-                    </button>
-                  ))}
-                </div>
-              )}
-              <TemplatePicker selectedId={templateId} onSelect={applyTemplate} />
-              <div className="flex flex-wrap gap-2">
-                {modelCards.map((card) => {
-                  const active = selectedEngine === card.id;
-                  return (
-                    <button
-                      key={card.id}
-                      type="button"
-                      onClick={() => {
-                        if (mediaKind === "image") {
-                          setImageEngine(card.id as ImageEngineId);
-                        } else {
-                          setVideoEngine(card.id as VideoEngineId);
-                        }
-                      }}
-                      className={clsx(
-                        "nabi-select px-3 py-1.5 text-xs",
-                        active && "nabi-select-on"
-                      )}
-                    >
-                      {card.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </StudioAccordion>
-
-          <InsufficientBalanceHint
-            kind={generationKind}
-            cost={generationCost}
-            coins={coins}
-            durationSec={requestDuration}
-            costOpts={{
-              engine: selectedEngine,
-              quality,
-              frameRate: mediaKind === "video" ? frameRate : undefined,
-            }}
-            durationCandidates={[5, 10, 15]}
-            onSelectDuration={setDuration}
-            onSelectQuality={(q) => setQuality(q as RenderQuality)}
-            currentQuality={quality}
-            storeLabel={tr("store")}
-            tryDurationLabel={(sec, nc) =>
-              tr("try_shorter_duration")
-                .replace("{duration}", `${sec}s`)
-                .replace("{cost}", String(nc))
-            }
-            tryQualityLabel={tr("try_quality_720p")}
-            tr={tr}
-          />
-
-          <StudioGenerateCta
-            loading={loading}
-            disabled={
-              loading ||
-              !prompt.trim() ||
-              isOffline ||
-              coins < generationCost ||
-              (mediaKind === "video" &&
-                (routingEstimate?.configured === false || Boolean(routingIssue)))
-            }
-            label={
-              mediaKind === "image"
-                ? tr("studio_create")
-                : draftMode && proMode
-                  ? tr("studio_generate_draft")
-                  : tr("studio_generate_video")
-            }
-            costLabel={
-              mediaKind === "video" && audioNc > 0
-                ? `${formatCredits(generationCost)} + ${audioNc} NC`
-                : formatCredits(generationCost)
-            }
-            onClick={generate}
-          />
-
-          {mediaKind === "video" && routingEstimate && (
-            <p className="text-[11px] text-white/45">
-              {routingEstimate.configured
-                ? `Estimate: ${routingEstimate.effectiveDurationSec}s · ~${routingEstimate.expectedLatencySeconds.p50}s typical, up to ${routingEstimate.expectedLatencySeconds.p90}s`
-                : "Selected route is not commercially configured."}
-              {routingEstimate.durationAdjusted ? " Duration adjusted to supported limit." : ""}
-            </p>
-          )}
-          {mediaKind === "video" && routingIssue && (
-            <p className="text-[11px] text-amber-300">{routingIssue}</p>
-          )}
-
-          {error && <p className="text-sm text-rose-400">{error}</p>}
-          {provider && hasOutput && (
-            <p className="text-[11px] text-white/35">
-              {provider} · {tr(`emotion_${emotionMode}`)}
-            </p>
-          )}
-
-          <NcReceiptHistory variant="compact" />
         </section>
 
-        <aside className="space-y-4 lg:sticky lg:top-24">
+        <section className="min-w-0 flex-1">
           <StudioPreviewCanvas
             loading={loading}
             imageUrl={resultImage}
@@ -1169,49 +1075,80 @@ export default function GenerateStudio() {
               ) : null
             }
           />
-          {mediaKind === "video" && (
-            <StudioTimeline
-              durationSec={duration}
-              onDurationChange={setDuration}
-              playheadSec={playheadSec}
-              onSeek={setPlayheadSec}
-              onScrub={seekTimeline}
-              playing={timelinePlaying}
-              onPlayingChange={setTimelinePlaying}
-              bgmMode={bgmMode}
-              bgmTrackId={bgmTrackId}
-              onBgmModeChange={setBgmMode}
-              onBgmTrackChange={setBgmTrackId}
-              emotionMode={emotionMode}
-              disabled={loading}
-              externalClock={Boolean(videoUrl)}
-              onAudioCostChange={setAudioNc}
-              onGenerateVoice={generateVoiceClip}
-              onGenerateSfx={generateSfxClip}
-              copy={{
-                title: tr("studio_timeline"),
-                hint: tr("studio_timeline_hint"),
-                frames: tr("studio_frames"),
-                mute: tr("studio_mute"),
-                unmute: tr("studio_unmute"),
-                included: tr("studio_bgm_included"),
-                voicePlaceholder: tr("studio_tts_placeholder"),
-                sfxPlaceholder: tr("studio_sfx_placeholder"),
-                generateVoice: tr("studio_tts_generate"),
-                generateSfx: tr("studio_sfx_generate"),
-                audioNc: tr("studio_audio_nc"),
-                bgmTitle: tr("bgm_title"),
-                bgmAi: tr("bgm_ai"),
-                bgmManual: tr("bgm_manual"),
-                bgmOff: tr("bgm_off"),
-                bgmAiHint: tr("bgm_ai_hint"),
-                bgmEmpty: tr("bgm_empty"),
-                bgmLoading: tr("bgm_loading"),
-              }}
-            />
-          )}
-        </aside>
+        </section>
       </div>
+
+      {mediaKind === "video" && (
+        <section className={clsx(CINEMA_GLASS, "space-y-4 p-4")}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-white/75">
+                {tr("studio_audio_tts")}
+              </p>
+              <p className="mt-0.5 text-[11px] text-white/40">
+                {tr("studio_voice_hint")}
+              </p>
+            </div>
+            <span className="text-[10px] uppercase tracking-wider text-nabi-gold/80">
+              {tr("studio_engine_badge")}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {EMOTION_MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setEmotionMode(m.id)}
+                className={clsx(
+                  "nabi-select px-2.5 py-1 text-[11px]",
+                  emotionMode === m.id && "nabi-select-on"
+                )}
+              >
+                {tr(`emotion_${m.id}`)}
+              </button>
+            ))}
+          </div>
+          <StudioTimeline
+            durationSec={duration}
+            onDurationChange={setDuration}
+            playheadSec={playheadSec}
+            onSeek={setPlayheadSec}
+            onScrub={seekTimeline}
+            playing={timelinePlaying}
+            onPlayingChange={setTimelinePlaying}
+            bgmMode={bgmMode}
+            bgmTrackId={bgmTrackId}
+            onBgmModeChange={setBgmMode}
+            onBgmTrackChange={setBgmTrackId}
+            emotionMode={emotionMode}
+            disabled={loading}
+            externalClock={Boolean(videoUrl)}
+            onAudioCostChange={setAudioNc}
+            onGenerateVoice={generateVoiceClip}
+            onGenerateSfx={generateSfxClip}
+            copy={{
+              title: tr("studio_timeline"),
+              hint: tr("studio_timeline_hint"),
+              frames: tr("studio_frames"),
+              mute: tr("studio_mute"),
+              unmute: tr("studio_unmute"),
+              included: tr("studio_bgm_included"),
+              voicePlaceholder: tr("studio_tts_placeholder"),
+              sfxPlaceholder: tr("studio_sfx_placeholder"),
+              generateVoice: tr("studio_tts_generate"),
+              generateSfx: tr("studio_sfx_generate"),
+              audioNc: tr("studio_audio_nc"),
+              bgmTitle: tr("bgm_title"),
+              bgmAi: tr("bgm_ai"),
+              bgmManual: tr("bgm_manual"),
+              bgmOff: tr("bgm_off"),
+              bgmAiHint: tr("bgm_ai_hint"),
+              bgmEmpty: tr("bgm_empty"),
+              bgmLoading: tr("bgm_loading"),
+            }}
+          />
+        </section>
+      )}
 
       <RecentGenerationsReel
         title={tr("studio_recent")}
@@ -1221,4 +1158,3 @@ export default function GenerateStudio() {
     </div>
   );
 }
-

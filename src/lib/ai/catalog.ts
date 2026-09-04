@@ -86,9 +86,9 @@ export const VIDEO_MODEL_CARDS: OfficialModelCard[] = [
   {
     id: "runway-gen3",
     media: "video",
-    label: "Runway direct (unconfigured)",
+    label: "Unavailable",
     vendor: "Unavailable",
-    description: "Requires a configured direct Runway commercial adapter",
+    description: "Direct commercial adapter is not configured",
     coinMultiplier: 1.45,
   },
   {

@@ -34,10 +34,11 @@ function StudioSkeleton({ film }: { film: boolean }) {
   return (
     <div className="mx-auto max-w-[1680px] animate-pulse space-y-6 py-8">
       <div className="h-10 w-40 rounded-full bg-white/10" />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <div className="h-64 rounded-2xl bg-nabi-card" />
+      <div className="grid gap-5 lg:grid-cols-[minmax(280px,22rem)_minmax(0,1fr)]">
+        <div className="h-72 rounded-2xl bg-nabi-card" />
         <div className="aspect-video rounded-2xl bg-nabi-card" />
       </div>
+      <div className="h-40 rounded-2xl bg-nabi-card" />
     </div>
   );
 }
@@ -61,30 +62,32 @@ function HomeStudioInner() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-[1680px] space-y-6">
-      <div className="flex flex-wrap gap-2">
-        <Link
-          href={studioHref("video", searchParams)}
-          scroll={false}
-          suppressHydrationWarning
-          className={clsx(
-            "nabi-select px-4 py-1.5",
-            !film && "nabi-select-on"
-          )}
-        >
-          {tr("mode_prompt")}
-        </Link>
-        <Link
-          href={studioHref("film", searchParams)}
-          scroll={false}
-          suppressHydrationWarning
-          className={clsx(
-            "nabi-select px-4 py-1.5",
-            film && "nabi-select-on"
-          )}
-        >
-          {tr("mode_script_film")}
-        </Link>
+    <div className="mx-auto max-w-[1680px] space-y-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="inline-flex rounded-full border border-white/10 bg-white/[0.03] p-1">
+          <Link
+            href={studioHref("video", searchParams)}
+            scroll={false}
+            suppressHydrationWarning
+            className={clsx(
+              "rounded-full px-4 py-1.5 text-xs font-semibold transition",
+              !film ? "bg-white/10 text-white" : "text-white/45 hover:text-white/80"
+            )}
+          >
+            {tr("mode_prompt")}
+          </Link>
+          <Link
+            href={studioHref("film", searchParams)}
+            scroll={false}
+            suppressHydrationWarning
+            className={clsx(
+              "rounded-full px-4 py-1.5 text-xs font-semibold transition",
+              film ? "bg-white/10 text-white" : "text-white/45 hover:text-white/80"
+            )}
+          >
+            {tr("mode_script_film")}
+          </Link>
+        </div>
       </div>
       {mounted ? (
         film ? (

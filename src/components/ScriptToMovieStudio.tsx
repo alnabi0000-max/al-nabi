@@ -30,11 +30,10 @@ import type { CameraMovement, Scene } from "@/lib/types";
 import { friendlyApiError, parseApiResponse } from "@/lib/api-errors";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import { ModelSwitcher } from "@/components/ModelSwitcher";
+import { StudioAccordion } from "@/components/studio/studio-primitives";
 import type {
   FrameRate,
-  ImageEngineId,
   RenderQuality,
-  VideoEngineId,
 } from "@/lib/ai/catalog";
 import { BgmPicker } from "@/components/BgmPicker";
 import type { BgmMode } from "@/lib/bgm/types";
@@ -76,8 +75,6 @@ export function ScriptToMovieStudio() {
     DEFAULT_BGM_SELECTION.trackId
   );
   const [durationSec, setDurationSec] = useState(60);
-  const [videoEngine, setVideoEngine] = useState<VideoEngineId>("auto");
-  const [imageEngine, setImageEngine] = useState<ImageEngineId>("flux-pro");
   const [quality, setQuality] = useState<RenderQuality>("1080p");
   const [frameRate, setFrameRate] = useState<FrameRate>(24);
   const [camera, setCamera] = useState<CameraMovement>("orbit");
@@ -125,13 +122,12 @@ export function ScriptToMovieStudio() {
   const credits = useMemo(
     () =>
       calculateMovieCredits(durationSec, {
-        engine: videoEngine,
+        engine: "auto",
         quality,
         frameRate,
       }),
-    [durationSec, videoEngine, quality, frameRate]
+    [durationSec, quality, frameRate]
   );
-  const minutes = Math.max(1, Math.ceil(durationSec / 60));
   const loading = phase === "analyzing" || phase === "pipeline";
 
   function startSceneTicker(list: Scene[]) {
@@ -301,7 +297,7 @@ export function ScriptToMovieStudio() {
             locale,
             alnabiyKey: key,
             clientBalance: coins,
-            engine: videoEngine,
+            engine: "auto",
             quality,
             frameRate,
             cameraMove: camera,
@@ -371,121 +367,49 @@ export function ScriptToMovieStudio() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="flex flex-col gap-5">
       <p className="text-sm text-nabi-muted">{tr("rate_movie")}</p>
 
-      <div className="nabi-card space-y-3">
-        <ModelSwitcher
-          media="video"
-          compact
-          videoEngine={videoEngine}
-          imageEngine={imageEngine}
-          quality={quality}
-          frameRate={frameRate}
-          camera={camera}
-          onVideoEngine={setVideoEngine}
-          onImageEngine={setImageEngine}
-          onQuality={setQuality}
-          onFrameRate={setFrameRate}
-          onCamera={setCamera}
-        />
-      </div>
-
-      <div className="nabi-card space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <label className="text-sm font-medium text-nabi-muted">
-            {tr("script_label")}
-          </label>
-          <button
-            type="button"
-            onClick={enhanceScript}
-            disabled={enhancing || isOffline}
-            className="nabi-btn-ghost !py-1.5 !text-xs inline-flex items-center gap-1.5"
-          >
-            {enhancing ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Wand2 size={14} />
-            )}
-            {tr("enhance_prompt")}
-          </button>
-        </div>
-        <textarea
-          className="nabi-input min-h-[220px] resize-y font-mono text-[13px] leading-relaxed"
-          placeholder={tr("script_placeholder")}
-          value={script}
-          onChange={(e) => setScript(e.target.value)}
-        />
-        <p className="text-xs text-nabi-muted">{script.length}</p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="nabi-card space-y-3">
-          <p className="text-xs uppercase tracking-wider text-nabi-muted">
-            {tr("style")}
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {STYLE_KEYS.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setStyle(s.id)}
-                className={`nabi-select w-full px-3 py-3 text-left text-sm ${
-                  style === s.id ? "nabi-select-on" : ""
-                }`}
-              >
-                {tr(s.labelKey)}
-              </button>
-            ))}
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+        <section className="w-full shrink-0 space-y-4 lg:w-[22rem] xl:w-[24rem]">
+          <div className="flex items-center justify-between gap-3">
+            <label className="text-sm font-medium text-nabi-ink">
+              {tr("script_label")}
+            </label>
+            <span className="rounded-full border border-nabi-gold/25 bg-nabi-gold/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-nabi-gold">
+              {tr("studio_engine_badge")}
+            </span>
           </div>
-
-          <p className="text-xs uppercase tracking-wider text-nabi-muted">
-            {tr("emotion_mode")}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {EMOTION_MODES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setEmotionMode(m.id)}
-                className={`nabi-btn-ghost !px-3 !text-xs ${
-                  emotionMode === m.id ? "nabi-select-on" : ""
-                }`}
-              >
-                {tr(`emotion_${m.id}`)}
-              </button>
-            ))}
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={enhanceScript}
+              disabled={enhancing || isOffline}
+              className="nabi-btn-ghost !py-1.5 !text-xs inline-flex items-center gap-1.5"
+            >
+              {enhancing ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Wand2 size={14} />
+              )}
+              {tr("enhance_prompt")}
+            </button>
           </div>
-
-          <BgmPicker
-            mode={bgmMode}
-            trackId={bgmTrackId}
-            onModeChange={setBgmMode}
-            onTrackChange={setBgmTrackId}
-            disabled={loading}
-            labels={{
-              title: tr("bgm_title"),
-              ai: tr("bgm_ai"),
-              manual: tr("bgm_manual"),
-              off: tr("bgm_off"),
-              aiHint: tr("bgm_ai_hint"),
-              empty: tr("bgm_empty"),
-              loading: tr("bgm_loading"),
-            }}
+          <textarea
+            className="nabi-input min-h-[220px] resize-y text-[13px] leading-relaxed"
+            placeholder={tr("script_placeholder")}
+            value={script}
+            onChange={(e) => setScript(e.target.value)}
           />
-        </div>
+          <p className="text-xs text-nabi-muted">{script.length}</p>
 
-        <div className="nabi-card space-y-3">
-          <p className="text-xs uppercase tracking-wider text-nabi-muted">
-            {tr("duration_label")}
-          </p>
           <div className="flex flex-wrap gap-2">
             {DURATIONS.map((d) => (
               <button
                 key={d.sec}
                 type="button"
                 onClick={() => setDurationSec(d.sec)}
-                className={`nabi-btn-ghost !px-3 ${
+                className={`nabi-select px-3 py-1 text-xs ${
                   durationSec === d.sec ? "nabi-select-on" : ""
                 }`}
               >
@@ -494,35 +418,13 @@ export function ScriptToMovieStudio() {
             ))}
           </div>
 
-          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-nabi-gold">
-              {tr("credit_calculator")}
-            </p>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between text-nabi-muted">
-                <span>{tr("minutes_label")}</span>
-                <span>{minutes} min</span>
-              </div>
-              <div className="flex justify-between text-nabi-muted">
-                <span>{tr("rate_label")}</span>
-                <span>{CREDIT_RATES.text_to_movie_per_min} / min</span>
-              </div>
-              <div className="flex justify-between border-t border-amber-500/20 pt-2 font-bold text-nabi-gold">
-                <span>{tr("total_label")}</span>
-                <span>{formatCredits(credits)}</span>
-              </div>
-            </div>
-          </div>
-
-          <NcReceiptHistory variant="compact" />
-
           <InsufficientBalanceHint
             kind="text_to_movie"
             cost={credits}
             coins={coins}
             durationSec={durationSec}
             costOpts={{
-              engine: videoEngine,
+              engine: "auto",
               quality,
               frameRate,
             }}
@@ -542,76 +444,151 @@ export function ScriptToMovieStudio() {
             tryQualityLabel={tr("try_quality_720p")}
             tr={tr}
           />
-        </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={analyzeOnly}
+              disabled={loading}
+              className="nabi-btn-ghost"
+            >
+              {phase === "analyzing" ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Scissors size={16} />
+              )}
+              {tr("split_scenes")}
+            </button>
+            <button
+              type="button"
+              onClick={runFullPipeline}
+              disabled={loading || isOffline || coins < credits}
+              className="nabi-btn-primary"
+            >
+              {phase === "pipeline" ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Clapperboard size={16} />
+              )}
+              {tr("create_with_alnabiy")}
+              <span className="mx-1.5 opacity-40">•</span>
+              <span className="tabular-nums text-amber-200">
+                {credits.toLocaleString()} NC
+              </span>
+            </button>
+          </div>
+
+          {error && (
+            <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+              {error}
+            </div>
+          )}
+
+          <StudioAccordion title={tr("studio_advanced")}>
+            <div className="space-y-4">
+              <ModelSwitcher
+                quality={quality}
+                frameRate={frameRate}
+                onQuality={setQuality}
+                onFrameRate={setFrameRate}
+              />
+              <div>
+                <p className="mb-2 text-xs uppercase tracking-wider text-nabi-muted">
+                  {tr("style")}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {STYLE_KEYS.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setStyle(s.id)}
+                      className={`nabi-select w-full px-3 py-3 text-left text-sm ${
+                        style === s.id ? "nabi-select-on" : ""
+                      }`}
+                    >
+                      {tr(s.labelKey)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <NcReceiptHistory variant="compact" />
+            </div>
+          </StudioAccordion>
+        </section>
+
+        <section className="min-w-0 flex-1 space-y-4">
+          {loading && (
+            <div className="nabi-card space-y-2">
+              <p className="text-xs font-medium text-nabi-muted">
+                {tr("script_pipeline_progress")}
+              </p>
+              <RenderProgress percent={progressPercent} stage={renderStage} />
+            </div>
+          )}
+          <MediaViewer
+            loading={phase === "pipeline"}
+            videoUrl={resultUrl}
+            progressPercent={progressPercent}
+            renderStage={renderStage}
+            generationId={jobMeta.jobId}
+            mediaTitle={(script || "Al-Nabi Film").slice(0, 60)}
+            providerLine={
+              phase === "done"
+                ? `${tr("studio_engine_badge")} · ${tr("film_ready")}`
+                : undefined
+            }
+          />
+        </section>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={analyzeOnly}
+      <section className="nabi-card space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-white/75">
+              {tr("studio_audio_tts")}
+            </p>
+            <p className="mt-0.5 text-[11px] text-white/40">
+              {tr("studio_voice_hint")}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {EMOTION_MODES.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setEmotionMode(m.id)}
+              className={`nabi-btn-ghost !px-3 !text-xs ${
+                emotionMode === m.id ? "nabi-select-on" : ""
+              }`}
+            >
+              {tr(`emotion_${m.id}`)}
+            </button>
+          ))}
+        </div>
+        <BgmPicker
+          mode={bgmMode}
+          trackId={bgmTrackId}
+          onModeChange={setBgmMode}
+          onTrackChange={setBgmTrackId}
           disabled={loading}
-          className="nabi-btn-ghost"
-        >
-          {phase === "analyzing" ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : (
-            <Scissors size={16} />
-          )}
-          {tr("split_scenes")}
-        </button>
-        <button
-          type="button"
-          onClick={runFullPipeline}
-          disabled={loading || isOffline || coins < credits}
-          className="nabi-btn-primary"
-        >
-          {phase === "pipeline" ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : (
-            <Clapperboard size={16} />
-          )}
-          {tr("create_with_alnabiy")}
-          <span className="mx-1.5 opacity-40">•</span>
-          <span className="tabular-nums text-amber-200">
-            {credits.toLocaleString()} NC
-          </span>
-        </button>
-      </div>
-
-      {loading && (
-        <div className="nabi-card space-y-2">
-          <p className="text-xs font-medium text-nabi-muted">
-            {tr("script_pipeline_progress")}
-          </p>
-          <RenderProgress percent={progressPercent} stage={renderStage} />
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
-          {error}
-        </div>
-      )}
+          labels={{
+            title: tr("bgm_title"),
+            ai: tr("bgm_ai"),
+            manual: tr("bgm_manual"),
+            off: tr("bgm_off"),
+            aiHint: tr("bgm_ai_hint"),
+            empty: tr("bgm_empty"),
+            loading: tr("bgm_loading"),
+          }}
+        />
+      </section>
 
       <EpisodeBoard
         scenes={scenes}
         sceneStatus={sceneStatus}
         activeIndex={activeScene}
         jobId={jobMeta.jobId}
-      />
-
-      <MediaViewer
-        loading={phase === "pipeline"}
-        videoUrl={resultUrl}
-        progressPercent={progressPercent}
-        renderStage={renderStage}
-        generationId={jobMeta.jobId}
-        mediaTitle={(script || "Al-Nabi Film").slice(0, 60)}
-        providerLine={
-          phase === "done"
-            ? `${tr(`emotion_${emotionMode}`)} · ${tr("film_ready")}`
-            : undefined
-        }
       />
 
       <ViralHooksPanel
@@ -623,4 +600,3 @@ export function ScriptToMovieStudio() {
     </div>
   );
 }
-
