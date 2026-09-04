@@ -27,7 +27,8 @@
     "db:studio": "prisma studio",
     "inngest:dev": "npx inngest-cli@latest dev -u http://localhost:3000/api/inngest",
     "launch:check": "tsx scripts/launch-check.ts",
-    "auth:google": "node scripts/enable-google-oauth.mjs"
+    "auth:google": "node scripts/enable-google-oauth.mjs",
+    "auth:repair": "node scripts/repair-local-env.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1107.0",

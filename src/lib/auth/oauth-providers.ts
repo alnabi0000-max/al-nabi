@@ -13,6 +13,18 @@ export function shouldOfferGoogleOAuth(probe: { google?: boolean } | null): bool
   return probe?.google !== false;
 }
 
+/**
+ * Map a GoTrue probe result onto the guest-safe JSON the client reads.
+ * `null` (timeout / unknown) omits the flag so the button still starts OAuth.
+ */
+export function oauthProbePayload(
+  provider: SocialOAuthProvider,
+  enabled: boolean | null
+): { google?: boolean; apple?: boolean } {
+  if (enabled === null) return {};
+  return { [provider]: enabled };
+}
+
 function supabaseAuthOrigin(): { url: string; anon: string } | null {
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/\/$/, "");
   const anon = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();

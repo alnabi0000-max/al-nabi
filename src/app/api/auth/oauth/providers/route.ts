@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   isOAuthProviderEnabled,
+  oauthProbePayload,
   type SocialOAuthProvider,
 } from "@/lib/auth/oauth-providers";
 
@@ -11,7 +12,11 @@ function asProvider(value: string | null): SocialOAuthProvider | null {
   return null;
 }
 
-function json(payload: { ok: true; google: boolean; apple: boolean }) {
+function json(payload: {
+  ok: true;
+  google?: boolean;
+  apple?: boolean;
+}) {
   return NextResponse.json(payload, {
     headers: { "Cache-Control": "no-store" },
   });
@@ -20,6 +25,9 @@ function json(payload: { ok: true; google: boolean; apple: boolean }) {
 /**
  * Guest-safe probe. Pass ?provider=google to check only that provider so a
  * hung Apple check cannot freeze the Google button.
+ *
+ * Unknown (`null`) must not serialize as `false` — that made the Google
+ * button show "coming soon" whenever GoTrue timed out.
  */
 export async function GET(request: NextRequest) {
   const only = asProvider(request.nextUrl.searchParams.get("provider"));
@@ -27,8 +35,7 @@ export async function GET(request: NextRequest) {
     const enabled = await isOAuthProviderEnabled(only);
     return json({
       ok: true,
-      google: only === "google" && enabled === true,
-      apple: only === "apple" && enabled === true,
+      ...oauthProbePayload(only, enabled),
     });
   }
 
@@ -39,7 +46,7 @@ export async function GET(request: NextRequest) {
 
   return json({
     ok: true,
-    google: google === true,
-    apple: apple === true,
+    ...oauthProbePayload("google", google),
+    ...oauthProbePayload("apple", apple),
   });
 }

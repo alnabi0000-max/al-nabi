@@ -20,6 +20,10 @@ function loadEnv(filePath) {
     if (eq < 1) continue;
     const key = line.slice(0, eq).trim();
     let value = line.slice(eq + 1).trim();
+    const glued = value.match(/^([^#]+)#\s+.+$/);
+    if (glued && !(value.startsWith('"') || value.startsWith("'"))) {
+      value = glued[1].trim();
+    }
     if (
       (value.startsWith('"') && value.endsWith('"')) ||
       (value.startsWith("'") && value.endsWith("'"))
@@ -116,6 +120,8 @@ const patchRes = await fetch(configUrl, {
       `${appUrl}/auth/callback`,
       "http://localhost:3000/**",
       "http://localhost:3000/auth/callback",
+      "http://127.0.0.1:3000/**",
+      "http://127.0.0.1:3000/auth/callback",
     ]),
   }),
 });
@@ -126,3 +132,5 @@ if (!patchRes.ok) {
 }
 
 console.log(`Google OAuth enabled for ${ref}. Sign-in can use Continue with Google.`);
+console.log(`Google Cloud redirect URI: ${supabaseUrl}/auth/v1/callback`);
+console.log(`Google Cloud JS origins: ${appUrl}  and  http://127.0.0.1:3000`);

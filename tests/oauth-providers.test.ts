@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   isOAuthProviderEnabled,
+  oauthProbePayload,
   shouldOfferGoogleOAuth,
 } from "@/lib/auth/oauth-providers";
 
@@ -32,6 +33,17 @@ describe("shouldOfferGoogleOAuth", () => {
   it("starts Google when the probe is down or rate-limited", () => {
     expect(shouldOfferGoogleOAuth(null)).toBe(true);
     expect(shouldOfferGoogleOAuth({})).toBe(true);
+  });
+});
+
+describe("oauthProbePayload", () => {
+  it("omits the flag when GoTrue is unreachable so the button still starts", () => {
+    expect(oauthProbePayload("google", null)).toEqual({});
+  });
+
+  it("sets google true/false only from a definite probe", () => {
+    expect(oauthProbePayload("google", true)).toEqual({ google: true });
+    expect(oauthProbePayload("google", false)).toEqual({ google: false });
   });
 });
 

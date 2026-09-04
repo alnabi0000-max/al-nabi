@@ -58,14 +58,21 @@ export function SocialAuthButtons({
         return;
       }
 
-      const probeRes = await fetchWithTimeout(
-        "/api/auth/oauth/providers?provider=google",
-        { credentials: "include" },
-        4_000
-      );
-      const probe = (await probeRes.json().catch(() => null)) as
-        | { google?: boolean }
-        | null;
+      let probe: { google?: boolean } | null = null;
+      try {
+        const probeRes = await fetchWithTimeout(
+          "/api/auth/oauth/providers?provider=google",
+          { credentials: "include" },
+          4_000
+        );
+        probe = probeRes.ok
+          ? ((await probeRes.json().catch(() => null)) as {
+              google?: boolean;
+            } | null)
+          : null;
+      } catch {
+        probe = null;
+      }
       if (!shouldOfferGoogleOAuth(probe)) {
         notify({
           message: tr("auth_google_coming_soon"),
@@ -80,6 +87,10 @@ export function SocialAuthButtons({
         provider: "google",
         options: {
           redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "select_account",
+          },
         },
       });
       if (error) {
