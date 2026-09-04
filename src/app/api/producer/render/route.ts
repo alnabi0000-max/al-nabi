@@ -4,7 +4,7 @@ import { apiError, apiJson, formatRouteError } from "@/lib/api/json-response";
 import { sanitizeGenerationError } from "@/lib/generation/public-error";
 import { renderProducerPackage } from "@/lib/producer/render";
 import type { VisualDna } from "@/lib/producer/vision-dna";
-import { guardSensitiveRequest } from "@/lib/security/request-guard";
+import { guardSensitiveRequest, guardGenerationLoad } from "@/lib/security/request-guard";
 import { ALNABIY_ENGINES } from "@/lib/models";
 import {
   ensureRequestLedgerUser,
@@ -76,6 +76,8 @@ export async function POST(req: NextRequest) {
       );
     }
     const user = ensured.user;
+    const genLimited = await guardGenerationLoad(user.id);
+    if (genLimited) return genLimited;
     const trustFailure = await enforceGenerationTrust({
       userId: user.id,
       surface: "producer-render",

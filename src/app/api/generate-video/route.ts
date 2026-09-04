@@ -6,7 +6,7 @@ import { WATERMARK, chargeableDurationSec } from "@/lib/credits";
 import { sanitizePublicPayload, whiteLabelEngine, whiteLabelModel } from "@/lib/models";
 import { apiError, apiJson, formatRouteError } from "@/lib/api/json-response";
 import { sanitizeGenerationError } from "@/lib/generation/public-error";
-import { guardSensitiveRequest } from "@/lib/security/request-guard";
+import { guardSensitiveRequest, guardGenerationLoad } from "@/lib/security/request-guard";
 import {
   ensureRequestLedgerUser,
   isSoftAuthEnabled,
@@ -75,6 +75,8 @@ export async function POST(req: NextRequest) {
       );
     }
     const user = ensured.user;
+    const genLimited = await guardGenerationLoad(user.id);
+    if (genLimited) return genLimited;
     const trustFailure = await enforceGenerationTrust({
       userId: user.id,
       surface: "generate-video-legacy",

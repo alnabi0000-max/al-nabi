@@ -1,5 +1,10 @@
 import { getAuthMode, isSupabaseConfigured, type AuthMode } from "@/lib/auth/config";
+import { isInngestConfigured } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
+import {
+  isUpstashConfigured,
+  pingUpstash,
+} from "@/lib/security/upstash-config";
 
 export type HealthReport = {
   ok: boolean;
@@ -9,10 +14,19 @@ export type HealthReport = {
     mode: AuthMode;
     supabase: boolean;
   };
+  queue: {
+    inngest: boolean;
+    mode: "inngest" | "local";
+  };
+  rateLimit: {
+    upstash: boolean;
+    reachable: boolean | null;
+  };
 };
 
 /**
- * Liveness + Prisma connectivity. Never includes connection strings or secrets.
+ * Liveness + Prisma connectivity. Queue/Redis are reported but never fail
+ * local health — development can run without Upstash. Never includes secrets.
  */
 export async function getHealthReport(): Promise<HealthReport> {
   let database = false;
@@ -33,10 +47,22 @@ export async function getHealthReport(): Promise<HealthReport> {
     supabase = false;
   }
 
+  const inngest = isInngestConfigured();
+  const upstash = isUpstashConfigured();
+  const reachable = await pingUpstash();
+
   return {
     ok: database,
     service: "al-nabi",
     database,
     auth: { mode, supabase },
+    queue: {
+      inngest,
+      mode: inngest ? "inngest" : "local",
+    },
+    rateLimit: {
+      upstash,
+      reachable,
+    },
   };
 }

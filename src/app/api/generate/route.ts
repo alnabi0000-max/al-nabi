@@ -11,7 +11,7 @@ import { enqueueGeneration } from "@/lib/generation/enqueue";
 import { failAndRefundGeneration } from "@/lib/generation/fail-and-refund";
 import { sanitizePublicPayload } from "@/lib/models";
 import type { GenerationType } from "@prisma/client";
-import { guardSensitiveRequest } from "@/lib/security/request-guard";
+import { guardSensitiveRequest, guardGenerationLoad } from "@/lib/security/request-guard";
 import {
   getVideoGenerationEstimate,
   ProviderRoutingError,
@@ -169,6 +169,8 @@ export async function POST(req: NextRequest) {
       );
     }
     const user = ensured.user;
+    const genLimited = await guardGenerationLoad(user.id);
+    if (genLimited) return genLimited;
 
     let routing:
       | ReturnType<typeof getVideoGenerationEstimate>

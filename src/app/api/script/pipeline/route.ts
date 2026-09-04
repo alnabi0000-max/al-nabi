@@ -26,7 +26,7 @@ import { AlnabiySentinelEngine } from "@/lib/sentinel-engine";
 import { WATERMARK, formatInsufficientFundsMessage } from "@/lib/credits";
 import type { VideoStyle } from "@/lib/types";
 import type { WordTiming } from "@/lib/audio";
-import { guardSensitiveRequest } from "@/lib/security/request-guard";
+import { guardSensitiveRequest, guardGenerationLoad } from "@/lib/security/request-guard";
 import {
   assertPersistentObjectStorage,
   ObjectStorageConfigurationError,
@@ -107,6 +107,8 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+    const genLimited = await guardGenerationLoad(ensured.user.id);
+    if (genLimited) return genLimited;
     const trustFailure = await enforceGenerationTrust({
       userId: ensured.user.id,
       surface: "script-pipeline",

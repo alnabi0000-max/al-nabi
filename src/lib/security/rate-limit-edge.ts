@@ -4,6 +4,7 @@
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { isUpstashConfigured } from "@/lib/security/upstash-config";
 
 export type RateLimitResult = {
   success: boolean;
@@ -17,13 +18,6 @@ type MemoryBucket = { count: number; resetAt: number };
 
 const memory = new Map<string, MemoryBucket>();
 const isProductionRuntime = () => process.env.NODE_ENV === "production";
-
-function isUpstashConfigured(): boolean {
-  return Boolean(
-    process.env.UPSTASH_REDIS_REST_URL?.trim() &&
-      process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
-  );
-}
 
 function unavailableLimit(): RateLimitResult {
   return {

@@ -24,6 +24,10 @@ import {
   shouldInstantMockGenerate,
 } from "@/lib/generation/dev-mock";
 import { failAndRefundGeneration } from "@/lib/generation/fail-and-refund";
+import {
+  acquireGenerationJobLock,
+  releaseGenerationJobLock,
+} from "@/lib/generation/job-lock";
 import { whiteLabelEngine, whiteLabelModel } from "@/lib/models";
 import { atomicChargeCoins } from "@/lib/ledger/atomic";
 import type { EmotionMode, GenerationKind } from "@/lib/credits";
@@ -96,6 +100,11 @@ export async function processGenerationJob(generationId: string): Promise<{
       error: generation.errorMessage || "Generation failed",
       creditsCost: generation.creditsCost,
     };
+  }
+
+  const lock = await acquireGenerationJobLock(generationId);
+  if (lock === "busy") {
+    return { ok: false, error: "Generation already in progress" };
   }
 
   const prompt =
@@ -381,5 +390,9 @@ export async function processGenerationJob(generationId: string): Promise<{
       balanceAfter: result.balanceAfter,
       creditsCost,
     };
+  } finally {
+    if (lock === "acquired") {
+      await releaseGenerationJobLock(generationId);
+    }
   }
 }

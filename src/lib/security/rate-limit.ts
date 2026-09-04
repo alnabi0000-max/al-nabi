@@ -1,5 +1,8 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { isUpstashConfigured } from "@/lib/security/upstash-config";
+
+export { isUpstashConfigured } from "@/lib/security/upstash-config";
 
 export type RateLimitResult = {
   success: boolean;
@@ -14,13 +17,6 @@ type MemoryBucket = { count: number; resetAt: number };
 const memory = new Map<string, MemoryBucket>();
 
 const isProductionRuntime = () => process.env.NODE_ENV === "production";
-
-export function isUpstashConfigured(): boolean {
-  return Boolean(
-    process.env.UPSTASH_REDIS_REST_URL?.trim() &&
-      process.env.UPSTASH_REDIS_REST_TOKEN?.trim()
-  );
-}
 
 function unavailableLimit(): RateLimitResult {
   return {
@@ -63,6 +59,7 @@ function memoryLimit(
 let apiLimiter: Ratelimit | null = null;
 let genLimiter: Ratelimit | null = null;
 let unlockLimiter: Ratelimit | null = null;
+let userGenLimiter: Ratelimit | null = null;
 
 function getApiLimiter(): Ratelimit | null {
   if (!isUpstashConfigured()) return null;
@@ -88,6 +85,19 @@ function getGenLimiter(): Ratelimit | null {
     });
   }
   return genLimiter;
+}
+
+function getUserGenLimiter(): Ratelimit | null {
+  if (!isUpstashConfigured()) return null;
+  if (!userGenLimiter) {
+    userGenLimiter = new Ratelimit({
+      redis: Redis.fromEnv(),
+      limiter: Ratelimit.slidingWindow(10, "1 m"),
+      prefix: "alnabiy:gen-user",
+      analytics: true,
+    });
+  }
+  return userGenLimiter;
 }
 
 function getUnlockLimiter(): Ratelimit | null {
@@ -199,6 +209,37 @@ export async function rateLimitUnlock(
     return isProductionRuntime()
       ? unavailableLimit()
       : memoryLimit(`unlock:${identifier}`, 5, 15 * 60_000);
+  }
+}
+
+/**
+ * Per-user generation cap — 10 jobs / minute. Protects Kling/Replicate
+ * spend when the same signed-in account fans out from many IPs.
+ */
+export async function rateLimitGeneration(
+  userId: string
+): Promise<RateLimitResult> {
+  const id = userId.trim() || "anon";
+  try {
+    const limiter = getUserGenLimiter();
+    if (!limiter) {
+      return isProductionRuntime()
+        ? unavailableLimit()
+        : memoryLimit(`gen-user:${id}`, 10, 60_000);
+    }
+    const res = await limiter.limit(id);
+    return {
+      success: res.success,
+      limit: res.limit,
+      remaining: res.remaining,
+      reset: res.reset,
+      source: "upstash",
+    };
+  } catch (error) {
+    console.error("[Alnabiy] Upstash generation rate limit failed", error);
+    return isProductionRuntime()
+      ? unavailableLimit()
+      : memoryLimit(`gen-user:${id}`, 10, 60_000);
   }
 }
 

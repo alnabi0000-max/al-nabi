@@ -10,6 +10,10 @@ export const processGenerationFn = inngest.createFunction(
     id: "process-generation",
     name: "Process Alnabiy Generation",
     retries: 2,
+    concurrency: [
+      { limit: 6 },
+      { key: "event.data.generationId", limit: 1 },
+    ],
     triggers: [{ event: GENERATION_EVENT }],
   },
   async ({ event, step }) => {
