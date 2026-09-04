@@ -24,6 +24,7 @@ import {
 } from "@/lib/storage/object-storage";
 import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
 import { enforceGenerationTrust } from "@/lib/trust/generation-gate";
+import { resolveGenerationType } from "@/lib/generation/types";
 
 /**
  * Legacy sync video route — prefer POST /api/generate (ledger + queue + refund).
@@ -137,7 +138,10 @@ export async function POST(req: NextRequest) {
     const generation = await prisma.generation.create({
       data: {
         userId: user.id,
-        type: "TEXT_TO_VIDEO",
+        type: resolveGenerationType({
+          mediaKind: "video",
+          imageUrl: body.imageUrl,
+        }),
         status: "QUEUED",
         prompt: body.prompt,
         style: body.style,
@@ -188,6 +192,11 @@ export async function POST(req: NextRequest) {
     }
     chargedUserId = user.id;
     chargedAmount = charge.cost;
+
+    await prisma.generation.update({
+      where: { id: generation.id },
+      data: { status: "GENERATING_VIDEO", errorMessage: null },
+    });
 
     const result = await generateVideoClip({
       prompt,

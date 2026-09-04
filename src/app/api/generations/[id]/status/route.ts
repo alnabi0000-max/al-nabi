@@ -7,6 +7,7 @@ import { sanitizeGenerationError } from "@/lib/generation/public-error";
 import { reclaimStaleGeneration } from "@/lib/generation/fail-and-refund";
 import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
 import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
+import { progressFromStatus } from "@/lib/generation/progress";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -62,6 +63,7 @@ async function toPayload(
 ) {
   const done = generation.status === "COMPLETED";
   const failed = generation.status === "FAILED";
+  const prog = progressFromStatus(generation.status);
   const deliveryUrl = done
     ? await resolvePrivateDeliveryUrl({
         objectKey: generation.r2Key,
@@ -93,6 +95,8 @@ async function toPayload(
       done && generation.type !== "IMAGE" ? deliveryUrl : null,
     imageUrl:
       done && generation.type === "IMAGE" ? deliveryUrl : null,
+    percent: prog.percent,
+    stage: prog.stage,
   });
 }
 
@@ -205,7 +209,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
         send(await toPayload(row, balanceAfter));
 
         const started = Date.now();
-        while (!closed && Date.now() - started < 120_000) {
+        while (!closed && Date.now() - started < 300_000) {
           await new Promise((r) => setTimeout(r, 2000));
           if (closed) break;
           try {

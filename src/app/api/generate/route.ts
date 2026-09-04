@@ -10,7 +10,8 @@ import { assertSufficientCoins } from "@/lib/ledger/atomic";
 import { enqueueGeneration } from "@/lib/generation/enqueue";
 import { failAndRefundGeneration } from "@/lib/generation/fail-and-refund";
 import { sanitizePublicPayload } from "@/lib/models";
-import type { GenerationType } from "@prisma/client";
+import { resolveGenerationType } from "@/lib/generation/types";
+import { ensureStudioWorkspace } from "@/lib/projects/ensure-studio";
 import { guardSensitiveRequest, guardGenerationLoad } from "@/lib/security/request-guard";
 import {
   getVideoGenerationEstimate,
@@ -127,10 +128,6 @@ const schema = z.object({
   shotId: z.string().min(1).max(100).optional().nullable(),
   cinematicControls: cinematicControlsSchema.optional(),
 });
-
-function generationType(mediaKind: "image" | "video"): GenerationType {
-  return mediaKind === "image" ? "IMAGE" : "TEXT_TO_VIDEO";
-}
 
 async function parseBody(req: NextRequest) {
   const raw = await req.text();
@@ -327,70 +324,59 @@ export async function POST(req: NextRequest) {
     const mood = `Emotional mode: ${body.emotionMode}.`;
     enhanced = `${enhanced}. ${mood} ${gate.brandTag}.`;
 
-    if (body.shotId && !body.projectId) {
-      return apiError("A shot must belong to a project.", {
-        status: 400,
-        code: "PROJECT_REQUIRED",
-      });
-    }
-
     let generation;
     try {
       generation = await prisma.$transaction(async (tx) => {
-        if (body.projectId) {
-          const project = await tx.project.findFirst({
-            where: { id: body.projectId, userId: user.id },
-            select: { id: true },
-          });
-          if (!project) throw new Error("PROJECT_NOT_FOUND");
+        const workspace = await ensureStudioWorkspace(tx, {
+          userId: user.id,
+          projectId: body.projectId,
+          shotId: body.shotId,
+          aspect: body.aspect,
+          prompt: body.prompt,
+        });
 
-          if (body.shotId) {
-            const shot = await tx.shot.findFirst({
-              where: { id: body.shotId, projectId: project.id },
-              select: { id: true },
-            });
-            if (!shot) throw new Error("SHOT_NOT_FOUND");
-          }
-
-          if (
-            body.cinematicControls &&
-            body.cinematicControls.mode !== "standard"
-          ) {
-            const sourceAssetId = body.cinematicControls?.sourceAssetId;
-            const sourceRenderVersionId =
-              body.cinematicControls?.sourceRenderVersionId;
-            const source = sourceAssetId
-              ? await tx.projectAsset.findFirst({
-                  where: {
-                    id: sourceAssetId,
-                    projectId: project.id,
-                    userId: user.id,
-                    kind: "VIDEO",
-                  },
-                  select: { id: true },
-                })
-              : await tx.renderVersion.findFirst({
-                  where: {
-                    id: sourceRenderVersionId || "",
-                    projectId: project.id,
-                    status: { in: ["COMPLETED", "APPROVED"] },
-                  },
-                  select: { id: true },
-                });
-            if (!source) throw new Error("CINEMATIC_SOURCE_NOT_FOUND");
-          }
-
-          await reserveProjectSpend(tx, {
-            projectId: project.id,
-            userId: user.id,
-            credits: expectedCost,
-          });
+        if (
+          body.cinematicControls &&
+          body.cinematicControls.mode !== "standard"
+        ) {
+          const sourceAssetId = body.cinematicControls?.sourceAssetId;
+          const sourceRenderVersionId =
+            body.cinematicControls?.sourceRenderVersionId;
+          const source = sourceAssetId
+            ? await tx.projectAsset.findFirst({
+                where: {
+                  id: sourceAssetId,
+                  projectId: workspace.projectId,
+                  userId: user.id,
+                  kind: "VIDEO",
+                },
+                select: { id: true },
+              })
+            : await tx.renderVersion.findFirst({
+                where: {
+                  id: sourceRenderVersionId || "",
+                  projectId: workspace.projectId,
+                  status: { in: ["COMPLETED", "APPROVED"] },
+                },
+                select: { id: true },
+              });
+          if (!source) throw new Error("CINEMATIC_SOURCE_NOT_FOUND");
         }
+
+        await reserveProjectSpend(tx, {
+          projectId: workspace.projectId,
+          userId: user.id,
+          credits: expectedCost,
+        });
 
         const created = await tx.generation.create({
           data: {
             userId: user.id,
-            type: generationType(body.mediaKind),
+            type: resolveGenerationType({
+              mediaKind: body.mediaKind,
+              imageUrl: body.imageUrl,
+              endImageUrl: body.endImageUrl,
+            }),
             status: "QUEUED",
             prompt: body.prompt,
             enhancedPrompt: enhanced,
@@ -401,9 +387,9 @@ export async function POST(req: NextRequest) {
             cameraMove: body.cameraMove,
             sourceImageUrl: body.imageUrl || null,
             identityLocked: body.identityLocked,
-            projectId: body.projectId || null,
-            shotId: body.shotId || null,
-            reservedCredits: body.projectId ? expectedCost : 0,
+            projectId: workspace.projectId,
+            shotId: workspace.shotId,
+            reservedCredits: expectedCost,
             scenesJson: {
               aspect: body.aspect,
               engine:
@@ -437,50 +423,48 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        if (body.projectId) {
-          const number =
-            (await tx.renderVersion.count({
-              where: body.shotId
-                ? { shotId: body.shotId }
-                : { projectId: body.projectId },
-            })) + 1;
-          const renderVersion = await tx.renderVersion.create({
-            data: {
-              projectId: body.projectId,
-              shotId: body.shotId || null,
-              generationId: created.id,
-              number,
-              status: "QUEUED",
-              estimatedCredits: expectedCost,
+        const number =
+          (await tx.renderVersion.count({
+            where: workspace.shotId
+              ? { shotId: workspace.shotId }
+              : { projectId: workspace.projectId },
+          })) + 1;
+        const renderVersion = await tx.renderVersion.create({
+          data: {
+            projectId: workspace.projectId,
+            shotId: workspace.shotId,
+            generationId: created.id,
+            number,
+            status: "QUEUED",
+            estimatedCredits: expectedCost,
+          },
+        });
+        await tx.modelRun.create({
+          data: {
+            projectId: workspace.projectId,
+            renderVersionId: renderVersion.id,
+            generationId: created.id,
+            provider: routing?.provider || "replicate",
+            engineId: String(costEngine),
+            endpointModel: routing?.endpointModel || null,
+            commercialRoute: routing?.commercialRoute || "replicate",
+            status: "QUEUED",
+            estimatedCredits: expectedCost,
+            expectedP50Sec: routing?.expectedLatencySeconds.p50 || null,
+            expectedP90Sec: routing?.expectedLatencySeconds.p90 || null,
+            requestMetadata: {
+              durationSec: body.mediaKind === "image" ? 0 : duration,
+              aspect: body.aspect,
+              quality: body.quality === "8K" ? "4K" : body.quality,
+              hasFirstFrame: Boolean(body.imageUrl),
+              hasLastFrame: Boolean(body.endImageUrl),
             },
-          });
-          await tx.modelRun.create({
-            data: {
-              projectId: body.projectId,
-              renderVersionId: renderVersion.id,
-              generationId: created.id,
-              provider: routing?.provider || "replicate",
-              engineId: String(costEngine),
-              endpointModel: routing?.endpointModel || null,
-              commercialRoute: routing?.commercialRoute || "replicate",
-              status: "QUEUED",
-              estimatedCredits: expectedCost,
-              expectedP50Sec: routing?.expectedLatencySeconds.p50 || null,
-              expectedP90Sec: routing?.expectedLatencySeconds.p90 || null,
-              requestMetadata: {
-                durationSec: body.mediaKind === "image" ? 0 : duration,
-                aspect: body.aspect,
-                quality: body.quality === "8K" ? "4K" : body.quality,
-                hasFirstFrame: Boolean(body.imageUrl),
-                hasLastFrame: Boolean(body.endImageUrl),
-              },
-            },
-          });
-          await tx.project.update({
-            where: { id: body.projectId },
-            data: { status: "ACTIVE" },
-          });
-        }
+          },
+        });
+        await tx.project.update({
+          where: { id: workspace.projectId },
+          data: { status: "ACTIVE" },
+        });
         return created;
       });
     } catch (projectError) {
@@ -608,6 +592,8 @@ export async function POST(req: NextRequest) {
         status === "COMPLETED" && body.mediaKind === "image" ? resultUrl : null,
       r2Key,
       statusUrl: `/api/generations/${generation.id}/status`,
+      projectId: generation.projectId,
+      shotId: generation.shotId,
       queueMode,
       expectedCost,
       creditsCost,

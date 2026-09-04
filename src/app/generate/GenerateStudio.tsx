@@ -71,6 +71,10 @@ import type { StudioTemplate } from "@/lib/templates/types";
 import type { CameraMovement } from "@/lib/types";
 import type { BgmMode } from "@/lib/bgm/types";
 import { DEFAULT_BGM_SELECTION } from "@/lib/bgm/types";
+import { useGenerationStatus } from "@/hooks/useGenerationStatus";
+import type { GenerateQueuedResponse } from "@/lib/generation/types";
+import type { GenerationStatusPayload } from "@/lib/generation/poll";
+import type { RenderStage } from "@/lib/generation/progress";
 
 const MediaActions = dynamic(
   () =>
@@ -336,6 +340,105 @@ export default function GenerateStudio() {
     }));
   }, []);
 
+  const settledJobRef = useRef<string | null>(null);
+
+  const applyLiveStatus = useCallback(
+    (p: GenerationStatusPayload) => {
+      if (typeof p.percent === "number") setProgressPercent(p.percent);
+      if (p.stage) setRenderStage(p.stage as RenderStage);
+
+      if (p.failed) {
+        if (typeof p.balanceAfter === "number") {
+          applyServerCharge({ ok: true, balanceAfter: p.balanceAfter });
+        }
+        setError(p.errorMessage || p.error || tr("generate_failed"));
+        setRenderStage("failed");
+        setLoading(false);
+        return;
+      }
+
+      if (!p.done && p.status !== "COMPLETED") return;
+
+      const jobKey = p.generationId || p.jobId;
+      if (jobKey && settledJobRef.current === jobKey) return;
+
+      const rawUrl = p.resultUrl || p.videoUrl || p.imageUrl || null;
+      const sessionKey = alnabiyKey;
+      const playable =
+        rawUrl &&
+        rawUrl.startsWith("/api/media/") &&
+        sessionKey &&
+        !rawUrl.includes("key=")
+          ? `${rawUrl}${rawUrl.includes("?") ? "&" : "?"}key=${encodeURIComponent(sessionKey)}`
+          : rawUrl;
+
+      if (!playable) {
+        setError(p.errorMessage || p.error || tr("generate_failed"));
+        setRenderStage("failed");
+        setLoading(false);
+        return;
+      }
+
+      if (jobKey) settledJobRef.current = jobKey;
+
+      if (p.r2Key) setR2Key(p.r2Key);
+      if (p.provider) setProvider(p.provider);
+      if (p.imageUrl || mediaKind === "image") {
+        setResultImage(playable);
+        setVideoUrl(null);
+      } else {
+        setVideoUrl(playable);
+        setResultImage(null);
+      }
+      setProgressPercent(100);
+      setRenderStage("completed");
+      if (typeof p.creditsCost === "number" && p.creditsCost > 0) {
+        applyServerCharge({
+          ok: true,
+          cost: p.creditsCost,
+          balanceAfter:
+            typeof p.balanceAfter === "number" ? p.balanceAfter : undefined,
+          kind: generationKind,
+        });
+      }
+      if (jobKey && playable) {
+        pushHistory({
+          id: jobKey,
+          kind: mediaKind === "image" ? "image" : "prompt_to_video",
+          title: prompt.slice(0, 80),
+          prompt,
+          mediaUrl: playable,
+          durationSec: mediaKind === "image" ? 0 : requestDuration,
+          emotionMode,
+          creditsCost: p.creditsCost ?? generationCost,
+          provider: p.provider || "Al-Nabi Studio",
+          quality,
+        });
+      }
+      setLoading(false);
+    },
+    [
+      alnabiyKey,
+      applyServerCharge,
+      emotionMode,
+      generationCost,
+      generationKind,
+      mediaKind,
+      prompt,
+      quality,
+      requestDuration,
+      tr,
+    ]
+  );
+
+  useGenerationStatus({
+    generationId,
+    alnabiyKey,
+    enabled: Boolean(generationId) && loading,
+    timeoutMs: 300_000,
+    onUpdate: applyLiveStatus,
+  });
+
   function setProModePersisted(enabled: boolean) {
     setProMode(enabled);
     writeStoredProMode(enabled);
@@ -532,6 +635,8 @@ export default function GenerateStudio() {
     setRenderStage("queued");
     setGenerationId(null);
     setR2Key(null);
+    settledJobRef.current = null;
+    let keepWatching = false;
     requestAnimationFrame(() => scrollToMediaViewer());
     try {
       const auth = await ensureAuthSession();
@@ -582,11 +687,11 @@ export default function GenerateStudio() {
                 : undefined,
           }),
         },
-        30_000
+        120_000
       );
-      let data: Record<string, unknown>;
+      let data: GenerateQueuedResponse;
       try {
-        data = await parseApiResponse<Record<string, unknown>>(res);
+        data = await parseApiResponse<GenerateQueuedResponse>(res);
       } catch (parseErr) {
         if (res.status === 402) {
           applyServerCharge({ ok: false, code: "INSUFFICIENT" });
@@ -623,138 +728,47 @@ export default function GenerateStudio() {
           /* soft */
         }
       }
-      applyServerCharge({
-        ok: true,
-        cost:
-          data.creditsPending || !data.creditsCost
-            ? undefined
-            : (data.creditsCost as number | undefined),
-        balanceAfter: data.balanceAfter as number | undefined,
-        receiptId: data.receiptId as string | undefined,
-        label: tr("create_with_alnabiy"),
-        kind: generationKind,
-      });
-
-      const gid = (data.generationId || data.jobId) as string | undefined;
+      const gid = data.generationId || data.jobId;
       if (gid) setGenerationId(gid);
-
-      let resultUrl = (data.resultUrl || data.videoUrl || data.imageUrl) as
-        | string
-        | undefined;
-
-      const sessionKey = key || alnabiyKey || null;
+      if (data.projectId) setProjectId(data.projectId);
+      if (data.shotId) setShotId(data.shotId);
 
       const alreadyDone = Boolean(
-        data.done || data.status === "COMPLETED" || resultUrl
+        data.done || data.status === "COMPLETED" || data.resultUrl
       );
 
       if (alreadyDone) {
-        setProgressPercent(100);
-        setRenderStage("completed");
-        if (typeof data.r2Key === "string") setR2Key(data.r2Key);
-      } else if (data.queued && gid) {
-        const { waitForGenerationStatus } = await import(
-          "@/hooks/useGenerationStatus"
-        );
-        const status = await waitForGenerationStatus(String(gid), {
-          alnabiyKey: sessionKey,
-          timeoutMs: 120_000,
-          onUpdate: (p) => {
-            if (typeof p.percent === "number") setProgressPercent(p.percent);
-            if (p.stage)
-              setRenderStage(
-                p.stage as import("@/lib/generation/progress").RenderStage
-              );
-          },
+        applyLiveStatus({
+          ...data,
+          done: true,
+          status: data.status || "COMPLETED",
+          stage: "completed",
+          percent: 100,
         });
-        if (status.failed) {
-          setRenderStage("failed");
-          if (typeof status.balanceAfter === "number") {
-            applyServerCharge({
-              ok: true,
-              balanceAfter: status.balanceAfter,
-            });
-          }
-          throw new Error(
-            status.errorMessage || status.error || tr("generate_failed")
-          );
-        }
-        if (
-          typeof status.creditsCost === "number" &&
-          status.creditsCost > 0
-        ) {
-          applyServerCharge({
-            ok: true,
-            cost: status.creditsCost,
-            balanceAfter:
-              typeof status.balanceAfter === "number"
-                ? status.balanceAfter
-                : undefined,
-            kind: generationKind,
-          });
-        }
-        resultUrl =
-          (status.resultUrl ||
-            status.videoUrl ||
-            status.imageUrl ||
-            undefined) as string | undefined;
-        if (status.r2Key) setR2Key(status.r2Key);
-        setProgressPercent(100);
-        setRenderStage("completed");
+        return;
       }
 
-      const toPlayableUrl = (u: string | null | undefined) => {
-        if (!u) return null;
-        if (!u.startsWith("/api/media/")) return u;
-        if (!sessionKey) return u;
-        if (u.includes("key=")) return u;
-        const join = u.includes("?") ? "&" : "?";
-        return `${u}${join}key=${encodeURIComponent(sessionKey)}`;
-      };
-
-      if (mediaKind === "image" || data.imageUrl) {
-        const url = toPlayableUrl(resultUrl || (data.imageUrl as string));
-        setResultImage(url);
-        setVideoUrl(null);
-        setProvider(String(data.provider || "Al-Nabi Studio"));
-        pushHistory({
-          id: (gid || data.jobId) as string,
-          kind: "image",
-          title: prompt.slice(0, 80),
-          prompt,
-          mediaUrl: url,
-          durationSec: 0,
-          emotionMode,
-          creditsCost: (data.creditsCost as number) ?? generationCost,
-          provider: data.provider as string,
-          quality,
-          receiptId: data.receiptId as string | undefined,
+      if (data.queued && gid) {
+        applyServerCharge({
+          ok: true,
+          cost: data.creditsPending || !data.creditsCost
+            ? undefined
+            : data.creditsCost,
+          balanceAfter: data.balanceAfter,
+          receiptId: data.receiptId,
+          label: tr("create_with_alnabiy"),
+          kind: generationKind,
         });
-      } else {
-        const url = toPlayableUrl(resultUrl || (data.videoUrl as string));
-        setVideoUrl(url);
-        setResultImage(null);
-        setProvider(String(data.provider || "Cinematic"));
-        requestAnimationFrame(() => scrollToMediaViewer());
-        pushHistory({
-          id: (gid || data.jobId) as string,
-          kind: "prompt_to_video",
-          title: prompt.slice(0, 80),
-          prompt,
-          mediaUrl: url,
-          durationSec: requestDuration,
-          emotionMode,
-          creditsCost: (data.creditsCost as number) ?? generationCost,
-          provider: data.provider as string,
-          quality,
-          receiptId: data.receiptId as string | undefined,
-        });
+        keepWatching = true;
+        return;
       }
+
+      throw new Error(data.error || tr("generate_failed"));
     } catch (e) {
       showApiError(e);
       setRenderStage("failed");
     } finally {
-      setLoading(false);
+      if (!keepWatching) setLoading(false);
     }
   }
 
@@ -1019,6 +1033,7 @@ export default function GenerateStudio() {
           <ProjectWorkflowPanel
             alnabiyKey={alnabiyKey}
             prompt={prompt}
+            selectedProjectId={projectId}
             latestGenerationId={generationId}
             onProjectChange={setProjectId}
             onShotChange={setShotId}

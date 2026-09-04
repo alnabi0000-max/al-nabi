@@ -46,7 +46,7 @@ export function friendlyApiError(
   return msg.length > 160 ? tr("error_generic") : msg;
 }
 
-export async function parseApiResponse<T extends Record<string, unknown>>(
+export async function parseApiResponse<T = Record<string, unknown>>(
   res: Response
 ): Promise<T> {
   const text = await res.text();

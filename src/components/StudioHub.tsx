@@ -15,6 +15,7 @@ import {
 } from "@/lib/credits";
 import { InsufficientBalanceHint } from "@/components/InsufficientBalanceHint";
 import type { RenderStage } from "@/lib/generation/progress";
+import type { GenerateQueuedResponse } from "@/lib/generation/types";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import clsx from "clsx";
 import { BgmPicker } from "@/components/BgmPicker";
@@ -173,11 +174,11 @@ export function StudioHub() {
               bgmTrackId,
             }),
           },
-          30_000
+          120_000
         );
-        let data: Record<string, unknown>;
+        let data: GenerateQueuedResponse;
         try {
-          data = (await res.json()) as Record<string, unknown>;
+          data = await parseApiResponse<GenerateQueuedResponse>(res);
         } catch {
           throw new Error(res.ok ? "Invalid JSON" : `HTTP ${res.status}`);
         }
@@ -222,7 +223,7 @@ export function StudioHub() {
           );
           const status = await waitForGenerationStatus(String(gid), {
             alnabiyKey: key,
-            timeoutMs: 120_000,
+            timeoutMs: 300_000,
             onUpdate: (p) => {
               if (typeof p.percent === "number") setProgressPercent(p.percent);
               if (p.stage) setRenderStage(p.stage as RenderStage);

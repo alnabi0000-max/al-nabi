@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Clapperboard, FolderPlus, Plus, RefreshCw, Save, Send } from "lucide-react";
 import clsx from "clsx";
 import { StudioAccordion } from "@/components/studio/studio-primitives";
@@ -97,6 +97,7 @@ type ProjectExport = {
 type Props = {
   alnabiyKey: string | null;
   prompt: string;
+  selectedProjectId?: string | null;
   onProjectChange: (projectId: string | null) => void;
   onShotChange: (shotId: string | null) => void;
   onUseShot: (shot: ProjectShot) => void;
@@ -133,6 +134,7 @@ async function requestJson<T>(
 export function ProjectWorkflowPanel({
   alnabiyKey,
   prompt,
+  selectedProjectId,
   onProjectChange,
   onShotChange,
   onUseShot,
@@ -148,6 +150,7 @@ export function ProjectWorkflowPanel({
   const [projectExport, setProjectExport] = useState<ProjectExport | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const didAutoSelect = useRef(false);
 
   const loadProjects = useCallback(async () => {
     const data = await requestJson<{ projects: ProjectSummary[] }>(
@@ -183,11 +186,74 @@ export function ProjectWorkflowPanel({
     [alnabiyKey]
   );
 
+  const selectProject = useCallback(
+    async (id: string) => {
+      setSaving(true);
+      setMessage(null);
+      try {
+        const [selected] = await Promise.all([loadProject(id), loadTimeline(id)]);
+        onProjectChange(selected.id);
+        const firstShot = selected.shots[0];
+        if (firstShot) {
+          setActiveShotId(firstShot.id);
+          onShotChange(firstShot.id);
+        } else {
+          setActiveShotId(null);
+          onShotChange(null);
+        }
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Project unavailable");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [loadProject, loadTimeline, onProjectChange, onShotChange]
+  );
+
   useEffect(() => {
-    loadProjects().catch((error) =>
-      setMessage(error instanceof Error ? error.message : "Projects unavailable")
-    );
-  }, [loadProjects]);
+    let cancelled = false;
+    loadProjects()
+      .then((list) => {
+        if (cancelled || didAutoSelect.current) return;
+        const preferred =
+          (selectedProjectId && list.find((item) => item.id === selectedProjectId)) ||
+          list[0];
+        if (!preferred) return;
+        didAutoSelect.current = true;
+        return selectProject(preferred.id);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setMessage(
+            error instanceof Error ? error.message : "Projects unavailable"
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadProjects, selectProject, selectedProjectId]);
+
+  useEffect(() => {
+    if (!selectedProjectId || project?.id === selectedProjectId) return;
+    let cancelled = false;
+    void (async () => {
+      let list = projects;
+      if (!list.some((item) => item.id === selectedProjectId)) {
+        list = await loadProjects();
+      }
+      if (cancelled) return;
+      if (list.some((item) => item.id === selectedProjectId)) {
+        await selectProject(selectedProjectId);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // `projects` is read for a cache hit only — refetching on every list
+    // update would loop while a newly created Studio project hydrates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadProjects, project?.id, selectProject, selectedProjectId]);
 
   const activeShot = useMemo(
     () => project?.shots.find((shot) => shot.id === activeShotId) || null,
@@ -199,21 +265,6 @@ export function ProjectWorkflowPanel({
     return [...project.renderVersions, ...project.shots.flatMap((shot) => shot.renderVersions)]
       .sort((a, b) => b.number - a.number)[0] || null;
   }, [project]);
-
-  async function selectProject(id: string) {
-    setSaving(true);
-    setMessage(null);
-    try {
-      const [selected] = await Promise.all([loadProject(id), loadTimeline(id)]);
-      onProjectChange(selected.id);
-      setActiveShotId(null);
-      onShotChange(null);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Project unavailable");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   const timelineSources = useMemo(() => {
     if (!project) return [];

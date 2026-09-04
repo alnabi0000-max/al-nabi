@@ -21,21 +21,23 @@ export function useGenerationStatus(opts: UseGenerationStatusOpts) {
     generationId,
     alnabiyKey,
     enabled = true,
-    timeoutMs = 120_000,
+    timeoutMs = 300_000,
     onUpdate,
   } = opts;
   const [payload, setPayload] = useState<GenerationStatusPayload | null>(null);
   const [listening, setListening] = useState(false);
   const onUpdateRef = useRef(onUpdate);
+  const payloadRef = useRef<GenerationStatusPayload | null>(null);
   onUpdateRef.current = onUpdate;
 
   const apply = useCallback((data: GenerationStatusPayload) => {
     const prog = progressFromStatus(data.status);
     const enriched: GenerationStatusPayload = {
       ...data,
-      percent: prog.percent,
-      stage: prog.stage,
+      percent: data.percent ?? prog.percent,
+      stage: data.stage || prog.stage,
     };
+    payloadRef.current = enriched;
     setPayload(enriched);
     onUpdateRef.current?.(enriched);
     return enriched;
@@ -45,16 +47,14 @@ export function useGenerationStatus(opts: UseGenerationStatusOpts) {
     if (!enabled || !generationId) return;
 
     let cancelled = false;
+    let terminal = false;
     let es: EventSource | null = null;
     let pollTimer: ReturnType<typeof setTimeout> | null = null;
     const started = Date.now();
     setListening(true);
 
-    const keyQs = alnabiyKey
-      ? `&key=${encodeURIComponent(alnabiyKey)}`
-      : "";
-
     const finish = () => {
+      terminal = true;
       setListening(false);
       if (es) {
         es.close();
@@ -118,11 +118,11 @@ export function useGenerationStatus(opts: UseGenerationStatusOpts) {
 
     try {
       es = new EventSource(
-        `/api/generations/${generationId}/status?stream=1${keyQs}`,
+        `/api/generations/${generationId}/status?stream=1`,
         { withCredentials: true }
       );
       es.onmessage = (ev) => {
-        if (cancelled) return;
+        if (cancelled || terminal) return;
         try {
           const data = JSON.parse(ev.data) as GenerationStatusPayload;
           const enriched = apply(data);
@@ -132,7 +132,7 @@ export function useGenerationStatus(opts: UseGenerationStatusOpts) {
         }
       };
       es.onerror = () => {
-        if (cancelled) return;
+        if (cancelled || terminal) return;
         es?.close();
         es = null;
         startPollFallback();
@@ -142,8 +142,8 @@ export function useGenerationStatus(opts: UseGenerationStatusOpts) {
     }
 
     const hardStop = setTimeout(() => {
-      if (cancelled) return;
-      if (!payload?.done && !payload?.failed) {
+      if (cancelled || terminal) return;
+      if (!payloadRef.current?.done && !payloadRef.current?.failed) {
         apply({
           ok: false,
           failed: true,
@@ -177,10 +177,7 @@ export async function waitForGenerationStatus(
     onUpdate?: (payload: GenerationStatusPayload) => void;
   }
 ): Promise<GenerationStatusPayload> {
-  const timeoutMs = opts?.timeoutMs ?? 120_000;
-  const keyQs = opts?.alnabiyKey
-    ? `&key=${encodeURIComponent(opts.alnabiyKey)}`
-    : "";
+  const timeoutMs = opts?.timeoutMs ?? 300_000;
 
   return new Promise((resolve) => {
     let settled = false;
@@ -210,7 +207,7 @@ export async function waitForGenerationStatus(
 
     try {
       es = new EventSource(
-        `/api/generations/${generationId}/status?stream=1${keyQs}`,
+        `/api/generations/${generationId}/status?stream=1`,
         { withCredentials: true }
       );
       const timer = setTimeout(() => {
@@ -233,6 +230,7 @@ export async function waitForGenerationStatus(
         }
       };
       es.onerror = () => {
+        if (settled) return;
         clearTimeout(timer);
         es?.close();
         void pollFallback();
