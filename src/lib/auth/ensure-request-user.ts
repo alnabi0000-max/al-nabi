@@ -72,12 +72,27 @@ export async function ensureDevGuestUser(): Promise<LedgerUser> {
   return asLedger(local);
 }
 
+/** Already-onboarded users — one read, no lastLoginAt write. */
+async function existingLedgerById(
+  id: string,
+  email?: string | null
+): Promise<LedgerUser | null> {
+  const { prisma } = await import("@/lib/prisma");
+  const user = await prisma.user.findUnique({ where: { id } });
+  if (!user || user.status === "BANNED") return null;
+  if (email && user.email.toLowerCase() !== email.toLowerCase()) return null;
+  return asLedger(user);
+}
+
 /** Supabase identity → ledger account. Returns `null` for banned users. */
 async function ledgerUserFromIdentity(
   identity: SupabaseUser,
   source: string
 ): Promise<LedgerUser | null> {
   if (!identity.id || !identity.email) return null;
+
+  const existing = await existingLedgerById(identity.id, identity.email);
+  if (existing) return existing;
 
   const { onboardNewUser } = await import("@/lib/auth/onboarding");
   const { user } = await onboardNewUser(
@@ -89,6 +104,7 @@ async function ledgerUserFromIdentity(
         (identity.user_metadata?.name as string | undefined) ||
         null,
       authProvider: resolveAuthProvider(identity),
+      touchLogin: false,
     },
     { sendEmail: false, source }
   );

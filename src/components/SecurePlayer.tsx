@@ -40,6 +40,12 @@ function formatTime(sec: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+const SYNTHETIC_DURATION_SEC = 10;
+
+function isDevMockSrc(src?: string | null) {
+  return Boolean(src && src.includes("/dev-mock/"));
+}
+
 /**
  * Canvas-composited preview player.
  * Screen captures include a moving forensic watermark; clean file stays on Download.
@@ -67,6 +73,12 @@ export function SecurePlayer({
   const [current, setCurrent] = useState(0);
   const [loop, setLoop] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [decodeFailed, setDecodeFailed] = useState(false);
+  const syntheticClock = useRef(0);
+  const lastAnimTs = useRef(0);
+  const useSynthetic = isDevMockSrc(src) || decodeFailed;
+  const useSyntheticRef = useRef(useSynthetic);
+  useSyntheticRef.current = useSynthetic;
 
   const dataBlocked = useMemo(
     () => lowDataMode && !shouldBypassLowDataMode(),
@@ -81,7 +93,8 @@ export function SecurePlayer({
   const drawFrame = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas) return;
+    if (!canvas) return;
+    if (!useSyntheticRef.current && !video) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -98,7 +111,41 @@ export function SecurePlayer({
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, w, h);
 
-    if (video.readyState >= 2 && video.videoWidth > 0) {
+    if (useSyntheticRef.current) {
+      const pulse = performance.now() / 1000;
+      const sky = ctx.createLinearGradient(0, 0, w, h);
+      sky.addColorStop(0, "#0b1020");
+      sky.addColorStop(0.5, "#1a1240");
+      sky.addColorStop(1, "#071018");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, w, h);
+
+      for (let i = 0; i < 9; i++) {
+        const y = ((pulse * (18 + i * 6) + i * 36) % (h + 48)) - 24;
+        ctx.fillStyle =
+          i % 2 ? "rgba(232, 197, 71, 0.14)" : "rgba(56, 189, 248, 0.16)";
+        ctx.fillRect(0, y, w, 2);
+      }
+
+      const glow = ctx.createRadialGradient(
+        w * 0.5,
+        h * 0.7,
+        8,
+        w * 0.5,
+        h * 0.7,
+        w * 0.55
+      );
+      glow.addColorStop(0, "rgba(232, 197, 71, 0.3)");
+      glow.addColorStop(1, "transparent");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(255,255,255,0.78)";
+      ctx.font = `600 ${Math.max(13, Math.round(w * 0.034))}px ui-sans-serif, system-ui, sans-serif`;
+      ctx.fillText("Al-Nabi Dev Preview", w / 2, h * 0.46);
+      ctx.textAlign = "start";
+    } else if (video && video.readyState >= 2 && video.videoWidth > 0) {
       const vw = video.videoWidth;
       const vh = video.videoHeight;
       const scale = Math.min(w / vw, h / vh);
@@ -157,16 +204,54 @@ export function SecurePlayer({
   }, []);
 
   useEffect(() => {
+    setDecodeFailed(false);
+    syntheticClock.current = 0;
+    lastAnimTs.current = 0;
+    setCurrent(0);
+    if (isDevMockSrc(src)) setDuration(SYNTHETIC_DURATION_SEC);
+  }, [src]);
+
+  useEffect(() => {
+    if (!src || dataBlocked) return;
+    if (!useSynthetic) return;
+    if (autoPlay && !hoverPlay) {
+      setPlaying(true);
+      onPlayingChange?.(true);
+    }
+  }, [src, dataBlocked, useSynthetic, autoPlay, hoverPlay, onPlayingChange]);
+
+  useEffect(() => {
     if (!src || dataBlocked) return;
     let alive = true;
     const tick = () => {
       if (!alive) return;
       syncCanvasSize();
       drawFrame();
-      const v = videoRef.current;
-      if (v && !v.paused && !v.ended) {
-        setCurrent(v.currentTime);
-        onTimeChange?.(v.currentTime, v.duration || duration);
+      if (useSyntheticRef.current) {
+        const now = performance.now();
+        const dt = lastAnimTs.current ? (now - lastAnimTs.current) / 1000 : 0;
+        lastAnimTs.current = now;
+        if (playing) {
+          syntheticClock.current += dt;
+          if (syntheticClock.current >= SYNTHETIC_DURATION_SEC) {
+            if (loop || mode === "thumb") {
+              syntheticClock.current = 0;
+            } else {
+              syntheticClock.current = SYNTHETIC_DURATION_SEC;
+              setPlaying(false);
+              onPlayingChange?.(false);
+            }
+          }
+          setCurrent(syntheticClock.current);
+          setDuration(SYNTHETIC_DURATION_SEC);
+          onTimeChange?.(syntheticClock.current, SYNTHETIC_DURATION_SEC);
+        }
+      } else {
+        const v = videoRef.current;
+        if (v && !v.paused && !v.ended) {
+          setCurrent(v.currentTime);
+          onTimeChange?.(v.currentTime, v.duration || duration);
+        }
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -175,7 +260,18 @@ export function SecurePlayer({
       alive = false;
       cancelAnimationFrame(rafRef.current);
     };
-  }, [src, dataBlocked, drawFrame, syncCanvasSize, onTimeChange, duration]);
+  }, [
+    src,
+    dataBlocked,
+    drawFrame,
+    syncCanvasSize,
+    onTimeChange,
+    duration,
+    playing,
+    loop,
+    mode,
+    onPlayingChange,
+  ]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -241,8 +337,15 @@ export function SecurePlayer({
   }, [drawFrame]);
 
   const togglePlay = () => {
+    if (captureLock.current) return;
+    if (useSynthetic) {
+      const next = !playing;
+      setPlaying(next);
+      onPlayingChange?.(next);
+      return;
+    }
     const video = videoRef.current;
-    if (!video || captureLock.current) return;
+    if (!video) return;
     if (video.paused) {
       void video.play().then(() => {
         setPlaying(true);
@@ -256,16 +359,21 @@ export function SecurePlayer({
   };
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !src || dataBlocked) return;
+    if (!src || dataBlocked) return;
     if (typeof controlledPlaying !== "boolean") return;
+    if (useSynthetic) {
+      setPlaying(controlledPlaying);
+      return;
+    }
+    const video = videoRef.current;
+    if (!video) return;
     if (controlledPlaying && video.paused) {
       void video.play().then(() => setPlaying(true)).catch(() => {});
     } else if (!controlledPlaying && !video.paused) {
       video.pause();
       setPlaying(false);
     }
-  }, [controlledPlaying, src, dataBlocked]);
+  }, [controlledPlaying, src, dataBlocked, useSynthetic]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -300,24 +408,41 @@ export function SecurePlayer({
   }, []);
 
   const onSeek = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const video = videoRef.current;
-    if (!video || !duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    if (useSynthetic) {
+      syntheticClock.current = ratio * SYNTHETIC_DURATION_SEC;
+      setCurrent(syntheticClock.current);
+      setDuration(SYNTHETIC_DURATION_SEC);
+      onTimeChange?.(syntheticClock.current, SYNTHETIC_DURATION_SEC);
+      return;
+    }
+    const video = videoRef.current;
+    if (!video || !duration) return;
     video.currentTime = ratio * duration;
     setCurrent(video.currentTime);
     onTimeChange?.(video.currentTime, duration);
   };
 
   const onThumbEnter = () => {
-    if (!hoverPlay) return;
+    if (!hoverPlay || captureLock.current) return;
+    if (useSynthetic) {
+      setPlaying(true);
+      return;
+    }
     const video = videoRef.current;
-    if (!video || captureLock.current) return;
+    if (!video) return;
     void video.play().then(() => setPlaying(true)).catch(() => {});
   };
 
   const onThumbLeave = () => {
     if (!hoverPlay) return;
+    if (useSynthetic) {
+      setPlaying(false);
+      syntheticClock.current = 0;
+      setCurrent(0);
+      return;
+    }
     const video = videoRef.current;
     if (!video) return;
     video.pause();
@@ -351,6 +476,7 @@ export function SecurePlayer({
       {src && !dataBlocked ? (
         <>
           {/* Source decoder — never the visible surface */}
+          {!useSynthetic ? (
           <video
             ref={videoRef}
             key={src}
@@ -363,10 +489,15 @@ export function SecurePlayer({
             controlsList="nodownload noremoteplayback noplaybackrate"
             disablePictureInPicture
             disableRemotePlayback
+            onError={() => {
+              setDecodeFailed(true);
+              setDuration(SYNTHETIC_DURATION_SEC);
+            }}
             onContextMenu={blockMenu}
             className="pointer-events-none absolute h-px w-px opacity-0"
             aria-hidden
           />
+          ) : null}
           <canvas
             ref={canvasRef}
             className="alnabiy-secure-canvas absolute inset-0 h-full w-full touch-none"

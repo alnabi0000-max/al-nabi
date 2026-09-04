@@ -1,4 +1,5 @@
-import { mkdirSync, writeFileSync, existsSync } from "fs";
+import { createHash } from "crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 
 /** 1×1 PNG — 68 bytes, no network. */
@@ -45,9 +46,14 @@ export function ensureMockAssetPath(kind: MockAssetKind): string {
   const file = kind === "image" ? "preview.png" : "preview.mp4";
   const dir = path.join(process.cwd(), "public", "dev-mock");
   const full = path.join(dir, file);
-  if (!existsSync(full)) {
+  const bytes = mockAssetBytes(kind);
+  const stale =
+    !existsSync(full) ||
+    createHash("sha256").update(readFileSync(full)).digest("hex") !==
+      createHash("sha256").update(bytes).digest("hex");
+  if (stale) {
     mkdirSync(dir, { recursive: true });
-    writeFileSync(full, mockAssetBytes(kind));
+    writeFileSync(full, bytes);
   }
   return full;
 }

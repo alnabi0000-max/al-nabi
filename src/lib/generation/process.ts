@@ -20,6 +20,7 @@ import {
 } from "@/lib/ai/catalog";
 import {
   ensureMockAssetPath,
+  mockPublicPath,
   shouldInstantMockGenerate,
 } from "@/lib/generation/dev-mock";
 import { failAndRefundGeneration } from "@/lib/generation/fail-and-refund";
@@ -305,10 +306,15 @@ export async function processGenerationJob(generationId: string): Promise<{
     });
 
     const publicProvider = whiteLabelEngine(engineId) || provider;
-    const deliveryUrl = await resolvePrivateDeliveryUrl({
-      objectKey: stored.key,
-      resultUrl: stored.url,
-    });
+    const mockDelivery = instantMock
+      ? mockPublicPath(isImageType(generation.type) ? "image" : "video")
+      : null;
+    const deliveryUrl =
+      mockDelivery ||
+      (await resolvePrivateDeliveryUrl({
+        objectKey: stored.key,
+        resultUrl: stored.url,
+      }));
     if (!deliveryUrl) {
       throw new Error("Private media could not be signed for delivery");
     }
@@ -317,7 +323,7 @@ export async function processGenerationJob(generationId: string): Promise<{
       where: { id: generationId },
       data: {
         status: "COMPLETED",
-        resultUrl: stored.url,
+        resultUrl: deliveryUrl,
         r2Key: stored.key,
         provider: `${publicProvider} · ${model}`,
         errorMessage: null,

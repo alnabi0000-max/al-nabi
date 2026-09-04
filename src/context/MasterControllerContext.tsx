@@ -293,35 +293,51 @@ export function MasterControllerProvider({
     }));
   }, []);
 
+  const syncInFlight = useRef<Promise<Record<string, unknown> | null> | null>(
+    null
+  );
+  const lastSyncAt = useRef(0);
+
   const syncSessionFromApi = useCallback(async () => {
-    const res = await fetchWithTimeout(
-      "/api/auth/me",
-      { credentials: "include" },
-      15_000
-    );
-    const data = (await res.json()) as Record<string, unknown>;
+    if (syncInFlight.current) return syncInFlight.current;
 
-    /* Server outage — keep whatever identity we already have. */
-    if (!res.ok && res.status >= 500) return data;
+    const run = (async () => {
+      try {
+        const res = await fetchWithTimeout(
+          "/api/auth/me",
+          { credentials: "include" },
+          25_000
+        );
+        const data = (await res.json()) as Record<string, unknown>;
 
-    let key: string | null = null;
-    try {
-      key = localStorage.getItem(LS_KEY);
-    } catch {
-      /* soft */
-    }
+        /* Server outage — keep whatever identity we already have. */
+        if (!res.ok && res.status >= 500) return data;
 
-    if (isRealUserSession(data)) {
-      applyAuthPayload(
-        String(data.email),
-        data,
-        key || undefined
-      );
-      return data;
-    }
+        let key: string | null = null;
+        try {
+          key = localStorage.getItem(LS_KEY);
+        } catch {
+          /* soft */
+        }
 
-    clearGuestIdentity();
-    return data;
+        if (isRealUserSession(data)) {
+          applyAuthPayload(String(data.email), data, key || undefined);
+          return data;
+        }
+
+        clearGuestIdentity();
+        return data;
+      } catch {
+        /* Slow /api/auth/me must never crash Studio with a Next overlay. */
+        return null;
+      } finally {
+        lastSyncAt.current = Date.now();
+        syncInFlight.current = null;
+      }
+    })();
+
+    syncInFlight.current = run;
+    return run;
   }, [applyAuthPayload, clearGuestIdentity]);
 
   /** OTP / OAuth kirishdan keyin serverdagi sessiyani qayta o'qish */
@@ -351,7 +367,7 @@ export function MasterControllerProvider({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ alnabiyKey: lsKey }),
         },
-        15_000
+        30_000
       );
       const ensData = (await ens.json()) as Record<string, unknown>;
       if (ens.ok && isRealUserSession(ensData)) {
@@ -404,8 +420,12 @@ export function MasterControllerProvider({
         const supabase = createClient();
         if (!supabase) return;
         const { data } = supabase.auth.onAuthStateChange((event) => {
-          if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-            void syncSessionFromApi();
+          if (event === "SIGNED_IN") {
+            void refreshSession();
+          }
+          if (event === "TOKEN_REFRESHED") {
+            if (Date.now() - lastSyncAt.current < 20_000) return;
+            void refreshSession();
           }
           if (event === "SIGNED_OUT") {
             setState((s) => ({
@@ -426,7 +446,7 @@ export function MasterControllerProvider({
       cancelled = true;
       unsub?.();
     };
-  }, [authReady, syncSessionFromApi]);
+  }, [authReady, refreshSession]);
 
   const stateRef = useRef(state);
   stateRef.current = state;
