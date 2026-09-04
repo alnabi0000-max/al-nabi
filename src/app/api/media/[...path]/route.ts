@@ -47,13 +47,16 @@ export async function GET(
     );
   }
 
-  const authenticated =
-    parts[0] === "jobs"
-      ? await ensureRequestLedgerUser({
-          alnabiyKey: req.headers.get("x-alnabiy-key"),
-          allowGuest: false,
-        })
-      : null;
+  const needsOwner =
+    parts[0] === "jobs" ||
+    (parts[0] === "objects" && parts[1] === "generations");
+  const authenticated = needsOwner
+    ? await ensureRequestLedgerUser({
+        alnabiyKey: req.headers.get("x-alnabiy-key"),
+        allowGuest: false,
+        request: req,
+      })
+    : null;
 
   const access = await assertMediaAccess({
     pathParts: parts,

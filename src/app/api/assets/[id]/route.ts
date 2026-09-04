@@ -37,6 +37,7 @@ export async function DELETE(
   const authenticated = await ensureRequestLedgerUser({
     alnabiyKey: body?.alnabiyKey || req.headers.get("x-alnabiy-key"),
     allowGuest: false,
+    request: req,
   });
   if (!authenticated) {
     return NextResponse.json(

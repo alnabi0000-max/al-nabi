@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
     const authenticated = await ensureRequestLedgerUser({
       alnabiyKey: req.headers.get("x-alnabiy-key"),
       allowGuest: false,
+      request: req,
     });
     if (!authenticated) {
       return NextResponse.json(

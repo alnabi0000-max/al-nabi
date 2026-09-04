@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { chargeCredits, computeCost } from "@/lib/credit-gate";
+import { requireApiUser } from "@/lib/auth/api-guard";
 import { guardSensitiveRequest } from "@/lib/security/request-guard";
 
 const ENGINE_IDS = [
@@ -40,6 +41,9 @@ export async function POST(req: NextRequest) {
     const blocked = await guardSensitiveRequest(req);
     if (blocked) return blocked;
 
+    const auth = await requireApiUser(req);
+    if ("response" in auth) return auth.response;
+
     const body = schema.parse(await req.json());
     const durationSec = body.durationSec ?? 60;
     const costOpts = {
@@ -62,8 +66,7 @@ export async function POST(req: NextRequest) {
     const result = await chargeCredits({
       kind: body.kind,
       durationSec,
-      alnabiyKey: body.alnabiyKey,
-      clientBalance: body.clientBalance,
+      userId: auth.user.id,
       reason: body.reason || `ui:${body.kind}`,
       jobId: body.jobId,
       costOpts,

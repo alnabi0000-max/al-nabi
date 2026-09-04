@@ -8,7 +8,8 @@ import {
   assertPersistentObjectStorage,
   persistRemoteAsset,
 } from "@/lib/storage/object-storage";
-import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
+import { attachCompletedGenerationAsset } from "@/lib/projects/assets";
 import type { GenerationType } from "@prisma/client";
 import {
   isImageEngineId,
@@ -82,9 +83,10 @@ export async function processGenerationJob(generationId: string): Promise<{
     return {
       ok: true,
       resultUrl:
-        generation.r2Key
-          ? (await createSignedGetUrl(generation.r2Key)) || undefined
-          : generation.resultUrl || undefined,
+        (await resolvePrivateDeliveryUrl({
+          objectKey: generation.r2Key,
+          resultUrl: generation.resultUrl,
+        })) || undefined,
       creditsCost: generation.creditsCost,
     };
   }
@@ -167,46 +169,20 @@ export async function processGenerationJob(generationId: string): Promise<{
       balanceAfter = charge.balanceAfter;
     }
 
-    if (shouldInstantMockGenerate()) {
-      const resultUrl = isImageType(generation.type)
-        ? MOCK_IMAGE_URL
-        : MOCK_VIDEO_URL;
-      await prisma.generation.update({
-        where: { id: generationId },
-        data: {
-          status: "COMPLETED",
-          resultUrl,
-          r2Key: null,
-          provider: "Al-Nabi Studio",
-          errorMessage: null,
-        },
-      });
-      await prisma.renderVersion.updateMany({
-        where: { generationId },
-        data: {
-          status: "COMPLETED",
-          outputUrl: resultUrl,
-          outputR2Key: null,
-          creditsCost,
-        },
-      });
-      await prisma.modelRun.updateMany({
-        where: { generationId },
-        data: {
-          status: "COMPLETED",
-          responseMetadata: { mock: true, delivered: true },
-          failureCode: null,
-        },
-      });
-      return { ok: true, resultUrl, balanceAfter, creditsCost };
-    }
-
     let providerUrl = "";
     let provider = "Studio";
     let model = "Cinematic";
     let engineId = "auto";
+    const instantMock = shouldInstantMockGenerate();
 
-    if (isImageType(generation.type)) {
+    if (instantMock) {
+      providerUrl = isImageType(generation.type)
+        ? MOCK_IMAGE_URL
+        : MOCK_VIDEO_URL;
+      provider = "Al-Nabi Studio";
+      model = "Dev Preview";
+      engineId = String(costEngine);
+    } else if (isImageType(generation.type)) {
       const imageEngine =
         meta.imageEngine && isImageEngineId(meta.imageEngine)
           ? meta.imageEngine
@@ -268,6 +244,7 @@ export async function processGenerationJob(generationId: string): Promise<{
     /* Native-audio flagship already ships dialogue + Foley. Extra BGM
      * would fight that mix — only mux when the engine is silent. */
     if (
+      !instantMock &&
       !isImageType(generation.type) &&
       !engineHasNativeAudio(engineId) &&
       (await isFfmpegAvailable())
@@ -301,6 +278,7 @@ export async function processGenerationJob(generationId: string): Promise<{
         }
       }
     } else if (
+      !instantMock &&
       !isImageType(generation.type) &&
       meta.bgmMode !== "off" &&
       !engineHasNativeAudio(engineId)
@@ -318,8 +296,10 @@ export async function processGenerationJob(generationId: string): Promise<{
     });
 
     const publicProvider = whiteLabelEngine(engineId) || provider;
-    const deliveryUrl =
-      stored.url || (await createSignedGetUrl(stored.key));
+    const deliveryUrl = await resolvePrivateDeliveryUrl({
+      objectKey: stored.key,
+      resultUrl: stored.url,
+    });
     if (!deliveryUrl) {
       throw new Error("Private media could not be signed for delivery");
     }
@@ -351,6 +331,7 @@ export async function processGenerationJob(generationId: string): Promise<{
         status: "COMPLETED",
         responseMetadata: {
           delivered: true,
+          mock: instantMock,
           provider,
           model,
           durationSec: generation.durationSec,
@@ -358,6 +339,20 @@ export async function processGenerationJob(generationId: string): Promise<{
         failureCode: null,
       },
     });
+
+    if (generation.projectId) {
+      await attachCompletedGenerationAsset({
+        userId: generation.userId,
+        projectId: generation.projectId,
+        generationId,
+      }).catch((attachError) => {
+        console.warn(
+          "[Alnabiy] project asset attach skipped",
+          generationId,
+          attachError
+        );
+      });
+    }
 
     await recordInterestFromGeneration({
       userId: generation.userId,

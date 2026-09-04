@@ -137,6 +137,7 @@ describe("API route protection policy", () => {
       "/api/pricing",
       "/api/templates",
       "/api/credits",
+      "/api/health",
       "/api/webhooks/stripe",
       "/api/checkout/webhook",
     ]) {

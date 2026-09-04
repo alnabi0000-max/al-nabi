@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { spawn } from "child_process";
+import { fileURLToPath } from "url";
 
 type FfmpegCapability = {
   available: boolean;
@@ -238,6 +239,11 @@ export async function runMoviePipeline(opts: {
 }
 
 export async function downloadFile(url: string, dest: string) {
+  if (url.startsWith("file:") || (!url.startsWith("http") && !url.startsWith("/"))) {
+    const src = url.startsWith("file:") ? fileURLToPath(url) : url;
+    await fs.copyFile(src, dest);
+    return;
+  }
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Download failed: ${url}`);
   const buf = Buffer.from(await res.arrayBuffer());

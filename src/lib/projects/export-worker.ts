@@ -1,5 +1,6 @@
 import path from "path";
-import { mkdir } from "fs/promises";
+import { access, mkdir } from "fs/promises";
+import { pathToFileURL } from "url";
 import { prisma } from "@/lib/prisma";
 import { atomicChargeCoins } from "@/lib/ledger/atomic";
 import { failAndRefundGeneration } from "@/lib/generation/fail-and-refund";
@@ -17,7 +18,10 @@ import {
   runFfmpeg,
 } from "@/lib/ffmpeg-worker";
 import { persistRemoteAsset } from "@/lib/storage/object-storage";
-import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import {
+  createSignedGetUrl,
+  localStoredObjectPath,
+} from "@/lib/storage/signed-url";
 
 type ExportPayloadClip =
   TimelineExportSnapshot["tracks"][number]["clips"][number] & {
@@ -35,6 +39,19 @@ type ExportPayload = {
   snapshot: TimelineExportSnapshot;
   tracks: ExportPayloadTrack[];
 };
+
+async function resolveExportSource(objectKey: string): Promise<string | null> {
+  const signed = await createSignedGetUrl(objectKey, 15 * 60);
+  if (signed) return signed;
+  if (process.env.NODE_ENV === "production") return null;
+  const localPath = localStoredObjectPath(objectKey);
+  try {
+    await access(localPath);
+    return pathToFileURL(localPath).href;
+  } catch {
+    return null;
+  }
+}
 
 const QUALITY_HEIGHT: Record<ExportPayload["quality"], number> = {
   "720p": 720,
@@ -72,7 +89,7 @@ async function buildExportPayload(input: {
       clips: await Promise.all(
         track.clips.map(async (clip) => {
           const sourceUrl = clip.source.objectKey
-            ? await createSignedGetUrl(clip.source.objectKey, 15 * 60)
+            ? await resolveExportSource(clip.source.objectKey)
             : null;
           if (!sourceUrl) {
             throw new Error("EXPORT_PRIVATE_SOURCE_UNAVAILABLE");

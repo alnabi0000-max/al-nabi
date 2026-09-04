@@ -30,7 +30,7 @@ import {
   apiJson,
   formatRouteError,
 } from "@/lib/api/json-response";
-import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
 import { enforceGenerationTrust } from "@/lib/trust/generation-gate";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -583,9 +583,11 @@ export async function POST(req: NextRequest) {
         select: { r2Key: true, resultUrl: true, creditsCost: true },
       });
       r2Key = row?.r2Key || null;
-      resultUrl = r2Key
-        ? (await createSignedGetUrl(r2Key)) || resultUrl
-        : row?.resultUrl || resultUrl;
+      resultUrl =
+        (await resolvePrivateDeliveryUrl({
+          objectKey: r2Key,
+          resultUrl: row?.resultUrl || resultUrl,
+        })) || resultUrl;
       if (row && row.creditsCost > 0) creditsCost = row.creditsCost;
     }
 

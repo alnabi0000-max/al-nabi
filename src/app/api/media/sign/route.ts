@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
-import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
 
 const schema = z.object({
   generationId: z.string().optional(),
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
     const authenticated = await ensureRequestLedgerUser({
       alnabiyKey: req.headers.get("x-alnabiy-key"),
       allowGuest: false,
+      request: req,
     });
     const user = authenticated?.user ?? null;
 
@@ -91,35 +92,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (objectKey) {
-      const signed = await createSignedGetUrl(
-        objectKey,
-        body.expiresIn ?? 3600
-      );
-      if (signed) {
-        return NextResponse.json({
-          ok: true,
-          mode: "signed",
-          signedUrl: signed,
-          url: signed,
-          key: objectKey,
-          expiresIn: body.expiresIn ?? 3600,
-        });
-      }
-    }
-
-    // Local development media uses the authenticated application route. Never
-    // return an arbitrary provider/public URL as a "signed" delivery URL.
-    if (
-      fallbackUrl &&
-      process.env.NODE_ENV !== "production" &&
-      fallbackUrl.startsWith("/api/media/")
-    ) {
+    const deliveryUrl = await resolvePrivateDeliveryUrl({
+      objectKey,
+      resultUrl: fallbackUrl,
+      expiresInSec: body.expiresIn ?? 3600,
+    });
+    if (deliveryUrl) {
+      const signed = !deliveryUrl.startsWith("/api/media/");
       return NextResponse.json({
         ok: true,
-        mode: "local",
-        signedUrl: fallbackUrl,
-        url: fallbackUrl,
+        mode: signed ? "signed" : "local",
+        signedUrl: deliveryUrl,
+        url: deliveryUrl,
+        key: objectKey,
+        expiresIn: body.expiresIn ?? 3600,
       });
     }
 

@@ -6,7 +6,7 @@ import { sanitizePublicPayload, whiteLabelEngine } from "@/lib/models";
 import { sanitizeGenerationError } from "@/lib/generation/public-error";
 import { reclaimStaleGeneration } from "@/lib/generation/fail-and-refund";
 import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
-import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -62,10 +62,12 @@ async function toPayload(
 ) {
   const done = generation.status === "COMPLETED";
   const failed = generation.status === "FAILED";
-  const deliveryUrl =
-    done && generation.r2Key
-      ? await createSignedGetUrl(generation.r2Key)
-      : generation.resultUrl;
+  const deliveryUrl = done
+    ? await resolvePrivateDeliveryUrl({
+        objectKey: generation.r2Key,
+        resultUrl: generation.resultUrl,
+      })
+    : null;
   return sanitizePublicPayload({
     ok: true as const,
     generationId: generation.id,
@@ -107,6 +109,7 @@ async function authorize(
     const authenticated = await ensureRequestLedgerUser({
       alnabiyKey: req.headers.get("x-alnabiy-key"),
       allowGuest: false,
+      request: req,
     });
     userId = authenticated?.user.id ?? null;
     balanceAfter = authenticated?.user.coins;

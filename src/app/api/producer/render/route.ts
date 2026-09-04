@@ -26,7 +26,7 @@ import {
   ObjectStorageConfigurationError,
   persistRemoteAsset,
 } from "@/lib/storage/object-storage";
-import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
 import { enforceGenerationTrust } from "@/lib/trust/generation-gate";
 
 export const dynamic = "force-dynamic";
@@ -191,7 +191,10 @@ export async function POST(req: NextRequest) {
       generationId: generation.id,
       kind: "video",
     });
-    const deliveryUrl = stored.url || (await createSignedGetUrl(stored.key));
+    const deliveryUrl = await resolvePrivateDeliveryUrl({
+      objectKey: stored.key,
+      resultUrl: stored.url,
+    });
     if (!deliveryUrl) {
       throw new Error("Private media could not be signed for delivery");
     }

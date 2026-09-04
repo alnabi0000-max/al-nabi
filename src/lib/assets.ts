@@ -11,7 +11,7 @@ import type { GenerationType } from "@prisma/client";
 import {
   deleteStoredObject,
 } from "@/lib/storage/object-storage";
-import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
 
 export type MediaAssetDto = {
   id: string;
@@ -48,10 +48,10 @@ async function resolveAssetDeliveryUrl(opts: {
   r2Key: string | null;
   resultUrl: string | null;
 }): Promise<string | null> {
-  if (opts.r2Key) {
-    return createSignedGetUrl(opts.r2Key);
-  }
-  return opts.resultUrl;
+  return resolvePrivateDeliveryUrl({
+    objectKey: opts.r2Key,
+    resultUrl: opts.resultUrl,
+  });
 }
 
 export async function resolveUserByKey(alnabiyKey?: string | null) {
@@ -118,6 +118,31 @@ export async function assertMediaAccess(opts: {
   const { pathParts, alnabiyKey } = opts;
   if (!pathParts.length) {
     return { ok: false, status: 400, error: "Invalid path" };
+  }
+
+  if (pathParts[0] === "objects" && pathParts[1] === "generations") {
+    const ownerId = pathParts[2];
+    const generationId = pathParts[3];
+    if (!ownerId || !generationId) {
+      return { ok: false, status: 400, error: "Invalid object path" };
+    }
+    if (!alnabiyKey) {
+      return { ok: false, status: 401, error: "Unauthorized" };
+    }
+    const user = await resolveUserByKey(alnabiyKey);
+    if (!user || user.id !== ownerId) {
+      return { ok: false, status: 403, error: "Forbidden" };
+    }
+    try {
+      const generation = await prisma.generation.findFirst({
+        where: { id: generationId, userId: user.id, deletedAt: null },
+        select: { id: true },
+      });
+      if (generation) return { ok: true, status: 200 };
+    } catch {
+      return { ok: false, status: 503, error: "Unavailable" };
+    }
+    return { ok: false, status: 403, error: "Forbidden" };
   }
 
   // Faqat jobs/ ostidagi fayllar ownership talab qiladi

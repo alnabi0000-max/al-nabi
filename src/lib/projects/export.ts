@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { reserveProjectSpend, ProjectSpendCapError } from "@/lib/projects/spend";
 import { isInngestConfigured, isProductionRuntime } from "@/lib/inngest/client";
 import { isObjectStorageConfigured } from "@/lib/storage/object-storage";
-import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
 
 const audioMixSchema = z
   .object({
@@ -478,8 +478,11 @@ export async function presentProjectExport(projectExport: {
   generation: { id: string; status: string; creditsCost: number } | null;
 }) {
   const deliveryUrl =
-    projectExport.status === "COMPLETED" && projectExport.outputR2Key
-      ? await createSignedGetUrl(projectExport.outputR2Key)
+    projectExport.status === "COMPLETED"
+      ? await resolvePrivateDeliveryUrl({
+          objectKey: projectExport.outputR2Key,
+          resultUrl: projectExport.outputUrl,
+        })
       : null;
   return {
     id: projectExport.id,

@@ -15,6 +15,8 @@ import { prisma } from "@/lib/prisma";
 export interface ChargeRequest {
   kind: GenerationKind;
   durationSec?: number;
+  /** Preferred: debit this authenticated ledger user. */
+  userId?: string;
   alnabiyKey?: string | null;
   reason?: string;
   jobId?: string;
@@ -83,13 +85,17 @@ export async function chargeCredits(
   const bonusGift = req.noBonus ? 0 : computeBonusGift(cost);
 
   try {
-    if (req.alnabiyKey || process.env.AUTH_MODE === "local") {
-      let user = req.alnabiyKey
+    if (req.userId || req.alnabiyKey || process.env.AUTH_MODE === "local") {
+      let user = req.userId
         ? await prisma.user.findUnique({
-            where: { alnabiyKey: req.alnabiyKey },
+            where: { id: req.userId },
           })
-        : null;
-      if (!user) {
+        : req.alnabiyKey
+          ? await prisma.user.findUnique({
+              where: { alnabiyKey: req.alnabiyKey },
+            })
+          : null;
+      if (!user && !req.userId) {
         try {
           const { ensureRequestLedgerUser, isSoftAuthEnabled } = await import(
             "@/lib/auth/ensure-request-user"
@@ -110,6 +116,14 @@ export async function chargeCredits(
         }
       }
       if (!user) {
+        if (req.userId) {
+          return {
+            ok: false,
+            code: "ERROR",
+            cost,
+            message: "User not found",
+          };
+        }
         return softCharge(
           req.clientBalance,
           cost,
@@ -307,6 +321,7 @@ export async function rollbackCredits(opts: {
 export async function withCreditGuard<T>(opts: {
   kind: GenerationKind;
   durationSec: number;
+  userId?: string;
   alnabiyKey?: string | null;
   clientBalance?: number;
   jobId?: string;
@@ -320,6 +335,7 @@ export async function withCreditGuard<T>(opts: {
   const charge = await chargeCredits({
     kind: opts.kind,
     durationSec: opts.durationSec,
+    userId: opts.userId,
     alnabiyKey: opts.alnabiyKey,
     clientBalance: opts.clientBalance,
     jobId: opts.jobId,

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
 import { apiError, apiJson, formatRouteError } from "@/lib/api/json-response";
 import {
   hasCredentialInQuery,
@@ -125,9 +125,10 @@ async function presentProject(project: NonNullable<Awaited<ReturnType<typeof pro
     const { outputR2Key, outputUrl, ...safeVersion } = version;
     return {
       ...safeVersion,
-      deliveryUrl: outputR2Key
-        ? await createSignedGetUrl(outputR2Key)
-        : outputUrl,
+      deliveryUrl: await resolvePrivateDeliveryUrl({
+        objectKey: outputR2Key,
+        resultUrl: outputUrl,
+      }),
     };
   };
 

@@ -8,7 +8,16 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { CosmicBackground } from "@/components/ui/CosmicBackground";
 import { AppShellChrome } from "@/components/AppShellChrome";
 
-const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://alnabiy.app";
+function resolveSiteUrl(): string {
+  const raw = (process.env.NEXT_PUBLIC_APP_URL || "").trim() || "https://alnabiy.app";
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return "https://alnabiy.app";
+  }
+}
+
+const SITE_URL = resolveSiteUrl();
 const SITE_TITLE = "Al-Nabi — AI Video & Image Generation Platform";
 const SITE_DESCRIPTION =
   "Turn a prompt or script into cinematic AI video and images in minutes — Script-to-Movie, Producer Chat, and the Al-Nabi Native Engine, all in one studio.";

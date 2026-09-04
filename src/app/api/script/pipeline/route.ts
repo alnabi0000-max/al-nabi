@@ -32,7 +32,7 @@ import {
   ObjectStorageConfigurationError,
   persistRemoteAsset,
 } from "@/lib/storage/object-storage";
-import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
 import { enforceGenerationTrust } from "@/lib/trust/generation-gate";
 
 const schema = z.object({
@@ -202,8 +202,7 @@ export async function POST(req: NextRequest) {
         charge = await chargeCredits({
           kind: "text_to_movie",
           durationSec: body.durationSec,
-          alnabiyKey: ledgerKey,
-          clientBalance: body.clientBalance,
+          userId: ensured.user.id,
           jobId,
           reason: `pipeline:text_to_movie:${body.engine || "auto"}:provider`,
           costOpts,
@@ -370,7 +369,10 @@ export async function POST(req: NextRequest) {
       kind: "video",
     });
     const sceneCount = enriched.length;
-    const resultUrl = stored.url || (await createSignedGetUrl(stored.key));
+    const resultUrl = await resolvePrivateDeliveryUrl({
+      objectKey: stored.key,
+      resultUrl: stored.url,
+    });
     if (!resultUrl) {
       throw new Error("Private media could not be signed for delivery");
     }

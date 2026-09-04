@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { apiError, apiJson } from "@/lib/api/json-response";
 import { ARCHIVE_REDOWNLOAD_FEE_NC } from "@/lib/credits";
 import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
-import { createSignedGetUrl } from "@/lib/storage/signed-url";
+import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -48,11 +48,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const deliveryUrl = generation.r2Key
-      ? await createSignedGetUrl(generation.r2Key)
-      : process.env.NODE_ENV === "production"
-        ? null
-        : generation.resultUrl;
+    const deliveryUrl = await resolvePrivateDeliveryUrl({
+      objectKey: generation.r2Key,
+      resultUrl: generation.resultUrl,
+    });
     if (!deliveryUrl) {
       return apiError("Private media is unavailable for signed delivery", {
         status: 503,

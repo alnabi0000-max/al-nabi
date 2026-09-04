@@ -83,9 +83,7 @@ export async function POST(req: NextRequest) {
             kind: "image",
             durationSec: 1,
             fixedCost: cost,
-            alnabiyKey:
-              req.headers.get("x-alnabiy-key") || ensured.user.alnabiyKey,
-            clientBalance: body.clientBalance ?? ensured.user.coins,
+            userId: ensured.user.id,
             reason: "charge:audio_sfx",
             noBonus: true,
           })
