@@ -8,6 +8,7 @@ type Props = {
   disabled: boolean;
   label: string;
   costLabel: string;
+  title?: string;
   onClick: () => void;
 };
 
@@ -16,6 +17,7 @@ export function StudioGenerateCta({
   disabled,
   label,
   costLabel,
+  title,
   onClick,
 }: Props) {
   return (
@@ -23,8 +25,9 @@ export function StudioGenerateCta({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.98 }}
+      title={title}
+      whileHover={{ scale: disabled ? 1 : 1.01 }}
+      whileTap={{ scale: disabled ? 1 : 0.98 }}
       className="nabi-btn-primary flex w-full gap-3 px-5 py-3.5 shadow-gold disabled:cursor-not-allowed disabled:opacity-40"
     >
       {loading ? (

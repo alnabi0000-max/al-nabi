@@ -41,6 +41,8 @@ import { ProModeToggle } from "@/components/studio/ProModeToggle";
 import { ProModePanel } from "@/components/studio/ProModePanel";
 import { ProjectWorkflowPanel } from "@/components/studio/ProjectWorkflowPanel";
 import { StudioGenerateCta } from "@/components/studio/StudioGenerateCta";
+import { StudioGenerationConsent } from "@/components/studio/StudioGenerationConsent";
+import { useStudioGenerationConsent } from "@/hooks/useStudioGenerationConsent";
 import { StudioTimeline } from "@/components/studio/timeline";
 import { decodeWaveformPeaks } from "@/components/studio/timeline/decode-waveform";
 import type { TimelineClip } from "@/lib/studio/timeline";
@@ -178,6 +180,7 @@ export default function GenerateStudio() {
   const [routingEstimate, setRoutingEstimate] =
     useState<RoutingEstimate | null>(null);
   const [routingIssue, setRoutingIssue] = useState<string | null>(null);
+  const generationConsent = useStudioGenerationConsent(alnabiyKey);
 
   useEffect(() => {
     setProMode(readStoredProMode());
@@ -619,6 +622,13 @@ export default function GenerateStudio() {
 
   async function generate() {
     if (!prompt.trim() || isOffline) return;
+    if (!generationConsent.accepted) return;
+    if (
+      !generationConsent.ready &&
+      !(await generationConsent.ensureRecorded())
+    ) {
+      return;
+    }
     if (lowDataMode && !shouldBypassLowDataMode()) return;
     if (scanHalol(prompt).blocked) {
       handleViolation();
@@ -697,7 +707,15 @@ export default function GenerateStudio() {
           applyServerCharge({ ok: false, code: "INSUFFICIENT" });
           return;
         }
+        if (res.status === 428) {
+          await generationConsent.ensureRecorded();
+          return;
+        }
         throw parseErr;
+      }
+      if (data.code === "CONSENT_REQUIRED") {
+        await generationConsent.ensureRecorded();
+        return;
       }
       if (res.status === 402 || data.code === "INSUFFICIENT") {
         applyServerCharge({ ok: false, code: "INSUFFICIENT" });
@@ -903,15 +921,44 @@ export default function GenerateStudio() {
             tr={tr}
           />
 
+          <StudioGenerationConsent
+            accepted={generationConsent.accepted}
+            recording={generationConsent.recording}
+            persistError={generationConsent.persistError}
+            onChange={(next) => {
+              void generationConsent.setConsent(next);
+            }}
+            labels={{
+              before: tr("studio_consent_label_before"),
+              and: tr("studio_consent_label_and"),
+              after: tr("studio_consent_label_after"),
+              terms: tr("terms_of_service"),
+              privacy: tr("privacy_policy"),
+              ai: tr("studio_consent_ai"),
+              helper: tr("studio_consent_helper"),
+              saving: tr("studio_consent_saving"),
+              saveFailed: tr("studio_consent_save_failed"),
+            }}
+          />
+
           <StudioGenerateCta
-            loading={loading}
+            loading={loading || generationConsent.recording}
             disabled={
               loading ||
+              generationConsent.recording ||
+              !generationConsent.accepted ||
               !prompt.trim() ||
               isOffline ||
               coins < generationCost ||
               (mediaKind === "video" &&
                 (routingEstimate?.configured === false || Boolean(routingIssue)))
+            }
+            title={
+              !generationConsent.accepted
+                ? tr("studio_consent_helper")
+                : generationConsent.persistError
+                  ? tr("studio_consent_save_failed")
+                  : undefined
             }
             label={
               mediaKind === "image"
