@@ -36,6 +36,7 @@ import { enforceGenerationTrust } from "@/lib/trust/generation-gate";
 import {
   classifyGenerationFailure,
   createPipelineTrace,
+  failedGenerateErrorFields,
   isRecoverableLocalMockFailure,
   localFallbackMedia,
   type PipelineLogEntry,
@@ -710,6 +711,10 @@ export async function POST(req: NextRequest) {
         : undefined;
     const playableUrl =
       resultUrl || (recovered || status === "COMPLETED" ? fallbackUrl : null);
+    const failedFields =
+      status === "FAILED"
+        ? failedGenerateErrorFields({ publicError, errorCode })
+        : null;
 
     const payload = sanitizePublicPayload({
       success: status !== "FAILED",
@@ -722,9 +727,9 @@ export async function POST(req: NextRequest) {
       jobId: generation.id,
       status,
       done: status === "COMPLETED",
-      error: publicError || undefined,
-      errorMessage: publicError || undefined,
-      errorCode: errorCode || undefined,
+      error: failedFields?.error ?? null,
+      errorMessage: failedFields?.errorMessage ?? null,
+      errorCode: failedFields?.errorCode ?? errorCode ?? null,
       pipelineStage: pipelineStage || undefined,
       pipelineLog,
       fallbackUrl,

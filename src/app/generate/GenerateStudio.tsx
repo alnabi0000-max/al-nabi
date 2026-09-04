@@ -889,17 +889,24 @@ export default function GenerateStudio() {
 
       throw new Error(publicGenerationError(data));
     } catch (e) {
-      const exact =
-        e instanceof Error && e.message.trim()
-          ? e.message
-          : publicGenerationError({});
+      const raw = e instanceof Error ? e.message.trim() : "";
+      const network =
+        /failed to fetch|networkerror|load failed|econnreset|econnrefused/i.test(
+          raw
+        );
+      const exact = network
+        ? publicGenerationError({ errorCode: "NETWORK_RESET" })
+        : raw || publicGenerationError({});
       setError(exact);
       notify({
         message: exact,
         type: "error",
-        title: "PLAYER_RENDER_FAILED",
+        title: network ? "NETWORK_RESET" : "PLAYER_RENDER_FAILED",
       });
-      applyFallbackPreview(exact, "PLAYER_RENDER_FAILED");
+      applyFallbackPreview(
+        exact,
+        network ? "NETWORK_RESET" : "PLAYER_RENDER_FAILED"
+      );
     } finally {
       if (!keepWatching) setLoading(false);
     }

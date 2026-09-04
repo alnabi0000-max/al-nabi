@@ -165,3 +165,34 @@ export function publicGenerationError(data: {
   if (code) return code;
   return "Generation failed. Credits were refunded if charged.";
 }
+
+const FAILED_MESSAGE_BY_CODE: Partial<Record<GenerationErrorCode, string>> = {
+  NETWORK_RESET: "Network reset while saving media. Credits refunded.",
+  MOCK_PERSIST_FAILED: "Could not save the local preview. Credits refunded.",
+  EMPTY_RESULT: "Studio returned an empty result. Credits refunded.",
+  TIMEOUT: "Generation timed out. Credits refunded.",
+  CHARGE_FAILED: "Not enough credits for this generation.",
+  PROVIDER_FAILED: "Studio engine unavailable. Credits refunded.",
+};
+
+/** FAILED /api/generate bodies must always include these keys (never omitted). */
+export function failedGenerateErrorFields(input: {
+  publicError?: string | null;
+  errorCode?: string | null;
+}): {
+  error: string;
+  errorMessage: string;
+  errorCode: string;
+} {
+  const errorCode = (String(input.errorCode || "GENERATION_FAILED").trim() ||
+    "GENERATION_FAILED") as GenerationErrorCode;
+  const error = publicGenerationError({
+    error:
+      input.publicError ||
+      FAILED_MESSAGE_BY_CODE[errorCode] ||
+      "",
+    errorCode,
+    code: errorCode,
+  });
+  return { error, errorMessage: error, errorCode };
+}

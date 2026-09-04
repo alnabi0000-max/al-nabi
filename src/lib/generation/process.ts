@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { withPrismaRetry } from "@/lib/prisma-retry";
 import {
   generateImage,
   generateVideoClip,
@@ -180,59 +181,87 @@ export async function processGenerationJob(generationId: string): Promise<{
       assertPersistentObjectStorage();
     }
 
-    await prisma.generation.update({
-      where: { id: generationId },
-      data: {
-        status: "GENERATING_VIDEO",
-        errorMessage: null,
-      },
-    });
-    await prisma.modelRun.updateMany({
-      where: { generationId },
-      data: { status: "RUNNING", failureCode: null },
-    });
+    try {
+      await withPrismaRetry(() =>
+        prisma.generation.update({
+          where: { id: generationId },
+          data: {
+            status: "GENERATING_VIDEO",
+            errorMessage: null,
+          },
+        })
+      );
+      await prisma.modelRun.updateMany({
+        where: { generationId },
+        data: { status: "RUNNING", failureCode: null },
+      });
+    } catch (statusErr) {
+      if (!instantMock) throw statusErr;
+      recovered = true;
+      trace.recovered(
+        "queue",
+        "Status write skipped after database reset",
+        "NETWORK_RESET"
+      );
+    }
 
     /* Debit only once, right before paid work (provider or billed mock). */
     if (creditsCost <= 0) {
-      const charge = await atomicChargeCoins({
-        userId: generation.userId,
-        kind,
-        durationSec: isImageType(generation.type)
-          ? 1
-          : Math.min(
-              CLIP_DURATION_SEC,
-              generation.durationSec || CLIP_DURATION_SEC
-            ),
-        generationId,
-        reason: `provider:${kind}:${costEngine}`,
-        costOpts: {
-          engine: costEngine,
-          quality,
-          frameRate,
-        },
-      });
-
-      if (!charge.ok) {
-        const classified = classifyGenerationFailure(charge.message, "queue");
-        trace.error("queue", classified.message, classified.code);
-        await failAndRefundGeneration({
+      try {
+        const charge = await atomicChargeCoins({
+          userId: generation.userId,
+          kind,
+          durationSec: isImageType(generation.type)
+            ? 1
+            : Math.min(
+                CLIP_DURATION_SEC,
+                generation.durationSec || CLIP_DURATION_SEC
+              ),
           generationId,
-          error: charge.message,
-          errorCode: classified.code,
-          area: "project-charge-preflight",
+          reason: `provider:${kind}:${costEngine}`,
+          costOpts: {
+            engine: costEngine,
+            quality,
+            frameRate,
+          },
         });
-        return {
-          ok: false,
-          error: classified.message,
-          errorCode: classified.code,
-          pipelineStage: classified.stage,
-          pipelineLog: trace.entries,
-          balanceAfter: charge.balanceAfter,
-          creditsCost: charge.cost,
-        };
+
+        if (!charge.ok) {
+          const classified = classifyGenerationFailure(charge.message, "queue");
+          if (instantMock && classified.code !== "CHARGE_FAILED") {
+            recovered = true;
+            trace.recovered("queue", classified.message, classified.code);
+          } else {
+            trace.error("queue", classified.message, classified.code);
+            await failAndRefundGeneration({
+              generationId,
+              error: charge.message,
+              errorCode: classified.code,
+              area: "project-charge-preflight",
+            });
+            return {
+              ok: false,
+              error: classified.message,
+              errorCode: classified.code,
+              pipelineStage: classified.stage,
+              pipelineLog: trace.entries,
+              balanceAfter: charge.balanceAfter,
+              creditsCost: charge.cost,
+            };
+          }
+        } else {
+          creditsCost = charge.cost;
+          balanceAfter = charge.balanceAfter;
+        }
+      } catch (chargeErr) {
+        if (!instantMock) throw chargeErr;
+        recovered = true;
+        trace.recovered(
+          "queue",
+          "Charge skipped after database reset",
+          "NETWORK_RESET"
+        );
       }
-      creditsCost = charge.cost;
-      balanceAfter = charge.balanceAfter;
     }
 
     let providerUrl = "";
@@ -355,30 +384,21 @@ export async function processGenerationJob(generationId: string): Promise<{
 
     const mediaKind = isImageType(generation.type) ? "image" : "video";
     let stored: Awaited<ReturnType<typeof persistRemoteAsset>>;
-    try {
+    if (instantMock) {
+      stored = {
+        key: `generations/${generation.userId}/${generationId}/dev-preview.${mediaKind === "image" ? "png" : "mp4"}`,
+        url: mockPublicPath(mediaKind),
+        provider: "local",
+      };
+      trace.ok("mock-persist", "Local mock fixture ready — no network persist");
+    } else {
       stored = await persistRemoteAsset({
         sourceUrl: providerUrl,
         userId: generation.userId,
         generationId,
         kind: mediaKind,
-        forceLocal: instantMock,
       });
-      trace.ok(
-        "mock-persist",
-        instantMock
-          ? "Local mock asset persisted"
-          : "Provider asset persisted"
-      );
-    } catch (persistErr) {
-      const classified = classifyGenerationFailure(persistErr, "mock-persist");
-      if (!instantMock) throw persistErr;
-      recovered = true;
-      stored = {
-        key: `generations/${generation.userId}/${generationId}/dev-fallback.${mediaKind === "image" ? "png" : "mp4"}`,
-        url: localFallbackMedia(mediaKind),
-        provider: "local",
-      };
-      trace.recovered("mock-persist", classified.message, classified.code);
+      trace.ok("mock-persist", "Provider asset persisted");
     }
 
     const publicProvider = whiteLabelEngine(engineId) || provider;
@@ -404,43 +424,55 @@ export async function processGenerationJob(generationId: string): Promise<{
       throw new Error("Private media could not be signed for delivery");
     }
 
-    await prisma.generation.update({
-      where: { id: generationId },
-      data: {
-        status: "COMPLETED",
-        resultUrl: deliveryUrl,
-        r2Key: stored.key,
-        provider: `${publicProvider} · ${model}`,
-        errorMessage: null,
-      },
-    });
-    await prisma.renderVersion.updateMany({
-      where: { generationId },
-      data: {
-        status: "COMPLETED",
-        provider,
-        model,
-        outputUrl: stored.url,
-        outputR2Key: stored.key,
-        creditsCost,
-      },
-    });
-    await prisma.modelRun.updateMany({
-      where: { generationId },
-      data: {
-        status: "COMPLETED",
-        responseMetadata: {
-          delivered: true,
-          mock: instantMock,
-          recovered,
-          provider,
-          model,
-          durationSec: generation.durationSec,
-          pipelineLog: trace.entries,
-        },
-        failureCode: null,
-      },
-    });
+    try {
+      await withPrismaRetry(async () => {
+        await prisma.generation.update({
+          where: { id: generationId },
+          data: {
+            status: "COMPLETED",
+            resultUrl: deliveryUrl,
+            r2Key: stored.key,
+            provider: `${publicProvider} · ${model}`,
+            errorMessage: null,
+          },
+        });
+        await prisma.renderVersion.updateMany({
+          where: { generationId },
+          data: {
+            status: "COMPLETED",
+            provider,
+            model,
+            outputUrl: stored.url,
+            outputR2Key: stored.key,
+            creditsCost,
+          },
+        });
+        await prisma.modelRun.updateMany({
+          where: { generationId },
+          data: {
+            status: "COMPLETED",
+            responseMetadata: {
+              delivered: true,
+              mock: instantMock,
+              recovered,
+              provider,
+              model,
+              durationSec: generation.durationSec,
+              pipelineLog: trace.entries,
+            },
+            failureCode: null,
+          },
+        });
+      });
+    } catch (completeErr) {
+      if (!instantMock) throw completeErr;
+      recovered = true;
+      trace.recovered(
+        "mock-persist",
+        "Completed locally after database reset",
+        "NETWORK_RESET"
+      );
+    }
 
     if (generation.projectId) {
       await attachCompletedGenerationAsset({
@@ -462,6 +494,12 @@ export async function processGenerationJob(generationId: string): Promise<{
       style: generation.style,
       durationSec: generation.durationSec,
       aspect: aspect,
+    }).catch((interestErr) => {
+      console.warn(
+        "[Alnabiy] interest profile skipped",
+        generationId,
+        interestErr
+      );
     });
 
     return {
