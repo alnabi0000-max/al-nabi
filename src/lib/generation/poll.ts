@@ -16,6 +16,11 @@ export type GenerationStatusPayload = {
   balanceAfter?: number;
   errorMessage?: string | null;
   error?: string;
+  errorCode?: string;
+  pipelineStage?: string;
+  pipelineLog?: import("@/lib/generation/pipeline").PipelineLogEntry[];
+  recovered?: boolean;
+  fallbackUrl?: string | null;
   percent?: number;
   stage?: string;
 };
@@ -110,6 +115,8 @@ export async function pollGenerationStatus(
     ok: false,
     failed: true,
     error: "Generation timed out",
+    errorCode: "TIMEOUT",
+    pipelineStage: "queue",
     percent: 100,
     stage: "failed",
   };

@@ -1,4 +1,3 @@
-import { createHash } from "crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 
@@ -38,22 +37,46 @@ export function mockAssetBytes(kind: MockAssetKind): Buffer {
   return Buffer.from(MOCK_MP4_HEX, "hex");
 }
 
+const PNG_SIGNATURE = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+]);
+
+/** PNG signature or ISO-BMFF `ftyp` — enough to serve without crashing. */
+export function isValidMockAssetBytes(
+  kind: MockAssetKind,
+  bytes: Buffer
+): boolean {
+  if (!bytes || bytes.length < 8) return false;
+  if (kind === "image") {
+    return bytes.subarray(0, 8).equals(PNG_SIGNATURE);
+  }
+  return bytes.subarray(4, 8).toString("ascii") === "ftyp";
+}
+
+export function mockAssetsDir(): string {
+  return path.join(process.cwd(), "public", "dev-mock");
+}
+
 /**
  * Ensure a local fixture file exists and return its filesystem path.
- * Never returns an http(s) URL.
+ * Never returns an http(s) URL. Valid files already on disk are kept so a
+ * richer preview is not replaced by the tiny embedded fallback.
  */
 export function ensureMockAssetPath(kind: MockAssetKind): string {
   const file = kind === "image" ? "preview.png" : "preview.mp4";
-  const dir = path.join(process.cwd(), "public", "dev-mock");
+  const dir = mockAssetsDir();
   const full = path.join(dir, file);
-  const bytes = mockAssetBytes(kind);
-  const stale =
-    !existsSync(full) ||
-    createHash("sha256").update(readFileSync(full)).digest("hex") !==
-      createHash("sha256").update(bytes).digest("hex");
-  if (stale) {
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(full, bytes);
+  if (existsSync(full)) {
+    try {
+      const existing = readFileSync(full);
+      if (isValidMockAssetBytes(kind, existing)) {
+        return full;
+      }
+    } catch {
+      /* rewrite below */
+    }
   }
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(full, mockAssetBytes(kind));
   return full;
 }

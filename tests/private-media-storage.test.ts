@@ -53,6 +53,40 @@ describe("private object storage", () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
+  it("persists instant mock bytes without fetching HTTP", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const stored = await persistRemoteAsset({
+      sourceUrl: "https://placehold.co/missing.mp4",
+      userId: "user-1",
+      generationId: "generation-mock",
+      kind: "video",
+      forceLocal: true,
+    });
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(stored).toMatchObject({
+      provider: "local",
+    });
+    expect(stored.key).toMatch(/^generations\/user-1\/generation-mock\//);
+    expect(stored.url).toMatch(/^\/api\/media\/objects\/generations\//);
+  });
+
+  it("writes a local mock object in production without R2", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const stored = await persistRemoteAsset({
+      sourceUrl: "/dev-mock/preview.mp4",
+      userId: "user-1",
+      generationId: "generation-prod-mock",
+      kind: "video",
+      forceLocal: true,
+    });
+    expect(stored.provider).toBe("local");
+    expect(stored.key).toMatch(/^generations\/user-1\/generation-prod-mock\//);
+  });
+
   it("deletes only a scoped generated object", async () => {
     stubR2();
     const send = vi

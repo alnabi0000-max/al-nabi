@@ -33,7 +33,18 @@ import {
 } from "@/lib/api/json-response";
 import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
 import { enforceGenerationTrust } from "@/lib/trust/generation-gate";
-import { sanitizeGenerationError } from "@/lib/generation/public-error";
+import {
+  classifyGenerationFailure,
+  createPipelineTrace,
+  isRecoverableLocalMockFailure,
+  localFallbackMedia,
+  type PipelineLogEntry,
+} from "@/lib/generation/pipeline";
+import {
+  ensureMockAssetPath,
+  shouldInstantMockGenerate,
+  shouldRejectUnconfiguredProvider,
+} from "@/lib/generation/dev-mock";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -156,6 +167,15 @@ export async function POST(req: NextRequest) {
     if (blocked) return blocked;
 
     const body = await parseBody(req);
+    const instant = shouldInstantMockGenerate();
+    if (instant) {
+      try {
+        ensureMockAssetPath(body.mediaKind === "image" ? "image" : "video");
+      } catch (assetErr) {
+        console.warn("[Al-Nabi] mock fixture ensure skipped", assetErr);
+      }
+    }
+
     const ensured = await ensureRequestLedgerUser({
       alnabiyKey: body.alnabiyKey,
       allowGuest: isSoftAuthEnabled(),
@@ -209,7 +229,7 @@ export async function POST(req: NextRequest) {
         }
         throw routingError;
       }
-      if (!routing.configured) {
+      if (shouldRejectUnconfiguredProvider(routing.configured)) {
         return apiError(
           "The selected provider route is not configured for commercial use.",
           {
@@ -498,11 +518,6 @@ export async function POST(req: NextRequest) {
       throw projectError;
     }
 
-    const { shouldInstantMockGenerate } = await import(
-      "@/lib/generation/dev-mock"
-    );
-    const instant = shouldInstantMockGenerate();
-
     let queueMode: "inngest" | "local" | "sync" = "local";
     let status: "QUEUED" | "COMPLETED" | "FAILED" = "QUEUED";
     let resultUrl: string | null = null;
@@ -511,6 +526,15 @@ export async function POST(req: NextRequest) {
     let creditsCost = 0;
     let receiptId: string | undefined;
     let publicError: string | null = null;
+    let errorCode: string | null = null;
+    let pipelineStage: string | null = null;
+    let pipelineLog: PipelineLogEntry[] = [];
+    let recovered = false;
+    const routeTrace = createPipelineTrace(generation.id);
+    routeTrace.ok(
+      "queue",
+      instant ? "Sync mock generate accepted" : "Generation enqueued"
+    );
 
     if (instant) {
       /* Test/local: sync — charge happens inside processGenerationJob
@@ -527,30 +551,58 @@ export async function POST(req: NextRequest) {
         if (typeof done.creditsCost === "number") {
           creditsCost = done.creditsCost;
         }
+        if (done.pipelineLog?.length) {
+          pipelineLog = done.pipelineLog;
+        }
+        recovered = Boolean(done.recovered);
         if (done.ok && done.resultUrl) {
           status = "COMPLETED";
           resultUrl = done.resultUrl;
         } else {
           status = "FAILED";
-          publicError = sanitizeGenerationError(
-            done.error || "Generation failed. Credits were refunded if charged."
+          const classified = classifyGenerationFailure(
+            done.error || "Generation failed. Credits were refunded if charged.",
+            (done.pipelineStage as "queue" | "mock-persist") || "mock-persist"
           );
+          publicError = classified.message;
+          errorCode = done.errorCode || classified.code;
+          pipelineStage = done.pipelineStage || classified.stage;
+          if (!pipelineLog.length) {
+            routeTrace.error(
+              classified.stage,
+              classified.message,
+              classified.code
+            );
+            pipelineLog = routeTrace.entries;
+          }
         }
       } catch (syncErr) {
-        console.warn("[Alnabiy] sync mock generate failed", syncErr);
+        const classified = classifyGenerationFailure(syncErr, "mock-persist");
+        console.error(
+          "[Al-Nabi][pipeline][mock-persist] sync generate failed",
+          generation.id,
+          classified.code,
+          classified.message,
+          syncErr
+        );
         const { failAndRefundGeneration } = await import(
           "@/lib/generation/fail-and-refund"
         );
         const refunded = await failAndRefundGeneration({
           generationId: generation.id,
           error: syncErr,
+          errorCode: classified.code,
           area: "generate-sync",
         });
         if (typeof refunded.balanceAfter === "number") {
           balanceAfter = refunded.balanceAfter;
         }
         status = "FAILED";
-        publicError = refunded.errorMessage;
+        publicError = classified.message;
+        errorCode = classified.code;
+        pipelineStage = classified.stage;
+        routeTrace.error(classified.stage, classified.message, classified.code);
+        pipelineLog = routeTrace.entries;
       }
     } else {
       try {
@@ -560,14 +612,26 @@ export async function POST(req: NextRequest) {
         creditsCost = 0;
         balanceAfter = user.coins;
       } catch (queueErr) {
-        console.warn("[Alnabiy] enqueue failed — no charge applied", queueErr);
+        const classified = classifyGenerationFailure(queueErr, "queue");
+        console.error(
+          "[Al-Nabi][pipeline][queue] enqueue failed",
+          generation.id,
+          classified.code,
+          classified.message,
+          queueErr
+        );
         const refunded = await failAndRefundGeneration({
           generationId: generation.id,
           error: queueErr,
+          errorCode: classified.code,
           area: "generate-enqueue",
         });
         status = "FAILED";
-        publicError = refunded.errorMessage;
+        publicError = classified.message;
+        errorCode = classified.code;
+        pipelineStage = classified.stage;
+        routeTrace.error(classified.stage, classified.message, classified.code);
+        pipelineLog = routeTrace.entries;
       }
     }
 
@@ -576,10 +640,52 @@ export async function POST(req: NextRequest) {
         where: { id: generation.id },
         select: { errorMessage: true },
       });
-      publicError = sanitizeGenerationError(
+      const classified = classifyGenerationFailure(
         failedRow?.errorMessage ||
-          "Generation failed. Credits were refunded if charged."
+          "Generation failed. Credits were refunded if charged.",
+        "queue"
       );
+      publicError = classified.message;
+      errorCode = errorCode || classified.code;
+      pipelineStage = pipelineStage || classified.stage;
+    }
+
+    if (
+      status !== "COMPLETED" &&
+      instant &&
+      isRecoverableLocalMockFailure(errorCode)
+    ) {
+      const mediaKind = body.mediaKind === "image" ? "image" : "video";
+      try {
+        ensureMockAssetPath(mediaKind);
+      } catch {
+        /* in-memory / public fallback still playable */
+      }
+      const fallback = localFallbackMedia(mediaKind);
+      try {
+        await prisma.generation.update({
+          where: { id: generation.id },
+          data: {
+            status: "COMPLETED",
+            resultUrl: fallback,
+            errorMessage: null,
+          },
+        });
+      } catch {
+        /* still return a playable payload */
+      }
+      recovered = true;
+      status = "COMPLETED";
+      resultUrl = fallback;
+      publicError = null;
+      errorCode = null;
+      pipelineStage = "mock-persist";
+      routeTrace.recovered(
+        "mock-persist",
+        "Local mock preview delivered without a provider key",
+        "EMPTY_RESULT"
+      );
+      pipelineLog = routeTrace.entries;
     }
 
     if (status === "COMPLETED" && resultUrl) {
@@ -588,30 +694,51 @@ export async function POST(req: NextRequest) {
         select: { r2Key: true, resultUrl: true, creditsCost: true },
       });
       r2Key = row?.r2Key || null;
-      resultUrl =
-        (await resolvePrivateDeliveryUrl({
-          objectKey: r2Key,
-          resultUrl: row?.resultUrl || resultUrl,
-        })) || resultUrl;
+      if (!instant) {
+        resultUrl =
+          (await resolvePrivateDeliveryUrl({
+            objectKey: r2Key,
+            resultUrl: row?.resultUrl || resultUrl,
+          })) || resultUrl;
+      }
       if (row && row.creditsCost > 0) creditsCost = row.creditsCost;
     }
+
+    const fallbackUrl =
+      instant
+        ? localFallbackMedia(body.mediaKind === "image" ? "image" : "video")
+        : undefined;
+    const playableUrl =
+      resultUrl || (recovered || status === "COMPLETED" ? fallbackUrl : null);
 
     const payload = sanitizePublicPayload({
       success: status !== "FAILED",
       ok: status !== "FAILED",
       queued: status === "QUEUED",
       failed: status === "FAILED",
+      recovered,
+      instantMock: instant,
       generationId: generation.id,
       jobId: generation.id,
       status,
       done: status === "COMPLETED",
-      error: status === "FAILED" ? publicError : undefined,
-      errorMessage: status === "FAILED" ? publicError : undefined,
-      resultUrl,
+      error: publicError || undefined,
+      errorMessage: publicError || undefined,
+      errorCode: errorCode || undefined,
+      pipelineStage: pipelineStage || undefined,
+      pipelineLog,
+      fallbackUrl,
+      resultUrl: playableUrl,
       videoUrl:
-        status === "COMPLETED" && body.mediaKind !== "image" ? resultUrl : null,
+        body.mediaKind !== "image" &&
+        (status === "COMPLETED" || recovered)
+          ? playableUrl
+          : null,
       imageUrl:
-        status === "COMPLETED" && body.mediaKind === "image" ? resultUrl : null,
+        body.mediaKind === "image" &&
+        (status === "COMPLETED" || recovered)
+          ? playableUrl
+          : null,
       r2Key,
       statusUrl: `/api/generations/${generation.id}/status`,
       projectId: generation.projectId,
@@ -667,7 +794,13 @@ export async function POST(req: NextRequest) {
     }
 
     const formatted = formatRouteError(e);
-    console.error("[Alnabiy] /api/generate error:", formatted.message, e);
+    const classified = classifyGenerationFailure(e, "queue");
+    console.error(
+      "[Al-Nabi][pipeline][queue] /api/generate",
+      classified.code,
+      classified.message,
+      e
+    );
 
     try {
       const Sentry = await import("@sentry/nextjs");
@@ -676,10 +809,24 @@ export async function POST(req: NextRequest) {
       /* soft */
     }
 
-    return apiError(formatted.message, {
+    return apiError(classified.message, {
       status: formatted.status,
-      code: formatted.code,
-      extra: formatted.details ? { details: formatted.details } : undefined,
+      code: classified.code !== "QUEUE_FAILED" ? classified.code : formatted.code,
+      extra: {
+        errorCode: classified.code,
+        errorMessage: classified.message,
+        pipelineStage: classified.stage,
+        pipelineLog: [
+          {
+            at: new Date().toISOString(),
+            stage: classified.stage,
+            status: "error" as const,
+            code: classified.code,
+            message: classified.message,
+          },
+        ],
+        ...(formatted.details ? { details: formatted.details } : {}),
+      },
     });
   }
 }

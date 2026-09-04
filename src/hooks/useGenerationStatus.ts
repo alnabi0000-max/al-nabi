@@ -96,6 +96,8 @@ export function useGenerationStatus(opts: UseGenerationStatusOpts) {
             ok: false,
             failed: true,
             error: "Generation timed out",
+            errorCode: "TIMEOUT",
+            pipelineStage: "queue",
             percent: 100,
             stage: "failed",
           });

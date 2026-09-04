@@ -40,8 +40,36 @@ export type GenerateQueuedResponse = {
   receiptId?: string;
   error?: string;
   errorMessage?: string;
+  errorCode?: string;
+  pipelineStage?: string;
+  pipelineLog?: import("@/lib/generation/pipeline").PipelineLogEntry[];
+  recovered?: boolean;
+  instantMock?: boolean;
+  fallbackUrl?: string | null;
+  queueMode?: "inngest" | "local" | "sync";
   code?: string;
   provider?: string;
   alnabiyKey?: string;
   alnabiy_key?: string;
 };
+
+export function hasPlayableGenerateResult(
+  data: GenerateQueuedResponse
+): boolean {
+  return Boolean(
+    data.resultUrl || data.videoUrl || data.imageUrl || data.fallbackUrl
+  );
+}
+
+export function isSuccessfulGenerateResponse(
+  data: GenerateQueuedResponse
+): boolean {
+  if (data.status === "COMPLETED" || data.done === true) return true;
+  if (
+    (data.recovered || data.instantMock) &&
+    hasPlayableGenerateResult(data)
+  ) {
+    return true;
+  }
+  return data.ok === true && data.status !== "FAILED";
+}

@@ -21,6 +21,7 @@ export function friendlyApiError(
 
   /* Server already sanitized this generation error — show it verbatim. */
   if (
+    /^[A-Z][A-Z0-9_]+: /.test(msg) ||
     /credits (were )?refunded|network reset while saving media|generation timed out/i.test(
       msg
     )
@@ -83,11 +84,20 @@ export async function parseApiResponse<T = Record<string, unknown>>(
     );
   }
   if (!res.ok) {
-    const err =
-      (data as { error?: string; message?: string }).error ||
-      (data as { message?: string }).message ||
-      `HTTP ${res.status}`;
-    throw new Error(err);
+    const { publicGenerationError } = await import(
+      "@/lib/generation/pipeline"
+    );
+    throw new Error(
+      publicGenerationError(
+        data as {
+          error?: string;
+          errorMessage?: string;
+          errorCode?: string;
+          code?: string;
+          message?: string;
+        }
+      )
+    );
   }
   return data;
 }

@@ -144,7 +144,6 @@ async function storeLocal(
   key: string,
   buffer: Buffer
 ): Promise<StoredObject> {
-  assertPersistentObjectStorage();
   const root = process.env.STORAGE_DIR || "./storage";
   const full = path.join(process.cwd(), root, "objects", key);
   await mkdir(path.dirname(full), { recursive: true });
@@ -214,20 +213,28 @@ export async function persistRemoteAsset(opts: {
   }
 
   let downloaded: Awaited<ReturnType<typeof fetchBytes>>;
-  try {
-    downloaded = await fetchBytes(opts.sourceUrl);
-  } catch (error) {
-    if (opts.forceLocal) {
-      const { mockAssetBytes, mockContentType } = await import(
-        "@/lib/generation/mock-assets"
-      );
-      downloaded = {
-        buffer: mockAssetBytes(opts.kind),
-        contentType: mockContentType(opts.kind),
-      };
-    } else if (isProductionRuntime()) {
-      throw error;
-    } else {
+  if (opts.forceLocal) {
+    const {
+      ensureMockAssetPath,
+      mockAssetBytes,
+      mockContentType,
+    } = await import("@/lib/generation/mock-assets");
+    try {
+      ensureMockAssetPath(opts.kind);
+    } catch {
+      /* persist uses in-memory bytes even if the public file cannot be written */
+    }
+    downloaded = {
+      buffer: mockAssetBytes(opts.kind),
+      contentType: mockContentType(opts.kind),
+    };
+  } else {
+    try {
+      downloaded = await fetchBytes(opts.sourceUrl);
+    } catch (error) {
+      if (isProductionRuntime()) {
+        throw error;
+      }
       // Placeholder/mock URLs can fail in local development. Never persist a
       // marker in production because it would masquerade as a completed asset.
       downloaded = {

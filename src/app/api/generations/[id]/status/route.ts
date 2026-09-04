@@ -4,6 +4,11 @@ import type { GenerationType, GenerationStatus } from "@prisma/client";
 import { apiError, apiJson, formatRouteError } from "@/lib/api/json-response";
 import { sanitizePublicPayload, whiteLabelEngine } from "@/lib/models";
 import { sanitizeGenerationError } from "@/lib/generation/public-error";
+import {
+  classifyGenerationFailure,
+  localFallbackMedia,
+  type PipelineLogEntry,
+} from "@/lib/generation/pipeline";
 import { reclaimStaleGeneration } from "@/lib/generation/fail-and-refund";
 import { ensureRequestLedgerUser } from "@/lib/auth/ensure-request-user";
 import { resolvePrivateDeliveryUrl } from "@/lib/storage/signed-url";
@@ -57,6 +62,28 @@ function hasCredentialInQuery(req: NextRequest): boolean {
   );
 }
 
+async function pipelineLogForGeneration(
+  generationId: string
+): Promise<PipelineLogEntry[] | undefined> {
+  try {
+    const run = await prisma.modelRun.findUnique({
+      where: { generationId },
+      select: { responseMetadata: true },
+    });
+    const meta = run?.responseMetadata;
+    if (
+      meta &&
+      typeof meta === "object" &&
+      Array.isArray((meta as { pipelineLog?: unknown }).pipelineLog)
+    ) {
+      return (meta as { pipelineLog: PipelineLogEntry[] }).pipelineLog;
+    }
+  } catch {
+    /* status still works without the worker trace */
+  }
+  return undefined;
+}
+
 async function toPayload(
   generation: GenerationRow,
   balanceAfter?: number
@@ -64,12 +91,24 @@ async function toPayload(
   const done = generation.status === "COMPLETED";
   const failed = generation.status === "FAILED";
   const prog = progressFromStatus(generation.status);
-  const deliveryUrl = done
-    ? await resolvePrivateDeliveryUrl({
-        objectKey: generation.r2Key,
-        resultUrl: generation.resultUrl,
-      })
+  const classified = generation.errorMessage
+    ? classifyGenerationFailure(generation.errorMessage)
     : null;
+  const fallback = localFallbackMedia(
+    generation.type === "IMAGE" ? "image" : "video"
+  );
+  const storedUrl = generation.resultUrl || "";
+  const deliveryUrl = storedUrl.startsWith("/dev-mock/")
+    ? storedUrl
+    : done
+      ? await resolvePrivateDeliveryUrl({
+          objectKey: generation.r2Key,
+          resultUrl: generation.resultUrl,
+        })
+      : null;
+  const playable = deliveryUrl || (failed ? fallback : null);
+  const pipelineLog =
+    done || failed ? await pipelineLogForGeneration(generation.id) : undefined;
   return sanitizePublicPayload({
     ok: true as const,
     generationId: generation.id,
@@ -78,23 +117,29 @@ async function toPayload(
     status: generation.status,
     done,
     failed,
-    resultUrl: deliveryUrl,
+    recovered: Boolean(failed && playable),
+    resultUrl: playable,
     r2Key: generation.r2Key,
     provider: whiteLabelEngine(generation.provider),
     creditsCost: generation.creditsCost,
     balanceAfter,
+    error: classified?.message || null,
     errorMessage: generation.errorMessage
       ? sanitizeGenerationError(generation.errorMessage)
       : null,
+    errorCode: classified?.code || null,
+    pipelineStage: classified?.stage || null,
+    pipelineLog,
+    fallbackUrl: fallback,
     durationSec: generation.durationSec,
     emotionMode: generation.emotionMode,
     quality: generation.quality,
     createdAt: generation.createdAt.toISOString(),
     updatedAt: generation.updatedAt.toISOString(),
     videoUrl:
-      done && generation.type !== "IMAGE" ? deliveryUrl : null,
+      generation.type !== "IMAGE" ? playable : null,
     imageUrl:
-      done && generation.type === "IMAGE" ? deliveryUrl : null,
+      generation.type === "IMAGE" ? playable : null,
     percent: prog.percent,
     stage: prog.stage,
   });

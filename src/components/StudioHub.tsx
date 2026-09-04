@@ -15,7 +15,11 @@ import {
 } from "@/lib/credits";
 import { InsufficientBalanceHint } from "@/components/InsufficientBalanceHint";
 import type { RenderStage } from "@/lib/generation/progress";
-import type { GenerateQueuedResponse } from "@/lib/generation/types";
+import {
+  isSuccessfulGenerateResponse,
+  type GenerateQueuedResponse,
+} from "@/lib/generation/types";
+import { LOCAL_FALLBACK_VIDEO, publicGenerationError } from "@/lib/generation/pipeline";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import clsx from "clsx";
 import { BgmPicker } from "@/components/BgmPicker";
@@ -186,7 +190,10 @@ export function StudioHub() {
           applyServerCharge({ ok: false, code: "INSUFFICIENT" });
           return;
         }
-        if (!res.ok || data.ok === false || data.status === "FAILED") {
+        if (
+          !isSuccessfulGenerateResponse(data) &&
+          (!res.ok || data.ok === false || data.status === "FAILED")
+        ) {
           /* /api/generate may return HTTP 200 with ok:false/status:FAILED
            * after charging + auto-refunding server-side — sync the
            * post-refund balance instead of leaving the stale pre-refund one. */
@@ -196,9 +203,26 @@ export function StudioHub() {
               balanceAfter: data.balanceAfter as number,
             });
           }
-          throw new Error(
-            data.error || data.errorMessage || tr("generate_failed")
+          const exact = publicGenerationError(data);
+          console.error(
+            "[Al-Nabi][pipeline][queue]",
+            data.errorCode || data.pipelineStage || "QUEUE_FAILED",
+            exact,
+            data.pipelineLog
           );
+          setError(exact);
+          if (data.recovered || data.instantMock || data.fallbackUrl) {
+            setPreviewA(
+              data.resultUrl ||
+                data.videoUrl ||
+                data.fallbackUrl ||
+                LOCAL_FALLBACK_VIDEO
+            );
+            setProgressPercent(100);
+            setRenderStage("completed");
+            return;
+          }
+          throw new Error(exact);
         }
         applyServerCharge({
           ok: true,

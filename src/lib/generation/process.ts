@@ -25,6 +25,13 @@ import {
 } from "@/lib/generation/dev-mock";
 import { failAndRefundGeneration } from "@/lib/generation/fail-and-refund";
 import {
+  classifyGenerationFailure,
+  createPipelineTrace,
+  isRecoverableLocalMockFailure,
+  localFallbackMedia,
+  type PipelineLogEntry,
+} from "@/lib/generation/pipeline";
+import {
   acquireGenerationJobLock,
   releaseGenerationJobLock,
 } from "@/lib/generation/job-lock";
@@ -70,15 +77,31 @@ export async function processGenerationJob(generationId: string): Promise<{
   ok: boolean;
   resultUrl?: string;
   error?: string;
+  errorCode?: string;
+  pipelineStage?: string;
+  pipelineLog?: PipelineLogEntry[];
+  recovered?: boolean;
   refunded?: boolean;
   balanceAfter?: number;
   creditsCost?: number;
 }> {
+  const trace = createPipelineTrace(generationId);
   const generation = await prisma.generation.findUnique({
     where: { id: generationId },
   });
   if (!generation) {
-    return { ok: false, error: "Generation not found" };
+    const classified = classifyGenerationFailure(
+      "Generation not found",
+      "queue"
+    );
+    trace.error("queue", classified.message, classified.code);
+    return {
+      ok: false,
+      error: classified.message,
+      errorCode: classified.code,
+      pipelineStage: classified.stage,
+      pipelineLog: trace.entries,
+    };
   }
   if (
     generation.status === "COMPLETED" &&
@@ -95,16 +118,35 @@ export async function processGenerationJob(generationId: string): Promise<{
     };
   }
   if (generation.status === "FAILED") {
+    const classified = classifyGenerationFailure(
+      generation.errorMessage || "Generation failed",
+      "queue"
+    );
+    trace.error("queue", classified.message, classified.code);
     return {
       ok: false,
-      error: generation.errorMessage || "Generation failed",
+      error: classified.message,
+      errorCode: classified.code,
+      pipelineStage: classified.stage,
+      pipelineLog: trace.entries,
       creditsCost: generation.creditsCost,
     };
   }
 
   const lock = await acquireGenerationJobLock(generationId);
   if (lock === "busy") {
-    return { ok: false, error: "Generation already in progress" };
+    const classified = classifyGenerationFailure(
+      "Generation already in progress",
+      "queue"
+    );
+    trace.error("queue", classified.message, classified.code);
+    return {
+      ok: false,
+      error: classified.message,
+      errorCode: classified.code,
+      pipelineStage: classified.stage,
+      pipelineLog: trace.entries,
+    };
   }
 
   const prompt =
@@ -121,13 +163,22 @@ export async function processGenerationJob(generationId: string): Promise<{
 
   let balanceAfter: number | undefined;
   let creditsCost = generation.creditsCost;
+  let recovered = false;
+  const instantMock = shouldInstantMockGenerate();
 
   try {
+    trace.ok(
+      "queue",
+      instantMock ? "Instant mock job accepted" : "Generation job accepted"
+    );
     /*
      * Do this before charging or calling a paid provider. Local disk cannot
      * retain a completed asset across production serverless invocations.
+     * Instant mock writes public/dev-mock fixtures and never needs R2/S3.
      */
-    assertPersistentObjectStorage();
+    if (!instantMock) {
+      assertPersistentObjectStorage();
+    }
 
     await prisma.generation.update({
       where: { id: generationId },
@@ -162,14 +213,20 @@ export async function processGenerationJob(generationId: string): Promise<{
       });
 
       if (!charge.ok) {
+        const classified = classifyGenerationFailure(charge.message, "queue");
+        trace.error("queue", classified.message, classified.code);
         await failAndRefundGeneration({
           generationId,
           error: charge.message,
+          errorCode: classified.code,
           area: "project-charge-preflight",
         });
         return {
           ok: false,
-          error: charge.message,
+          error: classified.message,
+          errorCode: classified.code,
+          pipelineStage: classified.stage,
+          pipelineLog: trace.entries,
           balanceAfter: charge.balanceAfter,
           creditsCost: charge.cost,
         };
@@ -182,7 +239,6 @@ export async function processGenerationJob(generationId: string): Promise<{
     let provider = "Studio";
     let model = "Cinematic";
     let engineId = "auto";
-    const instantMock = shouldInstantMockGenerate();
 
     if (instantMock) {
       providerUrl = ensureMockAssetPath(
@@ -297,24 +353,53 @@ export async function processGenerationJob(generationId: string): Promise<{
       );
     }
 
-    const stored = await persistRemoteAsset({
-      sourceUrl: providerUrl,
-      userId: generation.userId,
-      generationId,
-      kind: isImageType(generation.type) ? "image" : "video",
-      forceLocal: instantMock,
-    });
+    const mediaKind = isImageType(generation.type) ? "image" : "video";
+    let stored: Awaited<ReturnType<typeof persistRemoteAsset>>;
+    try {
+      stored = await persistRemoteAsset({
+        sourceUrl: providerUrl,
+        userId: generation.userId,
+        generationId,
+        kind: mediaKind,
+        forceLocal: instantMock,
+      });
+      trace.ok(
+        "mock-persist",
+        instantMock
+          ? "Local mock asset persisted"
+          : "Provider asset persisted"
+      );
+    } catch (persistErr) {
+      const classified = classifyGenerationFailure(persistErr, "mock-persist");
+      if (!instantMock) throw persistErr;
+      recovered = true;
+      stored = {
+        key: `generations/${generation.userId}/${generationId}/dev-fallback.${mediaKind === "image" ? "png" : "mp4"}`,
+        url: localFallbackMedia(mediaKind),
+        provider: "local",
+      };
+      trace.recovered("mock-persist", classified.message, classified.code);
+    }
 
     const publicProvider = whiteLabelEngine(engineId) || provider;
     const mockDelivery = instantMock
-      ? mockPublicPath(isImageType(generation.type) ? "image" : "video")
+      ? mockPublicPath(mediaKind)
       : null;
-    const deliveryUrl =
+    let deliveryUrl =
       mockDelivery ||
       (await resolvePrivateDeliveryUrl({
         objectKey: stored.key,
         resultUrl: stored.url,
       }));
+    if (!deliveryUrl && instantMock) {
+      recovered = true;
+      deliveryUrl = localFallbackMedia(mediaKind);
+      trace.recovered(
+        "mock-persist",
+        "Delivery URL missing — using bundled preview",
+        "EMPTY_RESULT"
+      );
+    }
     if (!deliveryUrl) {
       throw new Error("Private media could not be signed for delivery");
     }
@@ -347,9 +432,11 @@ export async function processGenerationJob(generationId: string): Promise<{
         responseMetadata: {
           delivered: true,
           mock: instantMock,
+          recovered,
           provider,
           model,
           durationSec: generation.durationSec,
+          pipelineLog: trace.entries,
         },
         failureCode: null,
       },
@@ -380,18 +467,78 @@ export async function processGenerationJob(generationId: string): Promise<{
     return {
       ok: true,
       resultUrl: deliveryUrl,
+      recovered,
+      pipelineLog: trace.entries,
       balanceAfter,
       creditsCost,
     };
   } catch (e) {
+    const classified = classifyGenerationFailure(e, "mock-persist");
+    if (instantMock && isRecoverableLocalMockFailure(classified.code)) {
+      const mediaKind = isImageType(generation.type) ? "image" : "video";
+      const deliveryUrl = localFallbackMedia(mediaKind);
+      recovered = true;
+      trace.recovered("mock-persist", classified.message, classified.code);
+      try {
+        ensureMockAssetPath(mediaKind);
+      } catch {
+        /* public /dev-mock path is still returned */
+      }
+      try {
+        await prisma.generation.update({
+          where: { id: generationId },
+          data: {
+            status: "COMPLETED",
+            resultUrl: deliveryUrl,
+            errorMessage: null,
+          },
+        });
+        await prisma.renderVersion.updateMany({
+          where: { generationId },
+          data: { status: "COMPLETED", outputUrl: deliveryUrl },
+        });
+        await prisma.modelRun.updateMany({
+          where: { generationId },
+          data: {
+            status: "COMPLETED",
+            responseMetadata: {
+              delivered: true,
+              mock: true,
+              recovered: true,
+              pipelineLog: trace.entries,
+            },
+            failureCode: null,
+          },
+        });
+        return {
+          ok: true,
+          resultUrl: deliveryUrl,
+          recovered: true,
+          pipelineLog: trace.entries,
+          balanceAfter,
+          creditsCost,
+        };
+      } catch (completeErr) {
+        console.warn(
+          "[Al-Nabi] local mock complete failed",
+          generationId,
+          completeErr
+        );
+      }
+    }
+    trace.error(classified.stage, classified.message, classified.code);
     const result = await failAndRefundGeneration({
       generationId,
       error: e,
+      errorCode: classified.code,
       area: "processGenerationJob",
     });
     return {
       ok: false,
-      error: result.errorMessage,
+      error: classified.message,
+      errorCode: classified.code,
+      pipelineStage: classified.stage,
+      pipelineLog: trace.entries,
       refunded: result.refunded,
       balanceAfter: result.balanceAfter,
       creditsCost,

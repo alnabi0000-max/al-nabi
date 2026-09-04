@@ -5,7 +5,9 @@
 
 export {
   ensureMockAssetPath,
+  isValidMockAssetBytes,
   mockAssetBytes,
+  mockAssetsDir,
   mockContentType,
   mockPublicPath,
 } from "@/lib/generation/mock-assets";
@@ -13,12 +15,26 @@ export {
 export function shouldInstantMockGenerate(): boolean {
   if (process.env.ALNABIY_FORCE_MOCK === "0") return false;
   if (process.env.ALNABIY_FORCE_MOCK === "1") return true;
-  /* Production: never auto-mock a *paid* generation, no matter how AUTH_MODE
-   * or other dev flags are set — this must be an explicit opt-in per request
-   * above (ALNABIY_FORCE_MOCK=1), never an accidental side-effect of AUTH_MODE. */
+  /* Hosted/CI production: never auto-mock a *paid* generation. */
   if (process.env.NODE_ENV === "production") return false;
   if (process.env.ALNABIY_DEV_INSTANT_GENERATE === "1") return true;
   if (process.env.AUTH_MODE?.toLowerCase() === "local") return true;
   if (process.env.NEXT_PUBLIC_ALNABIY_MODE === "development") return true;
   return true;
+}
+
+/** Missing Replicate/Kling/Runway keys must not 503 while local mock is on. */
+export function shouldRejectUnconfiguredProvider(configured: boolean): boolean {
+  return !configured && !shouldInstantMockGenerate();
+}
+
+export function applyLocalMockAvailability<T extends { configured: boolean }>(
+  value: T
+): T & { localMock: boolean } {
+  const localMock = shouldInstantMockGenerate();
+  return {
+    ...value,
+    configured: value.configured || localMock,
+    localMock,
+  };
 }

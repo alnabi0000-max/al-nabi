@@ -5,6 +5,7 @@ import {
   ProviderRoutingError,
 } from "@/lib/ai/provider-registry";
 import { apiError, apiJson } from "@/lib/api/json-response";
+import { applyLocalMockAvailability } from "@/lib/generation/dev-mock";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,7 +18,11 @@ export async function GET(req: NextRequest) {
   try {
     const engine = req.nextUrl.searchParams.get("engine") || undefined;
     if (!engine) {
-      return apiJson({ capabilities: listVideoProviderCapabilities() });
+      return apiJson({
+        capabilities: listVideoProviderCapabilities().map(
+          applyLocalMockAvailability
+        ),
+      });
     }
 
     const duration = Number(req.nextUrl.searchParams.get("durationSec") || 15);
@@ -62,7 +67,7 @@ export async function GET(req: NextRequest) {
     });
 
     return apiJson({
-      estimate: {
+      estimate: applyLocalMockAvailability({
         engineId: estimate.engineId,
         configured: estimate.configured,
         commercialRoute: estimate.commercialRoute,
@@ -74,7 +79,7 @@ export async function GET(req: NextRequest) {
         supportedInputs: estimate.supportedInputs,
         nativeAudio: estimate.nativeAudio,
         cinematicControls: estimate.cinematicControls,
-      },
+      }),
     });
   } catch (error) {
     if (error instanceof ProviderRoutingError) {

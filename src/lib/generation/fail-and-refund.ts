@@ -22,11 +22,13 @@ export type FailAndRefundResult = {
 export async function failAndRefundGeneration(opts: {
   generationId: string;
   error: unknown;
+  errorCode?: string;
   area?: string;
   reason?: string;
 }): Promise<FailAndRefundResult> {
   const area = opts.area || "generation";
   const errorMessage = sanitizeGenerationError(opts.error);
+  const failureCode = (opts.errorCode || errorMessage).slice(0, 120);
 
   await captureGenerationFailure(opts.error, {
     generationId: opts.generationId,
@@ -66,7 +68,7 @@ export async function failAndRefundGeneration(opts: {
   });
   await prisma.modelRun.updateMany({
     where: { generationId: opts.generationId },
-    data: { status: "FAILED", failureCode: errorMessage.slice(0, 120) },
+    data: { status: "FAILED", failureCode },
   });
 
   let refunded = false;

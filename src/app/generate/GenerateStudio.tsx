@@ -74,9 +74,19 @@ import type { CameraMovement } from "@/lib/types";
 import type { BgmMode } from "@/lib/bgm/types";
 import { DEFAULT_BGM_SELECTION } from "@/lib/bgm/types";
 import { useGenerationStatus } from "@/hooks/useGenerationStatus";
-import type { GenerateQueuedResponse } from "@/lib/generation/types";
+import {
+  isSuccessfulGenerateResponse,
+  type GenerateQueuedResponse,
+} from "@/lib/generation/types";
 import type { GenerationStatusPayload } from "@/lib/generation/poll";
 import type { RenderStage } from "@/lib/generation/progress";
+import {
+  createPipelineTrace,
+  localFallbackMedia,
+  publicGenerationError,
+  type PipelineLogEntry,
+} from "@/lib/generation/pipeline";
+import { StudioPipelineLog } from "@/components/studio/StudioPipelineLog";
 
 const MediaActions = dynamic(
   () =>
@@ -106,6 +116,7 @@ const ALNABI_ENGINE = "auto" as const;
 
 type RoutingEstimate = {
   configured: boolean;
+  localMock?: boolean;
   effectiveDurationSec: number;
   durationAdjusted: boolean;
   estimatedCredits: number;
@@ -146,6 +157,7 @@ export default function GenerateStudio() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pipelineLog, setPipelineLog] = useState<PipelineLogEntry[]>([]);
   const [provider, setProvider] = useState<string>("");
   const [progressPercent, setProgressPercent] = useState(0);
   const [renderStage, setRenderStage] = useState<
@@ -345,18 +357,79 @@ export default function GenerateStudio() {
 
   const settledJobRef = useRef<string | null>(null);
 
+  const appendPipeline = useCallback((entries?: PipelineLogEntry[]) => {
+    if (!entries?.length) return;
+    setPipelineLog((prev) => {
+      const next = [...prev];
+      for (const entry of entries) {
+        const dup = next.some(
+          (row) =>
+            row.at === entry.at &&
+            row.stage === entry.stage &&
+            row.status === entry.status &&
+            row.message === entry.message
+        );
+        if (!dup) next.push(entry);
+      }
+      return next.slice(-24);
+    });
+  }, []);
+
+  const logStudioStep = useCallback(
+    (
+      stage: PipelineLogEntry["stage"],
+      status: PipelineLogEntry["status"],
+      message: string,
+      code?: string
+    ) => {
+      const trace = createPipelineTrace(generationId || undefined);
+      const entry =
+        status === "error"
+          ? trace.error(stage, message, code)
+          : status === "recovered"
+            ? trace.recovered(stage, message, code)
+            : trace.ok(stage, message);
+      setPipelineLog((prev) => [...prev, entry].slice(-24));
+    },
+    [generationId]
+  );
+
+  const applyFallbackPreview = useCallback(
+    (reason: string, code?: string) => {
+      const fallback = localFallbackMedia(
+        mediaKind === "image" ? "image" : "video"
+      );
+      logStudioStep("player-render", "recovered", reason, code);
+      if (mediaKind === "image") {
+        setResultImage(fallback);
+        setVideoUrl(null);
+      } else {
+        setVideoUrl(fallback);
+        setResultImage(null);
+      }
+      setProgressPercent(100);
+      setRenderStage("completed");
+      setLoading(false);
+    },
+    [logStudioStep, mediaKind]
+  );
+
   const applyLiveStatus = useCallback(
     (p: GenerationStatusPayload) => {
       if (typeof p.percent === "number") setProgressPercent(p.percent);
       if (p.stage) setRenderStage(p.stage as RenderStage);
+      appendPipeline(p.pipelineLog);
 
       if (p.failed) {
         if (typeof p.balanceAfter === "number") {
           applyServerCharge({ ok: true, balanceAfter: p.balanceAfter });
         }
-        setError(p.errorMessage || p.error || tr("generate_failed"));
-        setRenderStage("failed");
-        setLoading(false);
+        const exact = publicGenerationError(p);
+        setError(exact);
+        applyFallbackPreview(
+          exact,
+          p.errorCode || p.pipelineStage || "PLAYER_RENDER_FAILED"
+        );
         return;
       }
 
@@ -365,7 +438,8 @@ export default function GenerateStudio() {
       const jobKey = p.generationId || p.jobId;
       if (jobKey && settledJobRef.current === jobKey) return;
 
-      const rawUrl = p.resultUrl || p.videoUrl || p.imageUrl || null;
+      const rawUrl =
+        p.resultUrl || p.videoUrl || p.imageUrl || p.fallbackUrl || null;
       const sessionKey = alnabiyKey;
       const playable =
         rawUrl &&
@@ -376,9 +450,9 @@ export default function GenerateStudio() {
           : rawUrl;
 
       if (!playable) {
-        setError(p.errorMessage || p.error || tr("generate_failed"));
-        setRenderStage("failed");
-        setLoading(false);
+        const exact = publicGenerationError(p);
+        setError(exact);
+        applyFallbackPreview(exact || "Empty result URL", p.errorCode);
         return;
       }
 
@@ -393,6 +467,7 @@ export default function GenerateStudio() {
         setVideoUrl(playable);
         setResultImage(null);
       }
+      logStudioStep("player-render", "ok", "Preview attached");
       setProgressPercent(100);
       setRenderStage("completed");
       if (typeof p.creditsCost === "number" && p.creditsCost > 0) {
@@ -422,10 +497,13 @@ export default function GenerateStudio() {
     },
     [
       alnabiyKey,
+      appendPipeline,
+      applyFallbackPreview,
       applyServerCharge,
       emotionMode,
       generationCost,
       generationKind,
+      logStudioStep,
       mediaKind,
       prompt,
       quality,
@@ -645,8 +723,10 @@ export default function GenerateStudio() {
 
     setLoading(true);
     setError(null);
+    setPipelineLog([]);
     setProgressPercent(8);
     setRenderStage("queued");
+    logStudioStep("queue", "ok", "Studio generate requested");
     setGenerationId(null);
     setR2Key(null);
     settledJobRef.current = null;
@@ -725,7 +805,10 @@ export default function GenerateStudio() {
         applyServerCharge({ ok: false, code: "INSUFFICIENT" });
         return;
       }
-      if (!res.ok || data.ok === false || data.status === "FAILED") {
+      if (
+        !isSuccessfulGenerateResponse(data) &&
+        (!res.ok || data.ok === false || data.status === "FAILED")
+      ) {
         /* /api/generate can return HTTP 200 with ok:false/status:FAILED
          * after charging + auto-refunding server-side — sync the
          * post-refund balance (never the stale pre-refund one) and
@@ -736,10 +819,19 @@ export default function GenerateStudio() {
             balanceAfter: data.balanceAfter as number,
           });
         }
-        setRenderStage("failed");
-        throw new Error(
-          String(data.error || data.errorMessage || tr("generate_failed"))
+        appendPipeline(data.pipelineLog);
+        const exact = publicGenerationError(data);
+        setError(exact);
+        notify({
+          message: exact,
+          type: "error",
+          title: data.errorCode || data.pipelineStage || "GENERATION_FAILED",
+        });
+        applyFallbackPreview(
+          exact,
+          data.errorCode || data.pipelineStage || "PLAYER_RENDER_FAILED"
         );
+        return;
       }
       if (data.alnabiyKey || data.alnabiy_key) {
         try {
@@ -752,6 +844,14 @@ export default function GenerateStudio() {
           /* soft */
         }
       }
+      appendPipeline(data.pipelineLog);
+      logStudioStep(
+        "queue",
+        "ok",
+        data.instantMock || data.queueMode === "sync"
+          ? "Mock generate response received"
+          : "Generate response received"
+      );
       const gid = data.generationId || data.jobId;
       if (gid) setGenerationId(gid);
       if (data.projectId) setProjectId(data.projectId);
@@ -787,10 +887,19 @@ export default function GenerateStudio() {
         return;
       }
 
-      throw new Error(data.error || data.errorMessage || tr("generate_failed"));
+      throw new Error(publicGenerationError(data));
     } catch (e) {
-      showApiError(e);
-      setRenderStage("failed");
+      const exact =
+        e instanceof Error && e.message.trim()
+          ? e.message
+          : publicGenerationError({});
+      setError(exact);
+      notify({
+        message: exact,
+        type: "error",
+        title: "PLAYER_RENDER_FAILED",
+      });
+      applyFallbackPreview(exact, "PLAYER_RENDER_FAILED");
     } finally {
       if (!keepWatching) setLoading(false);
     }
@@ -957,6 +1066,7 @@ export default function GenerateStudio() {
               isOffline ||
               coins < generationCost ||
               (mediaKind === "video" &&
+                !routingEstimate?.localMock &&
                 (routingEstimate?.configured === false || Boolean(routingIssue)))
             }
             title={
@@ -981,7 +1091,9 @@ export default function GenerateStudio() {
             onClick={generate}
           />
 
-          {mediaKind === "video" && routingEstimate?.configured && (
+          {mediaKind === "video" &&
+            routingEstimate?.configured &&
+            !routingEstimate.localMock && (
             <p className="text-[11px] text-white/40">
               {`~${routingEstimate.expectedLatencySeconds.p50}s typical`}
               {routingEstimate.durationAdjusted
@@ -989,10 +1101,23 @@ export default function GenerateStudio() {
                 : ""}
             </p>
           )}
-          {mediaKind === "video" && routingIssue && (
+          {mediaKind === "video" && routingEstimate?.localMock && (
+            <p className="text-[11px] text-white/40">
+              Instant local preview — provider keys are not required.
+            </p>
+          )}
+          {mediaKind === "video" &&
+            routingEstimate?.configured === false &&
+            !routingEstimate.localMock && (
+            <p className="text-[11px] text-amber-300">
+              Video provider is not configured.
+            </p>
+          )}
+          {mediaKind === "video" && routingIssue && !routingEstimate?.localMock && (
             <p className="text-[11px] text-amber-300">{routingIssue}</p>
           )}
           {error && <p className="text-sm text-rose-400">{error}</p>}
+          <StudioPipelineLog entries={pipelineLog} />
 
           <StudioAccordion title={tr("studio_advanced")} defaultOpen={showAdvanced}>
             <div className="space-y-4">
