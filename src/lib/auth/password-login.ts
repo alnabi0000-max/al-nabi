@@ -34,43 +34,35 @@ function asLedger(user: {
 }
 
 async function findUserIdByEmail(email: string): Promise<string | null> {
-  const admin = tryCreateAdminClient();
-  if (!admin) return null;
-
   const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-  if (url && key) {
-    const res = await fetch(
-      `${url}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
-      {
-        headers: {
-          apikey: key,
-          Authorization: `Bearer ${key}`,
-        },
-      }
-    );
-    if (res.ok) {
-      const body = (await res.json().catch(() => null)) as {
-        users?: Array<{ id?: string; email?: string }>;
-        id?: string;
-        email?: string;
-      } | null;
-      const users = Array.isArray(body?.users) ? body.users : [];
-      const match = users.find(
-        (u) => u.email?.toLowerCase() === email.toLowerCase()
-      );
-      if (match?.id) return match.id;
-      if (body?.id && body.email?.toLowerCase() === email.toLowerCase()) {
-        return body.id;
-      }
-    }
-  }
+  if (!url || !key || !tryCreateAdminClient()) return null;
 
-  const listed = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-  const found = listed.data.users.find(
+  const res = await fetch(
+    `${url}/auth/v1/admin/users?email=${encodeURIComponent(email)}`,
+    {
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+      },
+    }
+  );
+  if (!res.ok) return null;
+
+  const body = (await res.json().catch(() => null)) as {
+    users?: Array<{ id?: string; email?: string }>;
+    id?: string;
+    email?: string;
+  } | null;
+  const users = Array.isArray(body?.users) ? body.users : [];
+  const match = users.find(
     (u) => u.email?.toLowerCase() === email.toLowerCase()
   );
-  return found?.id ?? null;
+  if (match?.id) return match.id;
+  if (body?.id && body.email?.toLowerCase() === email.toLowerCase()) {
+    return body.id;
+  }
+  return null;
 }
 
 export async function confirmSupabaseEmail(

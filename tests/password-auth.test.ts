@@ -3,6 +3,9 @@ import {
   isAlreadyRegistered,
   isEmailNotConfirmed,
   isInvalidCredentials,
+  localizeAuthError,
+  publicAuthMessageKey,
+  PUBLIC_AUTH_ERRORS,
   publicPasswordAuthError,
 } from "@/lib/auth/password-errors";
 
@@ -21,7 +24,7 @@ describe("password auth error mapping", () => {
       isAlreadyRegistered({ message: "User already registered" })
     ).toBe(true);
     expect(publicPasswordAuthError({ message: "User already registered" })).toBe(
-      "Email already registered"
+      PUBLIC_AUTH_ERRORS.taken
     );
   });
 
@@ -31,6 +34,33 @@ describe("password auth error mapping", () => {
     ).toBe(true);
     expect(
       publicPasswordAuthError({ message: "Invalid login credentials" })
-    ).toBe("Invalid email or password");
+    ).toBe(PUBLIC_AUTH_ERRORS.invalid);
+  });
+
+  it("never echoes raw GoTrue internals", () => {
+    expect(
+      publicPasswordAuthError({
+        message: "Database error querying schema",
+        code: "unexpected_failure",
+      })
+    ).toBe(PUBLIC_AUTH_ERRORS.failed);
+  });
+
+  it("maps public API strings onto locale keys", () => {
+    expect(publicAuthMessageKey(PUBLIC_AUTH_ERRORS.taken)).toBe(
+      "auth_email_taken"
+    );
+    expect(publicAuthMessageKey(PUBLIC_AUTH_ERRORS.invalid)).toBe(
+      "auth_invalid_credentials"
+    );
+    expect(publicAuthMessageKey(PUBLIC_AUTH_ERRORS.rateLimited)).toBe(
+      "auth_rate_limited"
+    );
+    expect(publicAuthMessageKey("ACCOUNT PERMANENTLY BANNED")).toBe(
+      "bannedTitle"
+    );
+    expect(localizeAuthError(PUBLIC_AUTH_ERRORS.taken, (k) => `T:${k}`)).toBe(
+      "T:auth_email_taken"
+    );
   });
 });

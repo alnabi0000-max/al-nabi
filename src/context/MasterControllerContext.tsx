@@ -33,6 +33,7 @@ import {
 import { shouldBypassLowDataMode } from "@/lib/security/client-mode";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import { isGuestEmail, isRealUserSession } from "@/lib/auth/guest";
+import { localizeAuthError } from "@/lib/auth/password-errors";
 
 interface AiQueue {
   seedance: string;
@@ -836,8 +837,10 @@ export function MasterControllerProvider({
         if (!res.ok) {
           return {
             ok: false,
-            message:
-              (data.error as string) || t(state.locale, "error_generic"),
+            message: localizeAuthError(
+              (data.error as string) || "",
+              (key) => t(state.locale, key)
+            ),
           };
         }
 

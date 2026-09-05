@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       return NextResponse.json(
-        { ok: false, code: "OTP_SEND_FAILED", error: error.message },
+        { ok: false, code: "OTP_SEND_FAILED", error: "Could not send code" },
         { status: 400 }
       );
     }
@@ -76,10 +76,9 @@ export async function POST(req: NextRequest) {
       expiresInSec: 3600,
       message: "Code sent — check your email",
     });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Could not send code";
+  } catch {
     return NextResponse.json(
-      { ok: false, code: "OTP_SEND_FAILED", error: msg },
+      { ok: false, code: "OTP_SEND_FAILED", error: "Could not send code" },
       { status: 400 }
     );
   }

@@ -12,6 +12,12 @@ import { syncLocalUserToPrisma } from "@/lib/auth/sync-local";
 import { toSafePublicProfile } from "@/lib/auth/public-profile";
 import { completePasswordAuth } from "@/lib/auth/password-login";
 import { createRouteHandlerClient } from "@/lib/supabase/route-client";
+import { PUBLIC_AUTH_ERRORS } from "@/lib/auth/password-errors";
+import {
+  rateLimitSensitive,
+  clientIp,
+  rateLimitHeaders,
+} from "@/lib/security/rate-limit";
 
 const schema = z.object({
   email: z.string().email(),
@@ -20,28 +26,41 @@ const schema = z.object({
   register: z.boolean().optional(),
 });
 
-function jsonError(error: string, status: number) {
-  return NextResponse.json({ ok: false, error }, { status });
+function jsonError(error: string, status: number, headers?: HeadersInit) {
+  return NextResponse.json({ ok: false, error }, { status, headers });
 }
 
 /** Email + password. Local store in AUTH_MODE=local; otherwise Supabase. */
 export async function POST(req: NextRequest) {
   try {
-    const body = schema.parse(await req.json());
-    const email = body.email.toLowerCase();
+    const limited = await rateLimitSensitive(`login:${clientIp(req)}`);
+    if (!limited.success) {
+      return jsonError(
+        PUBLIC_AUTH_ERRORS.rateLimited,
+        429,
+        rateLimitHeaders(limited)
+      );
+    }
+
+    const parsed = schema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      return jsonError(PUBLIC_AUTH_ERRORS.invalid, 400);
+    }
+
+    const email = parsed.data.email.toLowerCase();
     const mode = getAuthMode();
 
     if (mode === "supabase") {
       const route = createRouteHandlerClient(req);
       if (!route) {
-        return jsonError("Auth unavailable", 503);
+        return jsonError(PUBLIC_AUTH_ERRORS.unavailable, 503);
       }
 
       const result = await completePasswordAuth({
         supabase: route.supabase,
         email,
-        password: body.password,
-        register: Boolean(body.register),
+        password: parsed.data.password,
+        register: Boolean(parsed.data.register),
       });
 
       if (!result.ok) {
@@ -61,18 +80,22 @@ export async function POST(req: NextRequest) {
 
     let user = findUserByEmail(email);
 
-    if (body.register) {
+    if (parsed.data.register) {
       if (user) {
-        return jsonError("Email already registered", 409);
+        return jsonError(PUBLIC_AUTH_ERRORS.taken, 409);
       }
-      user = upsertLocalUser({ email, password: body.password });
-    } else if (!user || !verifyPassword(user, body.password)) {
-      return jsonError("Invalid email or password", 401);
+      user = upsertLocalUser({ email, password: parsed.data.password });
+    } else if (!user || !verifyPassword(user, parsed.data.password)) {
+      return jsonError(PUBLIC_AUTH_ERRORS.invalid, 401);
     }
 
     if (user.status === "BANNED") {
       return NextResponse.json(
-        { ok: false, error: "ACCOUNT PERMANENTLY BANNED", status: "BANNED" },
+        {
+          ok: false,
+          error: PUBLIC_AUTH_ERRORS.banned,
+          status: "BANNED",
+        },
         { status: 403 }
       );
     }
@@ -99,8 +122,7 @@ export async function POST(req: NextRequest) {
       message: "Signed in",
     });
     return attachSessionCookie(res, user);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Login failed";
-    return jsonError(msg, 400);
+  } catch {
+    return jsonError(PUBLIC_AUTH_ERRORS.failed, 400);
   }
 }

@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       return NextResponse.json(
-        { ok: false, error: error.message },
+        { ok: false, error: "Could not send reset link" },
         { status: 400 }
       );
     }
@@ -72,8 +72,10 @@ export async function POST(req: NextRequest) {
       ok: true,
       message: "Password reset link sent — check your email",
     });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Reset failed";
-    return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+  } catch {
+    return NextResponse.json(
+      { ok: false, error: "Could not send reset link" },
+      { status: 400 }
+    );
   }
 }

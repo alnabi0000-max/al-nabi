@@ -1,58 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Image from "next/image";
 import { Sparkles } from "lucide-react";
 import { useMaster } from "@/context/MasterControllerContext";
-import {
-  VIDEO_SHOWCASE_AUTOPLAY_MS,
-  VIDEO_SHOWCASE_EXAMPLES,
-} from "@/lib/video-showcase";
+import { VIDEO_SHOWCASE_EXAMPLES } from "@/lib/video-showcase";
 
 /**
- * Full-viewport AI reel behind the glass sign-in panel.
+ * Single still behind the glass sign-in panel.
+ * A 6-image carousel here downloaded every guest visit and blocked first paint.
  */
 export function AuthHeroVideo() {
   const { tr } = useMaster();
-  const clips = VIDEO_SHOWCASE_EXAMPLES.filter(
-    (ex) => ex.beforeImage || ex.afterVideo
-  );
-  const [index, setIndex] = useState(0);
-  const active = clips[index] ?? clips[0];
-  const src = active?.afterVideo || active?.beforeImage || active?.afterPoster;
-
-  useEffect(() => {
-    if (clips.length <= 1) return;
-    const id = window.setInterval(() => {
-      setIndex((i) => (i + 1) % clips.length);
-    }, VIDEO_SHOWCASE_AUTOPLAY_MS);
-    return () => window.clearInterval(id);
-  }, [clips.length]);
-
+  const active = VIDEO_SHOWCASE_EXAMPLES[0];
+  const src = active?.afterPoster || active?.beforeImage;
   if (!src) return null;
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-black">
-      {active.afterVideo ? (
-        <video
-          key={active.afterVideo}
-          src={active.afterVideo}
-          poster={active.afterPoster || active.beforeImage}
-          className="h-full w-full object-cover"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-        />
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={src}
-          src={src}
-          alt=""
-          className="nabi-kenburns h-full w-full object-cover"
-        />
-      )}
+      <Image
+        src={src}
+        alt=""
+        fill
+        priority
+        quality={68}
+        sizes="100vw"
+        className="nabi-kenburns object-cover"
+      />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-black/10"
@@ -74,29 +47,6 @@ export function AuthHeroVideo() {
         <p className="mt-2 text-lg font-medium leading-snug text-white drop-shadow">
           {tr(active.promptKey)}
         </p>
-        {clips.length > 1 ? (
-          <div
-            className="mt-4 flex gap-1.5"
-            role="tablist"
-            aria-label={tr("video_showcase_title")}
-          >
-            {clips.map((ex, i) => (
-              <button
-                key={ex.id}
-                type="button"
-                role="tab"
-                aria-selected={i === index}
-                aria-label={tr(ex.titleKey)}
-                onClick={() => setIndex(i)}
-                className={
-                  i === index
-                    ? "h-1 w-7 rounded-full bg-nabi-gold"
-                    : "h-1 w-2.5 rounded-full bg-white/35 transition hover:bg-white/60"
-                }
-              />
-            ))}
-          </div>
-        ) : null}
       </div>
     </div>
   );

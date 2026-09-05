@@ -15,6 +15,7 @@ import { useMaster } from "@/context/MasterControllerContext";
 import type { AuthTab } from "@/context/AuthUiContext";
 import { fetchWithTimeout } from "@/lib/api/fetch-timeout";
 import { OtpCodeInput } from "@/components/auth/OtpCodeInput";
+import { localizeAuthError } from "@/lib/auth/password-errors";
 import clsx from "clsx";
 
 const SocialAuthButtons = dynamic(
@@ -62,6 +63,7 @@ export function AuthPanel({
   const [view, setView] = useState<AuthView>(() => tabToView(initialTab));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [codeStage, setCodeStage] = useState<CodeStage>("email");
   const [code, setCode] = useState("");
@@ -101,6 +103,7 @@ export function AuthPanel({
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
   const passwordOk = password.length >= 6;
+  const confirmOk = view !== "signup" || confirmPassword === password;
   const busy = pending !== null;
 
   const post = useCallback(
@@ -117,7 +120,9 @@ export function AuthPanel({
       );
       const data = (await res.json()) as Record<string, unknown>;
       if (!res.ok || data.ok === false) {
-        throw new Error((data.error as string) || tr("auth_error"));
+        throw new Error(
+          localizeAuthError((data.error as string) || "", tr)
+        );
       }
       return data;
     },
@@ -146,6 +151,9 @@ export function AuthPanel({
 
   const onPasswordSubmit = (register: boolean) =>
     run(register ? "register" : "login", async () => {
+      if (register && password !== confirmPassword) {
+        throw new Error(tr("password_mismatch"));
+      }
       const res = await signInWithPassword(email.trim(), password, register);
       if (!res.ok) throw new Error(res.message);
       setMsg(res.message);
@@ -236,7 +244,9 @@ export function AuthPanel({
             className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
-              if (!busy && emailValid && passwordOk) onPasswordSubmit(isSignup);
+              if (!busy && emailValid && passwordOk && confirmOk) {
+                onPasswordSubmit(isSignup);
+              }
             }}
           >
             <div className="space-y-3">
@@ -317,9 +327,38 @@ export function AuthPanel({
               </div>
             </div>
 
+            {isSignup ? (
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="auth-password-confirm"
+                  className="text-[11px] font-medium text-nabi-muted"
+                >
+                  {tr("confirm_password_placeholder")}
+                </label>
+                <input
+                  id="auth-password-confirm"
+                  className="nabi-input"
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    resetFeedback();
+                  }}
+                  autoComplete="new-password"
+                  minLength={6}
+                  disabled={busy}
+                />
+                {confirmPassword.length > 0 && !confirmOk ? (
+                  <p className="text-xs text-rose-400">
+                    {tr("password_mismatch")}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             <button
               type="submit"
-              disabled={busy || !emailValid || !passwordOk}
+              disabled={busy || !emailValid || !passwordOk || !confirmOk}
               className="nabi-btn-primary flex w-full items-center justify-center gap-2"
             >
               {pending === "login" || pending === "register" ? (
@@ -340,6 +379,7 @@ export function AuthPanel({
                 type="button"
                 onClick={() => {
                   setView(isSignup ? "signin" : "signup");
+                  setConfirmPassword("");
                   resetFeedback();
                 }}
                 className="font-semibold text-nabi-ink transition hover:underline"

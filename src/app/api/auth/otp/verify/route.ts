@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
+import type { Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { createStatelessClient } from "@/lib/supabase/stateless";
+import { createRouteHandlerClient } from "@/lib/supabase/route-client";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { onboardNewUser } from "@/lib/auth/onboarding";
 import { toSafePublicProfile } from "@/lib/auth/public-profile";
@@ -18,75 +19,106 @@ const schema = z.object({
   platform: z.enum(["web", "mobile"]).default("web"),
 });
 
+function jsonError(
+  error: string,
+  status: number,
+  code: string,
+  extra?: HeadersInit
+) {
+  return NextResponse.json(
+    { ok: false, code, error },
+    { status, headers: extra }
+  );
+}
+
 /**
  * Verify a 6-digit email code and open a session.
  *
- * Web clients receive HTTP-only Supabase cookies and no token material in the
- * response body. Native clients opt in with `platform: "mobile"` and receive
- * the access/refresh pair to hold in secure device storage.
+ * Web clients receive HTTP-only Supabase cookies via `applyCookies` — the
+ * same path email/password login uses. `cookies().set()` can be a no-op in
+ * this handler, so the route client must copy Set-Cookie onto the response.
+ * Native clients opt in with `platform: "mobile"` and receive the
+ * access/refresh pair to hold in secure device storage.
  */
 export async function POST(req: NextRequest) {
   try {
-    // A 6-digit code is brute-forceable, so throttle before touching Supabase.
     const limited = await rateLimitSensitive(`otp-verify:${clientIp(req)}`);
     if (!limited.success) {
-      return NextResponse.json(
-        { ok: false, code: "RATE_LIMITED", error: "Too many attempts" },
-        { status: 429, headers: rateLimitHeaders(limited) }
+      return jsonError(
+        "Too many attempts",
+        429,
+        "RATE_LIMITED",
+        rateLimitHeaders(limited)
       );
     }
 
     if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { ok: false, code: "SUPABASE_REQUIRED", error: "Auth unavailable" },
-        { status: 503 }
-      );
+      return jsonError("Auth unavailable", 503, "SUPABASE_REQUIRED");
     }
 
-    const parsed = schema.safeParse(await req.json());
+    const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json(
-        { ok: false, code: "INVALID_CODE", error: "Enter the 6-digit code" },
-        { status: 400 }
-      );
+      return jsonError("Enter the 6-digit code", 400, "INVALID_CODE");
     }
     const { email, token, platform } = parsed.data;
 
-    const supabase =
-      platform === "mobile"
-        ? await createStatelessClient()
-        : await createClient();
-    if (!supabase) {
-      return NextResponse.json(
-        { ok: false, code: "AUTH_UNAVAILABLE", error: "Auth unavailable" },
-        { status: 503 }
-      );
-    }
+    let identity: SupabaseUser;
+    let session: Session | null = null;
+    let applyCookies: (<T extends NextResponse>(response: T) => T) | null =
+      null;
 
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: email.toLowerCase(),
-      token,
-      type: "email",
-    });
-
-    if (error || !data.user?.id) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "OTP_INVALID",
-          error: error?.message || "Code is invalid or expired",
-        },
-        { status: 401, headers: rateLimitHeaders(limited) }
-      );
+    if (platform === "mobile") {
+      const supabase = await createStatelessClient();
+      if (!supabase) {
+        return jsonError("Auth unavailable", 503, "AUTH_UNAVAILABLE");
+      }
+      const verified = await supabase.auth.verifyOtp({
+        email: email.toLowerCase(),
+        token,
+        type: "email",
+      });
+      if (verified.error || !verified.data.user?.id) {
+        return jsonError(
+          "Code is invalid or expired",
+          401,
+          "OTP_INVALID",
+          rateLimitHeaders(limited)
+        );
+      }
+      identity = verified.data.user;
+      session = verified.data.session;
+    } else {
+      const route = createRouteHandlerClient(req);
+      if (!route) {
+        return jsonError("Auth unavailable", 503, "AUTH_UNAVAILABLE");
+      }
+      applyCookies = route.applyCookies;
+      const verified = await route.supabase.auth.verifyOtp({
+        email: email.toLowerCase(),
+        token,
+        type: "email",
+      });
+      if (verified.error || !verified.data.user?.id) {
+        return route.applyCookies(
+          jsonError(
+            "Code is invalid or expired",
+            401,
+            "OTP_INVALID",
+            rateLimitHeaders(limited)
+          )
+        );
+      }
+      identity = verified.data.user;
+      session = verified.data.session;
     }
 
     const { user } = await onboardNewUser(
       {
-        id: data.user.id,
-        email: data.user.email || email.toLowerCase(),
+        id: identity.id,
+        email: identity.email || email.toLowerCase(),
         name:
-          (data.user.user_metadata?.full_name as string | undefined) ||
-          (data.user.user_metadata?.name as string | undefined) ||
+          (identity.user_metadata?.full_name as string | undefined) ||
+          (identity.user_metadata?.name as string | undefined) ||
           null,
         authProvider: "EMAIL_OTP",
       },
@@ -94,24 +126,25 @@ export async function POST(req: NextRequest) {
     );
 
     if (user.status === "BANNED") {
-      return NextResponse.json(
+      const banned = NextResponse.json(
         { ok: false, authenticated: false, code: "ACCOUNT_BANNED" },
         { status: 403 }
       );
+      return applyCookies ? applyCookies(banned) : banned;
     }
 
-    return NextResponse.json(
+    const body = NextResponse.json(
       {
         ok: true,
         authenticated: true,
         mode: "supabase",
         ...toSafePublicProfile(user),
-        ...(platform === "mobile" && data.session
+        ...(platform === "mobile" && session
           ? {
               session: {
-                accessToken: data.session.access_token,
-                refreshToken: data.session.refresh_token,
-                expiresAt: data.session.expires_at ?? null,
+                accessToken: session.access_token,
+                refreshToken: session.refresh_token,
+                expiresAt: session.expires_at ?? null,
                 tokenType: "bearer",
               },
             }
@@ -119,11 +152,8 @@ export async function POST(req: NextRequest) {
       },
       { headers: { "Cache-Control": "no-store" } }
     );
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Verification failed";
-    return NextResponse.json(
-      { ok: false, code: "OTP_VERIFY_FAILED", error: msg },
-      { status: 400 }
-    );
+    return applyCookies ? applyCookies(body) : body;
+  } catch {
+    return jsonError("Verification failed", 400, "OTP_VERIFY_FAILED");
   }
 }
