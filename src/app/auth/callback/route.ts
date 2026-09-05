@@ -3,7 +3,10 @@ import { createRouteHandlerClient } from "@/lib/supabase/route-client";
 import { onboardNewUser } from "@/lib/auth/onboarding";
 import { isSupabaseConfigured } from "@/lib/auth/config";
 import { resolveAuthProvider } from "@/lib/auth/providers";
-import { safeOAuthNextPath } from "@/lib/auth/oauth-origin";
+import {
+  publicAppOriginFromRequest,
+  safeOAuthNextPath,
+} from "@/lib/auth/oauth-origin";
 import {
   appendDeepLinkParams,
   isMobilePlatform,
@@ -30,7 +33,8 @@ function safeNextPath(raw: string | null): string {
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const origin = publicAppOriginFromRequest(request);
   const code = searchParams.get("code");
   const next = safeNextPath(searchParams.get("next"));
 

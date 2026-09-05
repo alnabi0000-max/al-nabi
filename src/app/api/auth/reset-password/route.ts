@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/auth/config";
+import { publicAppOriginFromRequest } from "@/lib/auth/oauth-origin";
 import {
   rateLimitSensitive,
   clientIp,
@@ -45,12 +46,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const origin =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      (process.env.NODE_ENV === "production"
-        ? null
-        : req.headers.get("origin") ||
-          `${req.nextUrl.protocol}//${req.nextUrl.host}`);
+    const origin = publicAppOriginFromRequest(req);
     if (!origin) {
       return NextResponse.json(
         { ok: false, error: "NEXT_PUBLIC_APP_URL must be configured" },

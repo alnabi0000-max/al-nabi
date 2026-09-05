@@ -9,6 +9,7 @@ import {
   canonicalOAuthHref,
   canonicalOAuthOrigin,
   GOOGLE_OAUTH_RESUME_KEY,
+  normalizePublicOrigin,
   safeOAuthNextPath,
 } from "@/lib/auth/oauth-origin";
 import clsx from "clsx";
@@ -89,7 +90,7 @@ export function SocialAuthButtons({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(returnTo)}`,
+          redirectTo: `${normalizePublicOrigin(origin)}/auth/callback?next=${encodeURIComponent(returnTo)}`,
           queryParams: {
             access_type: "offline",
             prompt: "select_account",

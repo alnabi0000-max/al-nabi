@@ -15,6 +15,7 @@ import { getStripePublishableKey, isStripeConfigured } from "@/lib/auth/config";
 import { createStripeClient } from "@/lib/stripe/server";
 import { creditPaidPurchase } from "@/lib/ledger/credit-purchase";
 import { isDevelopmentNodeEnv } from "@/lib/env";
+import { publicAppOriginFromRequest } from "@/lib/auth/oauth-origin";
 
 const bodySchema = z.object({
   packId: z.enum(PACK_PRICE_IDS),
@@ -72,11 +73,7 @@ function stripeLocale(
 }
 
 function appOrigin(req: NextRequest): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    req.headers.get("origin") ||
-    `${req.nextUrl.protocol}//${req.nextUrl.host}`
-  );
+  return publicAppOriginFromRequest(req);
 }
 
 /**

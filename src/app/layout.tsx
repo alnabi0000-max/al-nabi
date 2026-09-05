@@ -7,14 +7,17 @@ import { ProducerChatProvider } from "@/context/ProducerChatContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { CosmicBackground } from "@/components/ui/CosmicBackground";
 import { AppShellChrome } from "@/components/AppShellChrome";
+import { normalizePublicOrigin } from "@/lib/auth/oauth-origin";
 
 function resolveSiteUrl(): string {
-  const raw = (process.env.NEXT_PUBLIC_APP_URL || "").trim() || "https://alnabiy.app";
-  try {
-    return new URL(raw).origin;
-  } catch {
-    return "https://alnabiy.app";
-  }
+  const raw = (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    ""
+  ).trim();
+  return (
+    normalizePublicOrigin(raw || "https://alnabiy.app") || "https://alnabiy.app"
+  );
 }
 
 const SITE_URL = resolveSiteUrl();

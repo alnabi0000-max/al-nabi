@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/auth/config";
+import { publicAppOriginFromRequest } from "@/lib/auth/oauth-origin";
 import { rateLimitSensitive, clientIp, rateLimitHeaders } from "@/lib/security/rate-limit";
 
 const schema = z.object({
@@ -49,15 +50,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    /* Never trust request Origin/Host for the email redirect base in
-     * production — an attacker-controlled Host header could redirect the
-     * magic-link click to an off-site phishing page. */
-    const origin =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      (process.env.NODE_ENV === "production"
-        ? null
-        : req.headers.get("origin") ||
-          `${req.nextUrl.protocol}//${req.nextUrl.host}`);
+    /* Production trusts only NEXT_PUBLIC_APP_URL / NEXT_PUBLIC_SITE_URL.
+     * Development also normalizes 0.0.0.0 Host headers to localhost. */
+    const origin = publicAppOriginFromRequest(req);
     if (!origin) {
       return NextResponse.json(
         { ok: false, error: "NEXT_PUBLIC_APP_URL must be configured" },
